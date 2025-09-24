@@ -1,0 +1,35 @@
+parameters
+    num_units = {num_units};
+    termination_time = {termination_time};
+    analysis_time = {analysis_time};
+end
+
+species
+    U R     [C0]={R_c0}    FW={R_FW}
+    M A     [C0]={A_c0}    FW={A_FW}
+    M B     [C0]={B_c0}    FW={B_FW}
+
+    P PA
+    P PB
+end
+
+rateconstants
+    kpAA = {kpAA}
+    kpAB = {kpAB}
+    kpBA = {kpBA}
+    kpBB = {kpBB}
+end
+
+reactions
+    
+	# ---- Initiation ----
+    IN R + A -kpAA-> PA
+    IN R + B -kpAB-> PB
+
+    # ---- Propagation ----
+    PR PA + A -kpAA-> PA
+    PR PA + B -kpAB-> PB
+    PR PB + A -kpBA-> PA
+    PR PB + B -kpBB-> PB
+    
+end

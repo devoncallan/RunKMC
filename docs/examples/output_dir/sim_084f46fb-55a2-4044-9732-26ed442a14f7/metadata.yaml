@@ -1,0 +1,94 @@
+run_info:
+  version: 0.1.0a14
+  timestamp: 1758745880
+  unix_timestamp: 1758745880
+parameters:
+  num_particles: 10000000
+  termination_time: 5000
+  analysis_time: 100
+  report_sequences: true
+  report_polymers: true
+species:
+  units:
+    - id: 1
+      name: A
+      type: M
+      C0: 1
+      FW: 100
+      efficiency: 1
+      init_count: 4995004
+    - id: 2
+      name: B
+      type: M
+      C0: 1
+      FW: 200
+      efficiency: 1
+      init_count: 4995004
+    - id: 3
+      name: R
+      type: U
+      C0: 0.002
+      FW: 1
+      efficiency: 1
+      init_count: 9990
+  polymers:
+    - name: PA
+      polymer_types:
+        - PA
+    - name: PB
+      polymer_types:
+        - PB
+reactions:
+  num_reactions: 6
+  reactions:
+    - type: IN
+      rate_constant: kpAA
+      reactants:
+        - R
+        - A
+      products:
+        - PA
+    - type: IN
+      rate_constant: kpAB
+      reactants:
+        - R
+        - B
+      products:
+        - PB
+    - type: PR
+      rate_constant: kpAA
+      reactants:
+        - A
+        - PA
+      products:
+        - PA
+    - type: PR
+      rate_constant: kpAB
+      reactants:
+        - B
+        - PA
+      products:
+        - PB
+    - type: PR
+      rate_constant: kpBA
+      reactants:
+        - A
+        - PB
+      products:
+        - PA
+    - type: PR
+      rate_constant: kpBB
+      reactants:
+        - B
+        - PB
+      products:
+        - PB
+  rate_constants:
+    - name: kpAA
+      value: 1
+    - name: kpAB
+      value: 0.050000000000000003
+    - name: kpBA
+      value: 2
+    - name: kpBB
+      value: 1

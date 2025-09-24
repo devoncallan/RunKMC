@@ -1,0 +1,77 @@
+parameters
+    num_units = {num_units};
+    termination_time = {termination_time};
+    analysis_time = {analysis_time};
+end
+
+species
+    I I     [C0]={I_c0}   FW={I_FW}   f=0.5
+    U R     [C0]={R_c0}   FW={R_FW}
+    M A     [C0]={A_c0}   FW={A_FW}
+    M B     [C0]={B_c0}   FW={B_FW}
+    
+    P P[R.A]
+    P P[R.B]
+    P P[A.A]
+    P P[A.B]
+    P P[B.A]
+    P P[B.B]
+
+    # The polymers separated by | are a subgroup of P[-.A] and P[-.B]
+    P P[-.A] P[R.A]|P[A.A]|P[B.A]
+    P P[-.B] P[R.B]|P[A.B]|P[B.B]
+    P D
+end
+
+rateconstants
+    kd	    = {kd}
+
+    kpAA    = {kpAA}
+    kpAB    = {kpAB}
+    kpBA    = {kpBA}
+    kpBB    = {kpBB}
+
+    kdAA    = {kdAA}
+    kdAB    = {kdAB}
+    kdBA    = {kdBA}
+    kdBB    = {kdBB}
+
+    ktdAA   = {ktdAA}
+    ktdAB   = {ktdAB}
+    ktdBB   = {ktdBB}
+
+    ktcAA   = {ktcAA}
+    ktcAB   = {ktcAB}
+    ktcBB   = {ktcBB}
+end
+
+reactions
+	# ---- Initiator decomoposition ----
+    ID I -kd-> R + R
+    
+	# ---- Initiation ----
+    IN R + A -kpAA-> P[R.A]
+    IN R + B -kpBB-> P[R.B]
+
+	# ---- Propagation ----
+    PR P[-.A] + A -kpAA-> P[A.A]
+    PR P[-.A] + B -kpAB-> P[A.B]
+    PR P[-.B] + A -kpBA-> P[B.A]
+    PR P[-.B] + B -kpBB-> P[B.B]
+
+    # ---- Depropagation ----
+    DP P[A.A] -kdAA-> P[-.A] + A
+    DP P[A.B] -kdAB-> P[-.A] + B
+    DP P[B.A] -kdBA-> P[-.B] + A
+    DP P[B.B] -kdBB-> P[-.B] + B
+
+	# ---- Termination by combination ----
+    TC P[-.A] + P[-.A] -ktcAA-> D
+    TC P[-.A] + P[-.B] -ktcAB-> D
+    TC P[-.B] + P[-.B] -ktcBB-> D
+
+	# ---- Termination by disproportionation ----
+    TD P[-.A] + P[-.A] -ktdAA-> D + D
+    TD P[-.A] + P[-.B] -ktdAB-> D + D
+    TD P[-.B] + P[-.B] -ktdBB-> D + D
+end
