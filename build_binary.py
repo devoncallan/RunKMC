@@ -15,7 +15,7 @@ def main():
             "build",
             "-S",
             "cpp",
-            "-DRUNKMC_VERSION=0.1.0",
+            "-DRUNKMC_VERSION=0.1.1",
             "-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
         ],
         check=True,
