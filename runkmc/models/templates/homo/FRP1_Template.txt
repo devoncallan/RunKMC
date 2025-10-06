@@ -1,0 +1,30 @@
+parameters
+    num_units = {num_units};
+    termination_time = {termination_time};
+    analysis_time = {analysis_time};
+end
+
+species
+    I I     [C0]={I_c0}   FW={I_FW}   f={I_f}
+    M M     [C0]={M_c0}   FW={M_FW}
+    P R
+    P D
+end
+
+rateconstants
+    kd	    = {kd}
+    kp      = {kp}
+    kpr     = {kpr}
+    ktc     = {ktc}
+    ktd     = {ktd}
+    kfm     = {kfm}
+end
+
+reactions
+    IDP I -kd-> R + R
+    PR R + M -kp-> R
+    DP R -kpr-> R + M
+    TC R + R -ktc-> D
+    TD R + R -ktd-> D + D
+    CTM R + M -kfm-> D + R
+end
