@@ -152,6 +152,52 @@ protected:
 };
 
 /**
+ * @brief Initiator decomposition reaction to polymer (e.g., AIBN ––> R + R)
+ * Decomoposition of initiator molecule to form two active primary radicals (polymer)
+ */
+class InitiatorDecompositionPolymer : public Reaction
+{
+public:
+    static inline const std::string &TYPE = ReactionType::INIT_DECOMP_POLY;
+    InitiatorDecompositionPolymer(RateConstant rateConstant, Unit *unitReactant, PolymerTypeGroupPtr polyProduct1, PolymerTypeGroupPtr polyProduct2, double efficiency_)
+        : Reaction(rateConstant, 0, 1, 2, 0), efficiency(efficiency_)
+    {
+        unitReactants[0] = unitReactant;
+        polyProducts[0] = polyProduct1;
+        polyProducts[1] = polyProduct2;
+    }
+
+    void react()
+    {
+        --unitReactants[0]->count;
+
+        if (rng_utils::dis(rng_utils::rng) <= efficiency)
+        {
+            Polymer *polymer = new Polymer();
+            polymer->initiate((unitReactants[0]->ID));
+            polyProducts[0]->insertPolymer(polymer);
+        }
+
+        if (rng_utils::dis(rng_utils::rng) <= efficiency)
+        {
+            Polymer *polymer = new Polymer();
+            polymer->initiate((unitReactants[0]->ID));
+            polyProducts[1]->insertPolymer(polymer);
+        }
+    }
+
+    double calculateRate(double NAV) const
+    {
+        return rateConstant.value * unitReactants[0]->count;
+    }
+
+    const std::string &getType() const { return TYPE; }
+
+protected:
+    double efficiency; // Reaction efficiency (0, 1]
+};
+
+/**
  * @brief Initiation reaction (e.g., I + A ––> IA)
  * Reaction between a radical molecule and monomer to create a polymer.
  */

@@ -29,6 +29,12 @@ public:
 		sequence.push_back(unit);
 	}
 
+	void initiate(const SpeciesID unit)
+	{
+		initiator = unit;
+		state = ALIVE;
+	}
+
 	void removeUnitFromEnd()
 	{
 		if (sequence.empty())

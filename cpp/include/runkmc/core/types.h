@@ -10,6 +10,7 @@ class ReactionType
 public:
     static inline const std::string ELEMENTARY = "EL";
     static inline const std::string INITIATOR_DECOMPOSITION = "ID";
+    static inline const std::string INIT_DECOMP_POLY = "IDP";
     static inline const std::string INITIATION = "IN";
     static inline const std::string PROPAGATION = "PR";
     static inline const std::string DEPROPAGATION = "DP";

@@ -339,6 +339,8 @@ private:
                 reactions.push_back(new Elementary(rateConstant, unitReactants, unitProducts));
             else if (reactionType == InitiatorDecomposition::TYPE)
                 reactions.push_back(new InitiatorDecomposition(rateConstant, unitReactants[0], unitProducts[0], unitProducts[1], unitReactants[0]->efficiency));
+            else if (reactionType == InitiatorDecompositionPolymer::TYPE)
+                reactions.push_back(new InitiatorDecompositionPolymer(rateConstant, unitReactants[0], polyProducts[0], polyProducts[1], unitReactants[0]->efficiency));
             else if (reactionType == Initiation::TYPE)
                 reactions.push_back(new Initiation(rateConstant, unitReactants[0], unitReactants[1], polyProducts[0]));
             else if (reactionType == Propagation::TYPE)
