@@ -7,24 +7,41 @@
 #include "common.h"
 #include "kmc/kmc.h"
 #include "io/text_parsers.h"
+#include "io/yaml_parsers.h"
 
 namespace builder
 {
 
-    KMC fromFile(config::CommandLineConfig config)
+    static KMC fromModelFile(config::CommandLineConfig config)
     {
-        auto sections = io::parsers::text::parseFile(config.inputFilepath);
-        config::SimulationConfig simConfig = io::parsers::text::parseSimulationConfig(sections.parameters);
+        using namespace io::parse::text;
+        auto sections = parseFile(config.inputFilepath);
+        config::SimulationConfig simConfig = parseSimulationConfig(sections.parameters);
 
-        auto speciesSetRead = io::parsers::text::parseSpeciesSet(sections.species);
+        auto speciesSetRead = parseSpecies(sections.species);
         SpeciesSet speciesSet = buildSpeciesSet(speciesSetRead);
 
         registry::builder.build();
 
-        auto rateConstants = io::parsers::text::parseRateConstants(sections.rateConstants);
-        auto reactionsRead = io::parsers::text::parseReactions(sections.reactions);
-        ReactionSet reactionSet = buildReactionSet(reactionsRead, speciesSet);
+        auto rateConstants = parseRateConstants(sections.rateConstants);
+        auto reactionsRead = parseReactions(sections.reactions);
+        // ReactionSet reactionSet = buildReactionSet(reactionsRead, speciesSet);
     };
+
+    static KMC fromYamlFile(config::CommandLineConfig config)
+    {
+        using namespace io::parse::yaml;
+        auto sections = parseFile(config.inputFilepath);
+        config::SimulationConfig simConfig = parseSimulationConfig(sections.parameters);
+
+        auto speciesSetRead = parseSpecies(sections.species);
+        SpeciesSet speciesSet = buildSpeciesSet(speciesSetRead);
+
+        registry::builder.build();
+
+        auto rateConstants = parseRateConstants(sections.rateConstants);
+        auto reactionsRead = parseReactions(sections.reactions);
+    }
 
     SpeciesSet buildSpeciesSet(const types::SpeciesSetRead &data)
     {
@@ -59,15 +76,15 @@ namespace builder
             }
         }
 
-        // for (const auto &label : data.polymerLabels)
-        // {
-        //     registry::registerNewSpecies(label.name, label.type);
-        //     for (const auto &polyName : label.polymerNames)
-        //     {
-        //         if (!registry::isRegistered(polyName))
-        //             console::input_error("Polymer " + polyName + " for label " + label.name + " is not registered. Exiting.");
-        //     }
-        // }
+        for (const auto &label : data.polymerLabels)
+        {
+            registry::builder.registerNewSpecies(label.name, label.type);
+            for (const auto &polyName : label.polymerNames)
+            {
+                if (!registry::builder.isRegistered(polyName))
+                    console::input_error("Polymer " + polyName + " for label " + label.name + " is not registered. Exiting.");
+            }
+        }
     }
 
     std::vector<RateConstant> buildRateConstants(const std::vector<types::RateConstantRead> &data)
@@ -148,3 +165,21 @@ namespace builder
         return reactionSet;
     };
 };
+
+// namespace build
+// {
+//     // Build from file
+//     KMC fromFile(config::CommandLineConfig config);
+//     KMC _fromModelFile(config::CommandLineConfig config);
+//     KMC _fromYamlFile(config::CommandLineConfig config);
+
+//     // Species
+//     static SpeciesSet buildSpeciesSet(const types::SpeciesSetRead &data);
+
+//     // Rate constants
+//     static std::vector<RateConstant> buildRateConstants(const std::vector<types::RateConstantRead> &data);
+
+//     // Reactions
+//     static ReactionSet buildReactionSet(const types::ReactionSetRead &data, SpeciesSet &speciesSet);
+
+// };

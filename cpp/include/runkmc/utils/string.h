@@ -83,4 +83,28 @@ namespace str
                                      std::istream_iterator<std::string>());
         return ret;
     }
+
+    static std::string join(const std::vector<std::string> &strings, const std::string &delim = ", ")
+    {
+        std::ostringstream os;
+        for (size_t i = 0; i < strings.size(); ++i)
+        {
+            os << strings[i];
+            if (i < strings.size() - 1)
+                os << delim;
+        }
+        return os.str();
+    }
+
+    static std::string join(const std::vector<const char *> &strings, const std::string &delim = ", ")
+    {
+        std::ostringstream os;
+        for (size_t i = 0; i < strings.size(); ++i)
+        {
+            os << strings[i];
+            if (i < strings.size() - 1)
+                os << delim;
+        }
+        return os.str();
+    }
 };

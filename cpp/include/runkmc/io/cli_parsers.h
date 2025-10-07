@@ -76,3 +76,10 @@ namespace io::parsers
         }
     };
 };
+
+namespace io::parse::cli
+{
+    static config::CommandLineConfig parseArguments(int argc, char **argv);
+    static bool validateInputFile(const std::string &filepath);
+    static bool prepareOutputDir(const std::string &dirPath);
+}

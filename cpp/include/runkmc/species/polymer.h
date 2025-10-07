@@ -1,5 +1,6 @@
 #pragma once
 #include "common.h"
+#include "species/unit.h"
 #include "analysis/utils.h"
 
 class Polymer
