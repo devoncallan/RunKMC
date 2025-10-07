@@ -9,71 +9,6 @@
 #include "types.h"
 #include "core/C.h"
 
-// namespace io::parsers
-// {
-//     class yaml
-//     {
-//     public:
-//         types::SpeciesRead parseSpecies(const YAML::Node &node)
-//         {
-//             types::SpeciesRead species;
-//             readVar(node, "name", species.name, true);
-//             readVar(node, "type", species.type, true);
-//             return species;
-//         };
-
-//         types::UnitRead parseUnit(const YAML::Node &node)
-//         {
-//             types::SpeciesRead species = parseSpecies(node);
-
-//             types::UnitRead unit;
-//             unit.name = species.name;
-//             unit.type = species.type;
-
-//             readVar(node, C::C0_VAR, unit.C0);
-//             readVar(node, C::FW_VAR, unit.FW);
-//             readVar(node, C::EFFICIENCY_VAR, unit.efficiency); // optional, default 1
-
-//             return unit;
-//         }
-
-//         types::PolymerTypeRead parsePolymerType(const YAML::Node &node)
-//         {
-//             types::SpeciesRead species = parseSpecies(node);
-//             types::PolymerTypeRead polymer;
-//             polymer.name = species.name;
-//             polymer.type = species.type;
-
-//             readVar(node, "end_group_units", polymer.endGroupUnitNames, true); // required
-
-//             return polymer;
-//         }
-
-//         types::PolymerLabelsRead parsePolymerLabels(const YAML::Node &node)
-//         {
-//             types::SpeciesRead species = parseSpecies(node);
-
-//             types::PolymerLabelsRead labels;
-//             labels.name = species.name;
-//             labels.type = species.type;
-
-//             readVar(node, "polymer_names", labels.polymerNames, true); // required
-
-//             return labels;
-//         }
-
-//     private:
-//         template <typename T>
-//         static void readVar(const YAML::Node &node, const std::string &varName, T &var, bool required = false)
-//         {
-//             if (node[varName])
-//                 var = node[varName].as<T>();
-//             else if (required)
-//                 throw std::runtime_error("Missing required variable: " + varName);
-//         }
-//     };
-// };
-
 namespace io::parse::yaml
 {
 
@@ -89,14 +24,21 @@ namespace io::parse::yaml
     {
         YAML::Node root = YAML::LoadFile(filepath);
 
-        if (!root["parameters"] || !root["species"] || !root["rate_constants"] || !root["reactions"])
-            console::input_error("YAML input file is missing one or more required sections: 'parameters', 'species', 'rate_constants', 'reactions'.");
+        // Validate required sections
+        if (!utils::hasKey(root, C::io::PARAMETERS_SECTION))
+            console::input_error("YAML input file is missing required section: 'parameters'.");
+        if (!utils::hasKey(root, C::io::SPECIES_SECTION))
+            console::input_error("YAML input file is missing required section: 'species'.");
+        if (!utils::hasKey(root, C::io::RATE_CONSTANTS_SECTION))
+            console::input_error("YAML input file is missing required section: 'rate_constants'.");
+        if (!utils::hasKey(root, C::io::REACTIONS_SECTION))
+            console::input_error("YAML input file is missing required section: '" + std::string(C::io::REACTIONS_SECTION) + "'.");
 
         SectionNodes sections;
-        sections.parameters = root["parameters"];
-        sections.species = root["species"];
-        sections.rateConstants = root["rate_constants"];
-        sections.reactions = root["reactions"];
+        sections.parameters = root[C::io::PARAMETERS_SECTION];
+        sections.species = root[C::io::SPECIES_SECTION];
+        sections.rateConstants = root[C::io::RATE_CONSTANTS_SECTION];
+        sections.reactions = root[C::io::REACTIONS_SECTION];
 
         return sections;
     }
@@ -237,6 +179,7 @@ namespace io::parse::yaml
         utils::readVar(node, C::io::PRODUCTS_KEY, reaction.productNames, true);
         return reaction;
     }
+
     static std::vector<types::ReactionRead> parseReactions(const YAML::Node &node)
     {
         std::vector<types::ReactionRead> reactions;
@@ -246,16 +189,40 @@ namespace io::parse::yaml
 
         return reactions;
     }
+
+    static types::KMCInputRead parseKMCInput(const std::string &filepath)
+    {
+        using namespace io::parse::yaml;
+        SectionNodes sections = parseFile(filepath);
+        types::KMCInputRead input;
+
+        input.config = parseSimulationConfig(sections.parameters);
+        input.species = parseSpecies(sections.species);
+        input.rateConstants = parseRateConstants(sections.rateConstants);
+        input.reactions = parseReactions(sections.reactions);
+
+        return input;
+    }
 };
 
 namespace io::parse::yaml::utils
 {
-    template <typename T>
-    static void readVar(const YAML::Node &node, const std::string &varName, T &var, bool required = false)
+
+    static bool hasKey(const YAML::Node &node, const std::string_view &key)
     {
-        if (node[varName])
-            var = node[varName].as<T>();
+
+        if (node[std::string(key)])
+            return true;
+        return false;
+    }
+
+    template <typename T>
+    static void readVar(const YAML::Node &node, const std::string_view &key, T &value, bool required = false)
+    {
+        auto keyStr = std::string(key);
+        if (utils::hasKey(node, key))
+            value = node[keyStr].as<T>();
         else if (required)
-            throw std::runtime_error("Missing required variable: " + varName);
+            throw std::runtime_error("Missing required variable: " + keyStr);
     }
 };

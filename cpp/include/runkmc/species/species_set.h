@@ -9,6 +9,57 @@ public:
     SpeciesSet() {};
 
     SpeciesSet(
+        std::vector<Unit> &&units_,
+        std::vector<PolymerType> &&polymerTypes_,
+        std::vector<PolymerCollectionMap> &&polymerCollections_,
+        size_t numParticles_
+
+    )
+    {
+        // Calculate NAV
+        double totalC0 = 0;
+        auto unitIDs = registry::getAllUnitIDs();
+        for (const auto &unitID : unitIDs)
+            totalC0 += units_[unitID].C0;
+        NAV = numParticles_ / totalC0;
+
+        // Set initial counts
+        for (const auto &unitID : unitIDs)
+        {
+            double initAmount = this->units[unitID].C0 * NAV;
+            uint64_t initCount = static_cast<uint64_t>(initAmount), uint64_t(1);
+
+            if (initAmount < 1)
+            {
+                console::input_warning("Initial amount of " + this->units[unitID].name + " is less than 1 (" + std::to_string(initAmount) + "). Setting initial count to 1.");
+                initCount = 1;
+            }
+
+            double roundingError = std::abs((initAmount - double(initCount)) / initAmount);
+            if (roundingError > 0.10)
+                console::input_error("Initial amount of " + this->units[unitID].name + " has a abs rounding error of " + std::to_string(roundingError * 100) + "%. Consider increasing num_units to reduce this error. Exiting.....");
+
+            this->units[unitID].setInitialCount(initCount);
+        }
+
+        polymerGroups.reserve(polymerCollections_.size());
+        polymerGroupPtrs.reserve(polymerCollections_.size());
+
+        // Creating polymer groups
+        for (const auto &polymerGroup : polymerCollections_)
+        {
+            auto indices = polymerGroup.polymerTypeIndices;
+            std::vector<PolymerTypePtr> polymerSubTypePtrs;
+            polymerSubTypePtrs.reserve(indices.size());
+            for (const auto &index : indices)
+                polymerSubTypePtrs.push_back(&polymerTypes[index]);
+
+            polymerGroups.push_back(PolymerTypeGroup(polymerGroup.name, polymerSubTypePtrs));
+            polymerGroupPtrs.push_back(&polymerGroups.back());
+        }
+    }
+
+    SpeciesSet(
         std::vector<PolymerType> &&polymerTypes_,
         std::vector<PolymerGroupStruct> &&PolymerGroupStructs_,
         std::vector<Unit> &&units_,

@@ -3,7 +3,7 @@
 #include "reactions/reaction_set.h"
 #include "species/species_set.h"
 #include "kmc/state.h"
-#include "kmc/config.h"
+// #include "kmc/config.h"
 #include "analysis/analysis.h"
 #include "outputs/state.h"
 #include "outputs/polymers.h"

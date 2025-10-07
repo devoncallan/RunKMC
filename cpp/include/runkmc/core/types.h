@@ -162,8 +162,10 @@ namespace types
         std::vector<std::string> productNames;
     };
 
-    struct ReactionSetRead
+    struct KMCInputRead
     {
+        config::SimulationConfig config;
+        SpeciesSetRead species;
         std::vector<RateConstantRead> rateConstants;
         std::vector<ReactionRead> reactions;
     };

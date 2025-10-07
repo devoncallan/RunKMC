@@ -8,29 +8,6 @@
 #include "utils/string.h"
 #include "utils/console.h"
 
-namespace print
-{
-    static inline void printLine(const std::string &line)
-    {
-        std::cout << line << std::endl;
-    }
-
-    static inline void printLines(const std::vector<std::string> &lines)
-    {
-        for (const auto &line : lines)
-            printLine(line);
-    }
-
-    template <typename T>
-    static inline void printVector(const std::vector<T> &vec)
-    {
-        std::cout << "[";
-        for (size_t i = 0; i < vec.size() - 1; ++i)
-            std::cout << vec[i] << ", ";
-        std::cout << vec[vec.size() - 1] << "]" << std::endl;
-    }
-};
-
 namespace input
 {
     template <typename T>

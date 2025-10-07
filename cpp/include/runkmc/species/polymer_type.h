@@ -11,10 +11,11 @@
 class PolymerType
 {
 public:
+    SpeciesID ID;
     std::string name;
     uint64_t count;
 
-    PolymerType(const std::string &name_, const std::vector<SpeciesID> &endGroup_) : name(name_), endGroup(endGroup_), count(0) {};
+    PolymerType(const SpeciesID &ID_, const std::string &name_, const std::vector<SpeciesID> &endGroup_) : ID(ID_), name(name_), endGroup(endGroup_), count(0) {};
 
     ~PolymerType() {};
 
@@ -53,6 +54,7 @@ typedef PolymerType *PolymerTypePtr;
 class PolymerTypeGroup
 {
 public:
+    SpeciesID ID;
     std::string name;
     uint64_t count = 0;
 
@@ -146,20 +148,37 @@ struct PolymerGroupStruct
         : name(name_), polymerTypeIndices(polymerTypeIndices_) {};
 };
 
+struct PolymerContainerMap
+{
+    SpeciesID ID;
+    std::string name;
+    std::vector<SpeciesID> polymerTypeIDs;
+
+    PolymerContainerMap(SpeciesID ID_, std::string name_, std::vector<SpeciesID> polymerTypeIDs_)
+        : ID(ID_), name(name_), polymerTypeIDs(polymerTypeIDs_) {};
+
+    PolymerContainerMap(SpeciesID ID_, std::string name_)
+        : ID(ID_), name(name_), polymerTypeIDs({ID_}) {};
+};
+
 typedef PolymerTypeGroup *PolymerTypeGroupPtr;
 
-class PolymerCollection
+/**
+ * @brief Stores a collection of PolymerType pointers.
+ *
+ */
+class PolymerContainer
 {
 public:
     std::string name;
     uint64_t count = 0;
 
-    PolymerCollection(const std::string &name_, const std::vector<PolymerTypePtr> &polymerTypePtrs_)
+    PolymerContainer(const std::string &name_, const std::vector<PolymerTypePtr> &polymerTypePtrs_)
         : name(name_), polymerTypePtrs(polymerTypePtrs_)
     {
         polymerTypeCounts.resize(polymerTypePtrs_.size());
     };
-    ~PolymerCollection() {}
+    ~PolymerContainer() {}
 
     Polymer *removeRandomPolymer()
     {

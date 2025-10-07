@@ -12,35 +12,16 @@
 namespace builder
 {
 
-    static KMC fromModelFile(config::CommandLineConfig config)
+    static KMC buildModel(const config::CommandLineConfig &config, const types::KMCInputRead &data)
     {
-        using namespace io::parse::text;
-        auto sections = parseFile(config.inputFilepath);
-        config::SimulationConfig simConfig = parseSimulationConfig(sections.parameters);
-
-        auto speciesSetRead = parseSpecies(sections.species);
-        SpeciesSet speciesSet = buildSpeciesSet(speciesSetRead);
+        SpeciesSet speciesSet = buildSpeciesSet(data.species);
 
         registry::builder.build();
 
-        auto rateConstants = parseRateConstants(sections.rateConstants);
-        auto reactionsRead = parseReactions(sections.reactions);
-        // ReactionSet reactionSet = buildReactionSet(reactionsRead, speciesSet);
-    };
+        ReactionSet reactionSet = buildReactionSet(data.reactions, data.rateConstants, speciesSet);
 
-    static KMC fromYamlFile(config::CommandLineConfig config)
-    {
-        using namespace io::parse::yaml;
-        auto sections = parseFile(config.inputFilepath);
-        config::SimulationConfig simConfig = parseSimulationConfig(sections.parameters);
-
-        auto speciesSetRead = parseSpecies(sections.species);
-        SpeciesSet speciesSet = buildSpeciesSet(speciesSetRead);
-
-        registry::builder.build();
-
-        auto rateConstants = parseRateConstants(sections.rateConstants);
-        auto reactionsRead = parseReactions(sections.reactions);
+        // KMC kmc(simConfig, speciesSet, reactionSet, config.outputDir, config.reportPolymers, config.reportSequences);
+        // return kmc;
     }
 
     SpeciesSet buildSpeciesSet(const types::SpeciesSetRead &data)
@@ -48,10 +29,14 @@ namespace builder
         size_t numUnits = data.units.size();
         size_t numPolyTypes = data.polymerTypes.size();
         size_t numPolyLabels = data.polymerLabels.size();
+        size_t numPolyCollections = numPolyTypes + numPolyLabels;
 
-        std::vector<types::UnitRead> sortedUnits = data.units;
-        std::stable_sort(sortedUnits.begin(), sortedUnits.end(), [](const types::UnitRead &a, const types::UnitRead &b)
-                         {
+        std::vector<types::UnitRead> unitsRead = data.units;
+        std::stable_sort(
+            unitsRead.begin(),
+            unitsRead.end(),
+            [](const types::UnitRead &a, const types::UnitRead &b)
+            {
             auto priority = [](const std::string &type) {
                 if (type == SpeciesType::MONOMER) return 0;
                 if (type == SpeciesType::INITIATOR) return 1;
@@ -61,29 +46,50 @@ namespace builder
             };
             return priority(a.type) < priority(b.type); });
 
-        for (const auto &unit : sortedUnits)
+        std::vector<Unit> units;
+        std::vector<PolymerType> polymerTypes;
+        std::vector<PolymerContainerMap> polymerContainers;
+
+        // Register and create unit species
+        for (const auto &unitRead : unitsRead)
         {
-            registry::builder.registerNewSpecies(unit.name, unit.type);
+            SpeciesID id = registry::builder.registerNewSpecies(unitRead.name, unitRead.type);
+            units.push_back(Unit(unitRead.type, unitRead.name, id, unitRead.C0, unitRead.FW, unitRead.efficiency));
         }
 
+        // Register and create polymer types
         for (const auto &polyType : data.polymerTypes)
         {
-            registry::builder.registerNewSpecies(polyType.name, polyType.type);
+            std::vector<SpeciesID> endGroupIDs;
+            endGroupIDs.reserve(polyType.endGroupUnitNames.size());
+
             for (const auto &unitName : polyType.endGroupUnitNames)
             {
                 if (!registry::builder.isRegistered(unitName))
                     console::input_error("End group unit " + unitName + " for polymer " + polyType.name + " is not registered. Exiting.");
+                endGroupIDs.push_back(registry::builder.getSpeciesID(unitName));
             }
+
+            SpeciesID id = registry::builder.registerNewSpecies(polyType.name, polyType.type);
+            polymerTypes.push_back(PolymerType(id, polyType.name, endGroupIDs));
+            polymerContainers.push_back(PolymerContainerMap(id, polyType.name));
         }
 
+        // Create polymer collections
         for (const auto &label : data.polymerLabels)
         {
-            registry::builder.registerNewSpecies(label.name, label.type);
+            std::vector<SpeciesID> labelPolyIDs;
+            labelPolyIDs.reserve(label.polymerNames.size());
+
             for (const auto &polyName : label.polymerNames)
             {
                 if (!registry::builder.isRegistered(polyName))
                     console::input_error("Polymer " + polyName + " for label " + label.name + " is not registered. Exiting.");
+                labelPolyIDs.push_back(registry::builder.getSpeciesID(polyName));
             }
+
+            SpeciesID id = registry::builder.registerNewSpecies(label.name, label.type);
+            polymerContainers.push_back(PolymerContainerMap(id, label.name, labelPolyIDs));
         }
     }
 
@@ -100,13 +106,13 @@ namespace builder
         return rateConstants;
     }
 
-    ReactionSet buildReactionSet(const types::ReactionSetRead &data, SpeciesSet &speciesSet)
+    ReactionSet buildReactionSet(const std::vector<types::ReactionRead> &reactionsRead, const std::vector<types::RateConstantRead> &rateConstantsRead, SpeciesSet &speciesSet)
     {
         std::vector<Reaction *> reactions;
 
-        std::vector<RateConstant> rateConstants = buildRateConstants(data.rateConstants);
+        const std::vector<RateConstant> rateConstants = buildRateConstants(rateConstantsRead);
 
-        for (const auto &reactionData : data.reactions)
+        for (const auto &reactionData : reactionsRead)
         {
 
             std::vector<Unit *> unitReactants;
@@ -120,6 +126,10 @@ namespace builder
 
             // Find rate constant
             size_t index = input::findInVector(reactionData.rateConstantName, rateConstants);
+            if (index < rateConstants.size())
+                rateConstant = rateConstants[index];
+            else
+                console::input_error("Rate constant " + reactionData.rateConstantName + " not found. Exiting.");
             // if (index <
 
             // Find reactants
@@ -164,6 +174,11 @@ namespace builder
         ReactionSet reactionSet(reactions, rateConstants);
         return reactionSet;
     };
+};
+
+namespace builder::utils
+{
+
 };
 
 // namespace build

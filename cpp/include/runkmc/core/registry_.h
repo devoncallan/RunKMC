@@ -91,11 +91,21 @@ public:
         SpeciesType::checkValid(type);
 
         if (isRegistered(name))
-            throw std::invalid_argument("Species with name " + name + " already registered");
+            console::input_error("Species with name " + name + " already registered.");
 
         SpeciesID newID = registered_species.size() + 1;
         registered_species.push_back({name, type, newID});
         return newID;
+    }
+
+    SpeciesID getSpeciesID(const std::string &name) const
+    {
+        for (const auto &species : registered_species)
+        {
+            if (species.name == name)
+                return species.ID;
+        }
+        throw std::runtime_error("Species with name " + name + " is not registered.");
     }
 
     Registry build()

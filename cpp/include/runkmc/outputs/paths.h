@@ -2,7 +2,7 @@
 #include <filesystem>
 
 #include "common.h"
-#include "kmc/config.h"
+// #include "kmc/config.h"
 
 class SimulationPaths
 {
