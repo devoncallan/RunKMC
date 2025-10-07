@@ -147,3 +147,62 @@ struct PolymerGroupStruct
 };
 
 typedef PolymerTypeGroup *PolymerTypeGroupPtr;
+
+class PolymerCollection
+{
+public:
+    std::string name;
+    uint64_t count = 0;
+
+    PolymerCollection(const std::string &name_, const std::vector<PolymerTypePtr> &polymerTypePtrs_)
+        : name(name_), polymerTypePtrs(polymerTypePtrs_)
+    {
+        polymerTypeCounts.resize(polymerTypePtrs_.size());
+    };
+    ~PolymerCollection() {}
+
+    Polymer *removeRandomPolymer()
+    {
+        if (polymerTypePtrs.size() == 1)
+        {
+            --count;
+            --polymerTypeCounts[0];
+            return polymerTypePtrs[0]->removeRandomPolymer();
+        }
+
+        std::discrete_distribution<size_t> discrete_dis(polymerTypeCounts.begin(), polymerTypeCounts.end());
+        size_t typeIndex = discrete_dis(rng_utils::rng);
+        --count;
+        --polymerTypeCounts[typeIndex];
+        return polymerTypePtrs[typeIndex]->removeRandomPolymer();
+    }
+
+    void insertPolymer(Polymer *polymer)
+    {
+        // No classification needed. Directly store the polymer.
+        if (polymerTypePtrs.size() == 1)
+        {
+            ++count;
+            ++polymerTypeCounts[0];
+            polymerTypePtrs[0]->insertPolymer(polymer);
+            return;
+        }
+
+        // Classify the polymer based on its end group.
+        for (int i = 0; i < polymerTypePtrs.size(); ++i)
+        {
+            if (polymer->endGroupIs(polymerTypePtrs[i]->getEndGroup()))
+            {
+                ++count;
+                ++polymerTypeCounts[i];
+                polymerTypePtrs[i]->insertPolymer(polymer);
+                return;
+            }
+        }
+        console::error("End sequence for inserted polymer does not match. Exiting.....");
+    }
+
+private:
+    std::vector<PolymerTypePtr> polymerTypePtrs;
+    std::vector<uint64_t> polymerTypeCounts;
+};

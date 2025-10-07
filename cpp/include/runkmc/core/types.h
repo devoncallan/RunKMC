@@ -33,10 +33,21 @@ public:
     static inline const std::string INITIATOR = "I";
     static inline const std::string POLYMER = "P";
     static inline const std::string UNDEFINED = "?";
+    static inline const std::string LABEL = "LABEL";
 
     static bool isUnitType(const std::string &type)
     {
         return type == UNIT || type == MONOMER || type == INITIATOR;
+    }
+
+    static bool isValidType(const std::string &type)
+    {
+        for (const auto &validType : validTypes)
+        {
+            if (type == validType)
+                return true;
+        }
+        return false;
     }
 
     static void checkValid(const std::string &type)
@@ -52,7 +63,7 @@ public:
 private:
     SpeciesType() = delete;
     ~SpeciesType() = delete;
-    static inline const std::vector<std::string> validTypes = {UNIT, MONOMER, INITIATOR, POLYMER, UNDEFINED};
+    static inline const std::vector<std::string> validTypes = {UNIT, MONOMER, INITIATOR, POLYMER, UNDEFINED, LABEL};
 };
 
 enum PolymerState
@@ -63,3 +74,97 @@ enum PolymerState
     TERMINATED_C,
     TERMINATED_CT,
 };
+
+namespace config
+{
+
+    struct CommandLineConfig
+    {
+        std::string inputFilepath;
+        std::string outputDir;
+        bool reportPolymers = false;
+        bool reportSequences = false;
+    };
+
+    struct SimulationConfig
+    {
+        uint64_t numParticles;
+        double terminationTime;
+        double analysisTime;
+    };
+}
+
+namespace types
+{
+    template <typename T>
+    struct Variable
+    {
+        std::string name;
+        T value;
+    };
+
+    // SPECIES TYPES
+
+    struct SpeciesRead
+    {
+        std::string name;
+        std::string type;
+    };
+
+    struct RegisteredSpecies : SpeciesRead
+    {
+        SpeciesID ID;
+    };
+
+    struct SpeciesWrite : RegisteredSpecies
+    {
+        uint64_t count;
+        uint64_t initialCount;
+    };
+
+    //
+
+    struct UnitRead : SpeciesRead
+    {
+        double C0 = 0.0;
+        double FW = 0.0;
+        double efficiency = 1.0;
+    };
+
+    struct PolymerTypeRead : SpeciesRead
+    {
+        std::vector<std::string> endGroupUnitNames;
+    };
+
+    struct PolymerLabelsRead : SpeciesRead
+    {
+        std::vector<std::string> polymerNames;
+    };
+
+    struct SpeciesSetRead
+    {
+        std::vector<UnitRead> units;
+        std::vector<PolymerTypeRead> polymerTypes;
+        std::vector<PolymerLabelsRead> polymerLabels;
+    };
+
+    struct RateConstantRead
+    {
+        std::string name;
+        double k;
+    };
+
+    struct ReactionRead
+    {
+        std::string type;
+        std::string rateConstantName;
+        std::vector<std::string> reactantNames;
+        std::vector<std::string> productNames;
+    };
+
+    struct ReactionSetRead
+    {
+        std::vector<RateConstantRead> rateConstants;
+        std::vector<ReactionRead> reactions;
+    };
+}

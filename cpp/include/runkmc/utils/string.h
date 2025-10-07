@@ -51,6 +51,14 @@ namespace str
         return s.rfind(fs, 0) == 0;
     }
 
+    static bool endswith(const std::string &s, const std::string &es)
+    {
+        if (s.length() >= es.length())
+            return (0 == s.compare(s.length() - es.length(), es.length(), es));
+        else
+            return false;
+    }
+
     static std::vector<std::string> splitByDelimeter(const std::string &s, const std::string &delim)
     {
         size_t pos_start = 0, pos_end, delim_len = delim.length();

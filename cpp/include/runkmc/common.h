@@ -13,4 +13,4 @@
 #include "utils/random.h"
 
 #include "core/types.h"
-#include "core/registry.h"
+#include "core/registry_.h"

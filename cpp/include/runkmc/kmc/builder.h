@@ -417,3 +417,15 @@ private:
         }
     }
 };
+
+class KMCYamlBuilder
+{
+public:
+    static KMC fromFile(config::CommandLineConfig config)
+    {
+        console::error("YAML input not yet supported. Exiting.");
+        // return KMC();
+    }
+
+private:
+};

@@ -33,6 +33,27 @@ namespace print
 
 namespace input
 {
+    template <typename T>
+    static T convertValue(const std::string &s)
+    {
+        if constexpr (std::is_same<T, int>::value)
+        {
+            return std::stoi(s);
+        }
+        else if constexpr (std::is_same<T, double>::value)
+        {
+            return std::stod(s);
+        }
+        else if constexpr (std::is_same<T, std::string>::value)
+        {
+            return s;
+        }
+        else
+        {
+            static_assert("Unsupported type for convertValue");
+        }
+    }
+
     static void trimLine(std::string &s) { str::trim(s); }
 
     static bool canIgnoreLine(const std::string &line)
