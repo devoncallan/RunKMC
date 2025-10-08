@@ -6,6 +6,22 @@
 
 namespace output
 {
+    void writeRegistry(const KMC &model)
+    {
+        YAML::Node root;
+
+        std::vector<types::RegisteredSpecies> species = registry::getAllSpecies();
+
+        root["species"] = yaml::Parser<std::vector<types::RegisteredSpecies>>::write(species);
+
+        root["units"] = registry::getAllUnitNames();
+        root["monomers"] = registry::getMonomerNames();
+        root["polymers"] = registry::getPolymerNames();
+    }
+};
+
+namespace output
+{
     // Forward declarations of helper functions
     namespace detail
     {

@@ -16,10 +16,9 @@ public:
     ~Registry() = default;
 
     // Helper functions
+    const std::vector<types::RegisteredSpecies> &getAllSpecies() const { return _species; }
     const types::RegisteredSpecies &getSpecies(const SpeciesID &id) const { return _idToSpecies.at(id); }
     const types::RegisteredSpecies &getSpecies(const std::string &name) const { return _nameToSpecies.at(name); }
-    // const std::string &getSpeciesType(const SpeciesID &id) const { return _idToSpecies.at(id).type; }
-    // const std::string &getSpeciesType(const std::string &name) const { return _nameToSpecies.at(name).type; }
 
     // Unit helper functions
     const std::vector<SpeciesID> &getAllUnitIDs() const { return _allUnitIDs; }
@@ -161,10 +160,9 @@ namespace registry
     static void initialize() { _instance = builder.build(); }
 
     // Helper functions
+    static inline const std::vector<types::RegisteredSpecies> &getAllSpecies() { return _instance.getAllSpecies(); }
     static inline const types::RegisteredSpecies &getSpecies(const SpeciesID &id) { return _instance.getSpecies(id); }
     static inline const types::RegisteredSpecies &getSpecies(const std::string &name) { return _instance.getSpecies(name); }
-    // static inline std::string getSpeciesType(const SpeciesID &id) { return _instance.getSpeciesType(id); }
-    // static inline std::string getSpeciesType(const std::string &name) { return _instance.getSpeciesType(name); }
 
     // Unit helpers
     static inline std::vector<SpeciesID> getAllUnitIDs() { return _instance.getAllUnitIDs(); }
