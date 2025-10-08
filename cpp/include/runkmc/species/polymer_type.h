@@ -113,6 +113,7 @@ public:
             polymerTypeCounts[i] = typeCount;
             totalCount += typeCount;
         }
+        count = totalCount;
     }
 
     const std::string toString() const
@@ -137,110 +138,4 @@ struct PolymerContainerMap
 
     PolymerContainerMap(SpeciesID ID_, std::string name_, std::vector<size_t> polymerTypeIndices_)
         : ID(ID_), name(name_), polymerTypeIndices(polymerTypeIndices_) {};
-
-    PolymerContainerMap(SpeciesID ID_, std::string name_)
-        : ID(ID_), name(name_), polymerTypeIndices({ID_}) {};
 };
-
-// /**
-//  * @brief Stores pointers to PolymerType objects. These objects are passed into Reaction objects
-//  * to represent a group of polymer types that can undergo that reaction.
-//  *
-//  */
-// class PolymerTypeGroup
-// {
-// public:
-//     SpeciesID ID;
-//     std::string name;
-//     uint64_t count = 0;
-
-//     PolymerTypeGroup(const std::string &name_, const std::vector<PolymerTypePtr> &polymerTypePtrs_)
-//         : name(name_), polymerTypePtrs(polymerTypePtrs_)
-//     {
-//         polymerTypeCounts.resize(polymerTypePtrs_.size());
-//     };
-
-//     ~PolymerTypeGroup() {}
-
-//     Polymer *removeRandomPolymer()
-//     {
-//         if (polymerTypePtrs.size() == 1)
-//         {
-//             --count;
-//             --polymerTypeCounts[0];
-//             return polymerTypePtrs[0]->removeRandomPolymer();
-//         }
-
-//         std::discrete_distribution<size_t> discrete_dis(polymerTypeCounts.begin(), polymerTypeCounts.end());
-//         size_t typeIndex = discrete_dis(rng_utils::rng);
-//         --count;
-//         --polymerTypeCounts[typeIndex];
-//         return polymerTypePtrs[typeIndex]->removeRandomPolymer();
-//     }
-
-//     /**
-//      * @brief Classifies and stores a pointer to a Polymer object into a PolymerType
-//      * object based on its end group. If there is only one PolymerType object, there
-//      * is no classification and the pointer is directly stored.
-//      *
-//      * @param Polymer* polymer
-//      */
-//     void insertPolymer(Polymer *polymer)
-//     {
-//         // No classification needed. Directly store the polymer.
-//         if (polymerTypePtrs.size() == 1)
-//         {
-//             ++count;
-//             ++polymerTypeCounts[0];
-//             polymerTypePtrs[0]->insertPolymer(polymer);
-//             return;
-//         }
-
-//         // Classify the polymer based on its end group.
-//         for (int i = 0; i < polymerTypePtrs.size(); ++i)
-//         {
-//             // console::log("PolyType" + polymerTypePtrs[i]->name);
-//             if (polymer->endGroupIs(polymerTypePtrs[i]->getEndGroup()))
-//             {
-//                 // console::log("PolymerType match!");
-//                 ++count;
-//                 ++polymerTypeCounts[i];
-//                 polymerTypePtrs[i]->insertPolymer(polymer);
-//                 return;
-//             }
-//         }
-//         console::error("End sequence for inserted polymer does not match. Exiting.....");
-//     }
-
-//     void updatePolymerCounts()
-//     {
-//         uint64_t totalCount = 0;
-//         for (size_t i = 0; i < polymerTypePtrs.size(); ++i)
-//         {
-//             uint64_t typeCount = polymerTypePtrs[i]->count;
-//             polymerTypeCounts[i] = typeCount;
-//             totalCount += typeCount;
-//         }
-//         count = totalCount;
-//     }
-
-//     const std::vector<PolymerTypePtr> &getPolymerTypes() const { return polymerTypePtrs; }
-
-//     std::string toString() const
-//     {
-//         return name + ": " + std::to_string(count);
-//     }
-
-// private:
-//     std::vector<PolymerTypePtr> polymerTypePtrs;
-//     std::vector<uint64_t> polymerTypeCounts;
-// };
-
-// struct PolymerGroupStruct
-// {
-//     std::string name;
-//     std::vector<size_t> polymerTypeIndices;
-//     PolymerGroupStruct(std::string name_, std::vector<size_t> polymerTypeIndices_)
-//         : name(name_), polymerTypeIndices(polymerTypeIndices_) {};
-// };
-// typedef PolymerTypeGroup *PolymerTypeGroupPtr;

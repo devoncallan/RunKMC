@@ -12,18 +12,21 @@ public:
         std::vector<Unit> &&units_,
         std::vector<PolymerType> &&polymerTypes_,
         std::vector<PolymerContainerMap> &&polymerContainerMaps_,
-        size_t numParticles_
-
-    )
+        size_t numParticles_)
     {
+        units = std::move(units_);
+        polymerTypes = std::move(polymerTypes_);
+        numParticles = numParticles_;
+
         // Calculate NAV
         double totalC0 = 0;
         for (const auto &unit : units)
             totalC0 += unit.C0;
-        NAV = numParticles_ / totalC0;
+        NAV = numParticles / totalC0;
 
         // Set initial counts
-        for (auto &unit : units_)
+
+        for (auto &unit : units)
         {
             double initAmount = unit.C0 * NAV;
             uint64_t initCount = static_cast<uint64_t>(initAmount), uint64_t(1);
@@ -53,11 +56,13 @@ public:
             std::vector<PolymerTypePtr> polymerTypePtrs;
             polymerTypePtrs.reserve(indices.size());
             for (const auto &index : indices)
-                polymerTypePtrs.push_back(&polymerTypes_[index]);
+                polymerTypePtrs.push_back(&polymerTypes[index]);
 
             polymerContainers.push_back(PolymerContainer(containerMap.ID, containerMap.name, polymerTypePtrs));
             polymerContainerPtrs.push_back(&polymerContainers.back());
         }
+
+        printSummary();
     }
 
     void updatePolymerContainers()
@@ -66,6 +71,7 @@ public:
             polymerContainerPtr->updatePolymerCounts();
     }
 
+    // TODO: Fix indexing
     SpeciesState getStateData() const
     {
         SpeciesState data;

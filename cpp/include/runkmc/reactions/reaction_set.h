@@ -30,13 +30,17 @@ public:
     {
         NAV = NAV_;
         updateReactionRates();
+
+        console::debug("updated reaction rates");
         reactionProbabilities[0] = reactionRates[0] / totalReactionRate;
         reactionCumulativeProbabilities[0] = reactionProbabilities[0];
         for (size_t i = 1; i < numReactions; ++i)
         {
+            console::log(std::to_string(i));
             reactionProbabilities[i] = reactionRates[i] / totalReactionRate;
             reactionCumulativeProbabilities[i] = reactionProbabilities[i] + reactionCumulativeProbabilities[i - 1];
         }
+        console::debug("HIya");
     }
 
     size_t chooseRandomReactionIndex() const

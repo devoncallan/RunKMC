@@ -1,9 +1,9 @@
-import os
-import shutil
 import subprocess
 from pathlib import Path
 
-from runkmc import PATHS, __version__
+from runkmc import PATHS
+
+from .build import ensure_binary_exists
 
 
 def execute_simulation(
@@ -26,6 +26,8 @@ def execute_simulation(
         cmd.append("--report-polymers")
     if report_sequences:
         cmd.append("--report-sequences")
+
+    print(f"Executing command: {' '.join(cmd)}")
 
     try:
         process = subprocess.Popen(
@@ -57,45 +59,15 @@ def execute_simulation(
         raise KeyboardInterrupt("Simulation interrupted by user.")
 
 
-def compile_run_kmc(force: bool = False) -> None:
+# def compile_run_kmc(force: bool = False) -> None:
+#     """Ensure RunKMC binary exists, building if necessary.
 
-    # Check for precompiled binary
-    precompiled_path = (
-        PATHS.PACKAGE_ROOT / "bin" / ("RunKMC.exe" if os.name == "nt" else "RunKMC")
-    )
-    if not force and precompiled_path.exists():
+#     This function is maintained for backward compatibility.
+#     New code should use runkmc.kmc.build.ensure_binary_exists() instead.
 
-        PATHS.BUILD_DIR.mkdir(exist_ok=True)
-        shutil.copy2(precompiled_path, PATHS.EXECUTABLE_PATH)
-        return
+#     Args:
+#         force: If True, rebuild from source even if binary exists.
+#     """
+#     from .build import ensure_binary_exists
 
-    # No precompiled binary, compile from source
-    _compile_from_source(force)
-
-
-def _compile_from_source(force: bool = False) -> None:
-
-    if not force and PATHS.EXECUTABLE_PATH.exists():
-        return
-
-    # Ensure build directory exists
-    PATHS.BUILD_DIR.mkdir(parents=True, exist_ok=True)
-
-    # Use CMake to build
-    configure_cmd = [
-        "cmake",
-        "-B",
-        str(PATHS.BUILD_DIR),
-        "-S",
-        str(PATHS.CPP_DIR),
-        f"-DRUNKMC_VERSION={__version__}",
-    ]
-    build_cmd = ["cmake", "--build", str(PATHS.BUILD_DIR)]
-
-    try:
-        subprocess.run(configure_cmd, check=True, capture_output=True, text=True)
-        subprocess.run(build_cmd, check=True, capture_output=True, text=True)
-        print("RunKMC compiled successfully.")
-
-    except subprocess.CalledProcessError as e:
-        raise RuntimeError(f"Failed to compile RunKMC executable: {e.stderr}")
+#     ensure_binary_exists(force_rebuild=force, verbose=True)

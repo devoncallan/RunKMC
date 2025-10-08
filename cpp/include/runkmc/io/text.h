@@ -6,12 +6,22 @@
 #include "common.h"
 #include "kmc/kmc.h"
 #include "utils/yaml.h"
-#include "types.h"
 #include "core/C.h"
 #include "utils/string.h"
+#include "utils/parse.h"
 
 namespace io::parse::text
 {
+    namespace utils
+    {
+        template <typename T>
+        static void readVar(const std::vector<std::string> &vars, const std::string_view &key, T &value, bool required = false);
+        template <typename T>
+        static types::Variable<T> parseVariable(const std::string &s);
+        static bool canIgnoreLine(const std::string &line);
+        static std::vector<std::string> parseSection(std::ifstream &file, const std::string_view &sectionName);
+    };
+
     struct SectionLines
     {
         std::vector<std::string> parameters;
@@ -267,9 +277,13 @@ namespace io::parse::text
         types::KMCInputRead input;
 
         input.config = parseSimulationConfig(sections.parameters);
+        console::debug("Parsed simulation config successfully.");
         input.species = parseSpecies(sections.species);
+        console::debug("Parsed species successfully.");
         input.rateConstants = parseRateConstants(sections.rateConstants);
+        console::debug("Parsed rate constants successfully.");
         input.reactions = parseReactions(sections.reactions);
+        console::debug("Parsed reactions successfully.");
 
         return input;
     }
@@ -278,7 +292,7 @@ namespace io::parse::text
 namespace io::parse::text::utils
 {
     template <typename T>
-    static void readVar(const std::vector<std::string> &vars, const std::string_view &key, T &value, bool required = false)
+    static void readVar(const std::vector<std::string> &vars, const std::string_view &key, T &value, bool required)
     {
         bool found = false;
         std::string keyStr = std::string(key);

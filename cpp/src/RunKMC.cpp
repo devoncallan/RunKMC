@@ -1,14 +1,19 @@
 // #include "kmc/builder.h"
-#include "io/builder.h"
+#include "kmc/builder.h"
 #include "outputs/metadata.h"
 
 int main(int argc, char **argv)
 {
-    auto config = KMCBuilder::parseArguments(argc, argv);
+    auto config = builder::parseArguments(argc, argv);
 
-    auto model = KMCBuilder::fromFile(config);
+    console::log("Building model from file: " + config.inputFilepath);
+    console::log("Output directory: " + config.outputDir);
+
+    auto model = builder::fromModelFile(config);
 
     output::writeMetadata(model);
+
+    return EXIT_SUCCESS;
 
     model.run();
 

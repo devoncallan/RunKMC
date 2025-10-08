@@ -15,7 +15,7 @@ if __name__ == "__main__":
     input_filepath = EXAMPLES_DIR / "CRP1_Example.txt"
     output_dir = EXAMPLES_DIR / "output_dir/"
 
-    kmc = RunKMC(base_dir=output_dir)
+    kmc = RunKMC(base_dir=output_dir, compile=True)
     result = kmc.run_from_file(
         input_filepath, report_polymers=True, report_sequences=True
     )

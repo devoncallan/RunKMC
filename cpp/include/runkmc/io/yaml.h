@@ -1,16 +1,19 @@
 #pragma once
-#include <yaml-cpp/yaml.h>
 #include <string>
 #include <vector>
 
 #include "common.h"
-#include "kmc/kmc.h"
 #include "utils/yaml.h"
-#include "types.h"
-#include "core/C.h"
 
 namespace io::parse::yaml
 {
+
+    namespace utils
+    {
+        static bool hasKey(const YAML::Node &node, const std::string_view &key);
+        template <typename T>
+        static void readVar(const YAML::Node &node, const std::string_view &key, T &value, bool required = false);
+    };
 
     struct SectionNodes
     {
@@ -84,6 +87,7 @@ namespace io::parse::yaml
 
         return unit;
     }
+    
     static types::PolymerTypeRead parsePolymerType(const YAML::Node &node)
     {
         types::SpeciesRead species = parseBaseSpecies(node);
@@ -217,7 +221,7 @@ namespace io::parse::yaml::utils
     }
 
     template <typename T>
-    static void readVar(const YAML::Node &node, const std::string_view &key, T &value, bool required = false)
+    static void readVar(const YAML::Node &node, const std::string_view &key, T &value, bool required)
     {
         auto keyStr = std::string(key);
         if (utils::hasKey(node, key))

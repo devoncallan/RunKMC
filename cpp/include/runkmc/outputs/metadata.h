@@ -1,4 +1,3 @@
-
 #pragma once
 #include <yaml-cpp/yaml.h>
 
@@ -19,7 +18,7 @@ namespace output
 
         YAML::Node writeUnit(const Unit &unit);
         YAML::Node writePolymerType(const PolymerType &polyType);
-        YAML::Node writePolymerGroup(const PolymerTypeGroup &polyGroup);
+        YAML::Node writePolymerContainer(const PolymerContainer &polyContainer);
         YAML::Node writeSpeciesSet(const SpeciesSet &speciesSet);
     }
 
@@ -98,14 +97,14 @@ namespace output
             return node;
         }
 
-        YAML::Node writePolymerGroup(const PolymerTypeGroup &polyGroup)
+        YAML::Node writePolymerContainer(const PolymerContainer &polyContainer)
         {
             YAML::Node node;
-            node["name"] = polyGroup.name;
+            node["name"] = polyContainer.name;
 
             YAML::Node polyTypes;
             std::vector<std::string> polyTypeNames;
-            for (auto &polyTypePtr : polyGroup.getPolymerTypes())
+            for (auto &polyTypePtr : polyContainer.getPolymerTypes())
                 polyTypeNames.push_back(polyTypePtr->name);
 
             node["polymer_types"] = polyTypeNames;
@@ -121,16 +120,17 @@ namespace output
             auto unitIDs = registry::getAllUnitIDs();
             for (auto &id : unitIDs)
             {
-                YAML::Node unit = writeUnit(speciesSet.getUnits()[id]);
+                auto idx = registry::getUnitIndex(id);
+                YAML::Node unit = writeUnit(speciesSet.getUnits()[idx]);
                 units.push_back(unit);
             }
             node["units"] = units;
 
             YAML::Node polymers;
-            for (const auto &polyGroup : speciesSet.getPolymerGroupPtrs())
+            for (const auto &container : speciesSet.getPolymerContainerPtrs())
             {
-                YAML::Node polyGroupNode = writePolymerGroup(*polyGroup);
-                polymers.push_back(polyGroupNode);
+                YAML::Node polyContainerNode = writePolymerContainer(*container);
+                polymers.push_back(polyContainerNode);
             }
             node["polymers"] = polymers;
 

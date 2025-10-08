@@ -1,34 +1,56 @@
 #pragma once
 
-#include <yaml-cpp/yaml.h>
-#include <string>
-#include <vector>
-
 #include "common.h"
-#include "kmc/kmc.h"
-#include "io/text_parsers.h"
-#include "io/yaml_parsers.h"
+#include "io/text.h"
+#include "io/yaml.h"
+#include "io/cli.h"
 #include "utils/parse.h"
+#include "kmc/kmc.h"
 
 namespace builder
 {
+    static config::CommandLineConfig parseArguments(int arc, char **argv);
+    static KMC fromModelFile(const config::CommandLineConfig &config);
+    static KMC buildModel(const config::CommandLineConfig &config, const types::KMCInputRead &data);
+    static SpeciesSet buildSpeciesSet(const types::SpeciesSetRead &data, const config::SimulationConfig &config);
+    static std::vector<RateConstant> buildRateConstants(const std::vector<types::RateConstantRead> &data);
+    static ReactionSet buildReactionSet(const std::vector<types::ReactionRead> &reactionsRead, const std::vector<types::RateConstantRead> &rateConstantsRead, SpeciesSet &speciesSet);
+};
+namespace builder
+{
+
+    static config::CommandLineConfig parseArguments(int arc, char **argv)
+    {
+        return io::parse::cli::parseArguments(arc, argv);
+    }
+
+    static KMC fromModelFile(const config::CommandLineConfig &config)
+    {
+        using namespace io::parse::text;
+        auto data = parseKMCInput(config.inputFilepath);
+        console::debug("Parsed input file successfully.");
+        return buildModel(config, data);
+    }
 
     static KMC buildModel(const config::CommandLineConfig &config, const types::KMCInputRead &data)
     {
         SpeciesSet speciesSet = buildSpeciesSet(data.species, data.config);
 
+        console::debug("Built species set successfully.");
+
         ReactionSet reactionSet = buildReactionSet(data.reactions, data.rateConstants, speciesSet);
 
+        console::debug("Built reaction set successfully.");
+
         KMC kmc(speciesSet, reactionSet, config, data.config);
+
+        console::debug("Built KMC object successfully.");
 
         return kmc;
     }
 
-    SpeciesSet buildSpeciesSet(const types::SpeciesSetRead &data, const config::SimulationConfig &config)
+    static SpeciesSet buildSpeciesSet(const types::SpeciesSetRead &data, const config::SimulationConfig &config)
     {
-
-        // size_t numPolyLabels = data.polymerLabels.size();
-        // size_t numPolyCollections = numPolyTypes + numPolyLabels;
 
         std::vector<types::UnitRead> unitsRead = data.units;
         std::stable_sort(
@@ -113,7 +135,7 @@ namespace builder
         return speciesSet;
     }
 
-    std::vector<RateConstant> buildRateConstants(const std::vector<types::RateConstantRead> &data)
+    static std::vector<RateConstant> buildRateConstants(const std::vector<types::RateConstantRead> &data)
     {
         std::vector<RateConstant> rateConstants;
         rateConstants.reserve(data.size());
@@ -126,7 +148,7 @@ namespace builder
         return rateConstants;
     }
 
-    ReactionSet buildReactionSet(const std::vector<types::ReactionRead> &reactionsRead, const std::vector<types::RateConstantRead> &rateConstantsRead, SpeciesSet &speciesSet)
+    static ReactionSet buildReactionSet(const std::vector<types::ReactionRead> &reactionsRead, const std::vector<types::RateConstantRead> &rateConstantsRead, SpeciesSet &speciesSet)
     {
         std::vector<Reaction *> reactions;
 
@@ -213,6 +235,9 @@ namespace builder
         }
 
         ReactionSet reactionSet(reactions, rateConstants);
+
+        reactionSet.printSummary();
+
         return reactionSet;
     };
 };

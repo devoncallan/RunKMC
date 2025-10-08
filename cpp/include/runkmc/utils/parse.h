@@ -17,6 +17,10 @@ namespace input
         {
             return std::stoi(s);
         }
+        else if constexpr (std::is_same<T, uint64_t>::value)
+        {
+            return static_cast<uint64_t>(std::stoull(s));
+        }
         else if constexpr (std::is_same<T, double>::value)
         {
             return std::stod(s);

@@ -4,6 +4,13 @@
 
 namespace io::parse::cli
 {
+
+    namespace utils
+    {
+        static bool validateInputFile(const std::string &filepath);
+        static bool prepareOutputDir(const std::string &dirPath);
+    };
+
     static config::CommandLineConfig parseArguments(int argc, char **argv)
     {
         if (argc < 3)

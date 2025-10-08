@@ -1,164 +1,184 @@
 #pragma once
-#include <unordered_map>
-#include <species/unit.h>
+#include <string>
 #include <vector>
-#include <algorithm>
 
-#include "core/types.h"
+#include "utils/console.h"
+#include "types.h"
 
-#define AVOGADROS 6.022149e+23;
-
-typedef std::string SpeciesNameStr;
-typedef std::string SpeciesTypeStr;
-
-struct RegisteredSpecies
+/**
+ * @brief Immutable, optimized, cached lookups for species information.
+ *
+ */
+class Registry
 {
-    SpeciesNameStr name;
-    SpeciesTypeStr type;
-    SpeciesID ID;
+public:
+    Registry() = default;
+    ~Registry() = default;
+
+    // Helper functions
+    const types::RegisteredSpecies &getSpecies(const SpeciesID &id) const { return _idToSpecies.at(id); }
+    const types::RegisteredSpecies &getSpecies(const std::string &name) const { return _nameToSpecies.at(name); }
+    // const std::string &getSpeciesType(const SpeciesID &id) const { return _idToSpecies.at(id).type; }
+    // const std::string &getSpeciesType(const std::string &name) const { return _nameToSpecies.at(name).type; }
+
+    // Unit helper functions
+    const std::vector<SpeciesID> &getAllUnitIDs() const { return _allUnitIDs; }
+    const std::vector<std::string> &getAllUnitNames() const { return _allUnitNames; }
+    size_t getUnitIndex(const SpeciesID &id) const { return _unitIDtoIndices.at(id); }
+
+    // Monomer helper functions
+    const std::vector<SpeciesID> getMonomerIDs() const { return _monomerIDs; }
+    const std::vector<std::string> getMonomerNames() const { return _monomerNames; }
+    size_t getNumMonomers() const { return _numMonomers; }
+    bool isMonomer(SpeciesID id) const { return _idToSpecies.at(id).type == SpeciesType::MONOMER; }
+    size_t getMonomerIndex(SpeciesID id) const { return _monomerIDtoIndices.at(id); }
+
+    // Polymer helper functions
+    const std::vector<std::string> getPolymerNames() const { return _polymerContainerNames; }
+    size_t getPolymerIndex(SpeciesID id) const { return _polymerContainerIDtoIndices.at(id); }
+
+private:
+    friend class RegistryBuilder;
+
+    Registry(
+        const std::vector<types::RegisteredSpecies> &species)
+    {
+        _species = species; // in order of registration
+        for (const auto &s : _species)
+        {
+            _nameToSpecies[s.name] = s;
+            _idToSpecies[s.ID] = s;
+            _typeToNames[s.type].push_back(s.name);
+
+            if (SpeciesType::isUnitType(s.type))
+            {
+                _allUnitNames.push_back(s.name);
+                _allUnitIDs.push_back(s.ID);
+                _unitIDtoIndices[s.ID] = _allUnitNames.size() - 1;
+            }
+            if (s.type == SpeciesType::MONOMER)
+            {
+                _monomerIDs.push_back(s.ID);
+                _monomerNames.push_back(s.name);
+                _monomerIDtoIndices[s.ID] = _monomerIDs.size() - 1;
+            }
+            if (s.type == SpeciesType::POLYMER)
+            {
+                _polymerTypeNames.push_back(s.name);
+                _polymerTypeIDtoIndices[s.ID] = _polymerTypeNames.size() - 1;
+            }
+            if (s.type == SpeciesType::POLYMER || s.type == SpeciesType::LABEL)
+            {
+                _polymerContainerNames.push_back(s.name);
+                _polymerContainerIDtoIndices[s.ID] = _polymerContainerNames.size() - 1;
+            }
+        }
+        _numMonomers = _monomerIDs.size();
+    };
+
+    // All species
+    std::vector<types::RegisteredSpecies> _species;
+
+    std::unordered_map<std::string, types::RegisteredSpecies> _nameToSpecies;
+    std::unordered_map<SpeciesID, types::RegisteredSpecies> _idToSpecies;
+    std::unordered_map<std::string, std::vector<std::string>> _typeToNames;
+
+    // Unit data (cached)
+    std::vector<SpeciesID> _allUnitIDs;
+    std::vector<std::string> _allUnitNames;
+    std::unordered_map<SpeciesID, size_t> _unitIDtoIndices;
+
+    // Monomer data (cached)
+    size_t _numMonomers;
+    std::vector<SpeciesID> _monomerIDs;
+    std::vector<std::string> _monomerNames;
+    std::unordered_map<SpeciesID, size_t> _monomerIDtoIndices;
+
+    // Polymer data (cached)
+    std::vector<std::string> _polymerTypeNames;
+    std::unordered_map<SpeciesID, size_t> _polymerTypeIDtoIndices;
+
+    std::vector<std::string> _polymerContainerNames;
+    std::unordered_map<SpeciesID, size_t> _polymerContainerIDtoIndices;
+};
+
+class RegistryBuilder
+{
+
+public:
+    bool isRegistered(const std::string &name) const
+    {
+        for (const auto &species : registered_species)
+        {
+            if (species.name == name)
+                return true;
+        }
+        return false;
+    }
+
+    SpeciesID registerNewSpecies(const std::string &name, const std::string &type)
+    {
+        if (finalized)
+            throw std::runtime_error("Cannot register new species after registry has been finalized.");
+
+        SpeciesType::checkValid(type);
+
+        if (isRegistered(name))
+            console::input_error("Species with name " + name + " already registered.");
+
+        SpeciesID newID = registered_species.size() + 1;
+        registered_species.push_back({name, type, newID});
+        return newID;
+    }
+
+    SpeciesID getSpeciesID(const std::string &name) const
+    {
+        for (const auto &species : registered_species)
+        {
+            if (species.name == name)
+                return species.ID;
+        }
+        throw std::runtime_error("Species with name " + name + " is not registered.");
+    }
+
+    Registry build()
+    {
+        finalized = true;
+        return Registry(registered_species);
+    }
+
+private:
+    bool finalized = false;
+    std::vector<types::RegisteredSpecies> registered_species;
 };
 
 namespace registry
 {
-    static std::vector<RegisteredSpecies> REGISTERED_SPECIES;
-    static std::unordered_map<SpeciesTypeStr, std::vector<SpeciesID>> SPECIES_IDS;
-    static std::unordered_map<SpeciesTypeStr, std::vector<SpeciesNameStr>> SPECIES_NAMES;
+    static RegistryBuilder builder;
+    static Registry _instance;
 
-    static size_t NUM_MONOMERS;
-    static std::vector<SpeciesID> MONOMER_IDS;
+    // Initialize registry
+    static void initialize() { _instance = builder.build(); }
 
-    RegisteredSpecies getByID(SpeciesID id)
-    {
-        auto it = std::find_if(REGISTERED_SPECIES.begin(), REGISTERED_SPECIES.end(),
-                               [id](const RegisteredSpecies &species)
-                               { return species.ID == id; });
-        if (it != REGISTERED_SPECIES.end())
-            return *it;
-        throw std::invalid_argument("Species with ID " + std::to_string(id) + " not found");
-    }
+    // Helper functions
+    static inline const types::RegisteredSpecies &getSpecies(const SpeciesID &id) { return _instance.getSpecies(id); }
+    static inline const types::RegisteredSpecies &getSpecies(const std::string &name) { return _instance.getSpecies(name); }
+    // static inline std::string getSpeciesType(const SpeciesID &id) { return _instance.getSpeciesType(id); }
+    // static inline std::string getSpeciesType(const std::string &name) { return _instance.getSpeciesType(name); }
 
-    RegisteredSpecies getByName(SpeciesNameStr name)
-    {
-        auto it = std::find_if(REGISTERED_SPECIES.begin(), REGISTERED_SPECIES.end(),
-                               [name](const RegisteredSpecies &species)
-                               { return species.name == name; });
-        if (it != REGISTERED_SPECIES.end())
-            return *it;
-        throw std::invalid_argument("Species with name " + name + " not found");
-    }
+    // Unit helpers
+    static inline std::vector<SpeciesID> getAllUnitIDs() { return _instance.getAllUnitIDs(); }
+    static inline std::vector<std::string> getAllUnitNames() { return _instance.getAllUnitNames(); }
+    static inline size_t getUnitIndex(const SpeciesID &id) { return _instance.getUnitIndex(id); }
 
-    static std::vector<SpeciesNameStr> getNamesOf(SpeciesTypeStr type)
-    {
-        SpeciesType::checkValid(type);
-        if (SPECIES_NAMES.find(type) != SPECIES_NAMES.end())
-            return SPECIES_NAMES[type];
-        return {};
-    }
+    // Monomer helpers
+    static inline std::vector<std::string> getMonomerNames() { return _instance.getMonomerNames(); }
+    static inline std::vector<SpeciesID> getMonomerIDs() { return _instance.getMonomerIDs(); }
+    static inline size_t getNumMonomers() { return _instance.getNumMonomers(); }
+    static inline size_t getMonomerIndex(const SpeciesID &id) { return _instance.getMonomerIndex(id); }
+    static inline bool isMonomer(const SpeciesID &id) { return _instance.isMonomer(id); }
 
-    static std::vector<SpeciesID> getIDsOf(SpeciesTypeStr type)
-    {
-        SpeciesType::checkValid(type);
-        if (SPECIES_IDS.find(type) != SPECIES_IDS.end())
-            return SPECIES_IDS[type];
-        return {};
-    }
-
-    static size_t getNumOf(SpeciesTypeStr type) { return getIDsOf(type).size(); }
-
-    static std::vector<SpeciesID> getAllUnitIDs()
-    {
-        std::vector<SpeciesID> unitIDs;
-        auto unitTypes = {SpeciesType::UNIT, SpeciesType::MONOMER, SpeciesType::INITIATOR};
-        for (const auto &type : unitTypes)
-        {
-            auto ids = getIDsOf(type);
-            unitIDs.insert(unitIDs.end(), ids.begin(), ids.end());
-        }
-        std::sort(unitIDs.begin(), unitIDs.end());
-
-        return unitIDs;
-    }
-
-    static std::vector<SpeciesNameStr> getAllUnitNames()
-    {
-        std::vector<SpeciesNameStr> unitNames;
-        auto unitIDs = getAllUnitIDs();
-        for (const auto &id : unitIDs)
-            unitNames.push_back(getByID(id).name);
-
-        return unitNames;
-    }
-
-    size_t getIndex(SpeciesID id, SpeciesTypeStr type)
-    {
-        SpeciesType::checkValid(type);
-        auto ids = getIDsOf(type);
-        auto it = std::find(ids.begin(), ids.end(), id);
-        if (it != ids.end())
-            return std::distance(ids.begin(), it);
-        return SIZE_MAX;
-    }
-
-    size_t getIndex(SpeciesNameStr name, SpeciesTypeStr type)
-    {
-        SpeciesType::checkValid(type);
-        auto names = getNamesOf(type);
-        auto it = std::find(names.begin(), names.end(), name);
-        if (it != names.end())
-            return std::distance(names.begin(), it);
-        return SIZE_MAX;
-    }
-
-    bool isType(SpeciesID id, SpeciesTypeStr type) { return registry::getIndex(id, type) != SIZE_MAX; };
-    bool isType(SpeciesNameStr name, SpeciesTypeStr type) { return registry::getIndex(name, type) != SIZE_MAX; };
-
-    static SpeciesID registerNewSpecies(SpeciesNameStr name, SpeciesTypeStr type)
-    {
-        SpeciesType::checkValid(type);
-
-        if (registry::isType(name, type))
-            throw std::invalid_argument("Species with name " + name + " and type " + type + " already registered");
-
-        SpeciesID newID = REGISTERED_SPECIES.size() + 1;
-        REGISTERED_SPECIES.push_back(RegisteredSpecies{name, type, newID});
-        SPECIES_IDS[type].push_back(newID);
-        SPECIES_NAMES[type].push_back(name);
-        return newID;
-    }
-
-    static void finalizeRegistry()
-    {
-        if (REGISTERED_SPECIES.empty())
-            console::error("No species registered.");
-        assert(SPECIES_IDS.size() == SPECIES_NAMES.size());
-        for (const auto &[type, ids] : SPECIES_IDS)
-        {
-            if (SPECIES_NAMES.find(type) == SPECIES_NAMES.end())
-                console::error("Species type " + type + " has IDs but no names registered.");
-            auto names = SPECIES_NAMES[type];
-            if (ids.size() != names.size())
-                console::error("Species type " + type + " has mismatched number of IDs and names registered.");
-        }
-
-        NUM_MONOMERS = getNumOf(SpeciesType::MONOMER);
-        MONOMER_IDS = getIDsOf(SpeciesType::MONOMER);
-    }
-
-    static void printRegisteredSpecies()
-    {
-        console::log("Registered Species:");
-        for (const auto &species : REGISTERED_SPECIES)
-            console::log("\tID: " + std::to_string(species.ID) + ", Name: " + species.name + ", Type: " + species.type);
-
-        console::debug("Registered Species by Type:");
-        for (const auto &[type, ids] : SPECIES_IDS)
-        {
-            console::debug("Type: " + type);
-            for (const auto &id : ids)
-            {
-                RegisteredSpecies regSpecies = getByID(id);
-                console::debug("\tID: " + std::to_string(id) + ", Name: " + regSpecies.name);
-            }
-        }
-    }
+    // Polymer helpers
+    static inline std::vector<std::string> getPolymerNames() { return _instance.getPolymerNames(); }
+    static inline size_t getPolymerIndex(const SpeciesID &id) { return _instance.getPolymerIndex(id); }
 }

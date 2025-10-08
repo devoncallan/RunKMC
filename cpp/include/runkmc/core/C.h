@@ -30,7 +30,7 @@ namespace C::io
 
     // Species
     inline constexpr std::string_view FW_KEY = "FW";
-    inline constexpr std::string_view C0_KEY = "C0";
+    inline constexpr std::string_view C0_KEY = "[C0]";
     inline constexpr std::string_view EFFICIENCY_KEY = "f";
     inline constexpr std::string_view END_GROUP_NAMES_KEY = "end_group_units";
     inline constexpr std::string_view POLYMER_NAMES_KEY = "polymer_names";
