@@ -13,7 +13,7 @@ import argparse
 from pathlib import Path
 from typing import Optional
 
-from .kmc.execution import execute_simulation
+from .kmc.execution import execute_simulation, CommandLineConfig
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -23,10 +23,10 @@ def create_parser() -> argparse.ArgumentParser:
         description="Run Kinetic Monte Carlo simulations for polymerization",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Examples:
-  runkmc input.txt output/
-  runkmc input.txt output/ --report-polymers
-  runkmc input.txt output/ --report-polymers --report-sequences
+            Examples:
+            runkmc input.txt output/
+            runkmc input.txt output/ --report-polymers
+            runkmc input.txt output/ --report-polymers --report-sequences
         """,
     )
 
@@ -72,35 +72,12 @@ def main() -> None:
     parser = create_parser()
     args = parser.parse_args()
 
-    # Validate input file exists
-    if not args.input_file.exists():
-        print(f"Error: Input file '{args.input_file}' does not exist", file=sys.stderr)
-        sys.exit(1)
-
-    if not args.input_file.is_file():
-        print(f"Error: '{args.input_file}' is not a file", file=sys.stderr)
-        sys.exit(1)
-
-    # Create output directory if it doesn't exist
-    args.output_dir.mkdir(parents=True, exist_ok=True)
-
-    try:
-        print(f"Running KMC simulation...")
-        print(f"Input:  {args.input_file.absolute()}")
-        print(f"Output: {args.output_dir.absolute()}")
-
-        execute_simulation(
-            input_filepath=args.input_file,
-            output_dir=args.output_dir,
-            report_polymers=args.report_polymers,
-            report_sequences=args.report_sequences,
-        )
-
-        print("Simulation completed successfully!")
-
-    except Exception as e:
-        print(f"Error: Simulation failed: {e}", file=sys.stderr)
-        sys.exit(1)
+    execute_simulation(
+        input_filepath=args.input_file,
+        output_dir=args.output_dir,
+        report_polymers=args.report_polymers,
+        report_sequences=args.report_sequences,
+    )
 
 
 if __name__ == "__main__":

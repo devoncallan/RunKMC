@@ -7,7 +7,7 @@ setup:
 	.venv/bin/pip install --upgrade pip
 	.venv/bin/pip install build wheel cmake
 	.venv/bin/pip install -e .
-	python3 build_binary.py
+	python3 -m runkmc.kmc.build
 	@echo "✅ Setup complete! Activate with: source .venv/bin/activate"
 
 # Install in development mode

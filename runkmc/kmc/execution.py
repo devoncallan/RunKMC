@@ -1,45 +1,47 @@
+from dataclasses import dataclass
 import subprocess
 from pathlib import Path
+from typing import List
 
 from runkmc import PATHS
 
-from .build import ensure_binary_exists
+
+@dataclass
+class CommandLineConfig:
+
+    input_filepath: Path
+    output_dir: Path
+    report_polymers: bool = False
+    report_sequences: bool = False
+
+    def to_command(self) -> List[str]:
+        cmd = [
+            str(PATHS.EXECUTABLE_PATH.absolute()),
+            str(self.input_filepath.absolute()),
+            str(self.output_dir.absolute()),
+        ]
+        if self.report_polymers:
+            cmd.append("--report-polymers")
+        if self.report_sequences:
+            cmd.append("--report-sequences")
+        return cmd
 
 
-def execute_simulation(
-    input_filepath: Path | str,
-    output_dir: Path | str,
-    report_polymers: bool = False,
-    report_sequences: bool = False,
-) -> None:
+def _execute_simulation(config: CommandLineConfig) -> None:
 
-    input_filepath = Path(input_filepath)
-    output_dir = Path(output_dir)
+    if not config.input_filepath.exists():
+        raise FileNotFoundError(f"Input file '{config.input_filepath}' does not exist")
+    if not config.input_filepath.is_file():
+        raise ValueError(f"'{config.input_filepath}' is not a file")
 
-    cmd = [
-        str(PATHS.EXECUTABLE_PATH.absolute()),
-        str(input_filepath.absolute()),
-        str(output_dir.absolute()),
-    ]
+    config.output_dir.mkdir(parents=True, exist_ok=True)
 
-    if report_polymers:
-        cmd.append("--report-polymers")
-    if report_sequences:
-        cmd.append("--report-sequences")
-
-    print(f"Executing command: {' '.join(cmd)}")
+    cmd = config.to_command()
 
     try:
-        process = subprocess.Popen(
-            cmd,
-            cwd=PATHS.PROJECT_ROOT,
-            text=True,
-        )
-
-        print("Running KMC simulation...")
-        print(f"Results: {str(output_dir.absolute())}")
-
+        process = subprocess.Popen(cmd, cwd=PATHS.PROJECT_ROOT, text=True)
         stdout, stderr = process.communicate()
+
         if process.returncode != 0:
             error_msg = f"Simulation failed with return code {process.returncode}\n"
             if stderr:
@@ -47,8 +49,6 @@ def execute_simulation(
             if stdout:
                 error_msg += f"Standard output:\n{stdout}"
             raise RuntimeError(error_msg)
-
-        print(f"RunKMC executed successfully.")
 
     except KeyboardInterrupt:
         process.terminate()
@@ -58,16 +58,20 @@ def execute_simulation(
             process.kill()
         raise KeyboardInterrupt("Simulation interrupted by user.")
 
+    print(f"RunKMC executed successfully.")
 
-# def compile_run_kmc(force: bool = False) -> None:
-#     """Ensure RunKMC binary exists, building if necessary.
 
-#     This function is maintained for backward compatibility.
-#     New code should use runkmc.kmc.build.ensure_binary_exists() instead.
+def execute_simulation(
+    input_filepath: Path | str,
+    output_dir: Path | str,
+    report_polymers: bool = False,
+    report_sequences: bool = False,
+) -> None:
 
-#     Args:
-#         force: If True, rebuild from source even if binary exists.
-#     """
-#     from .build import ensure_binary_exists
-
-#     ensure_binary_exists(force_rebuild=force, verbose=True)
+    config = CommandLineConfig(
+        input_filepath=Path(input_filepath),
+        output_dir=Path(output_dir),
+        report_polymers=report_polymers,
+        report_sequences=report_sequences,
+    )
+    _execute_simulation(config)

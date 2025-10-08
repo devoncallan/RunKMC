@@ -5,7 +5,6 @@ from uuid import uuid4
 
 from .config import SimulationConfig
 from .execution import execute_simulation
-from .build import ensure_binary_exists
 from runkmc.results import SimulationResult
 from runkmc.models import create_input_file
 
@@ -15,6 +14,9 @@ class RunKMC:
     def __init__(self, base_dir: Path | str, compile: bool = False):
         self.base_dir = Path(base_dir)
         self.base_dir.mkdir(parents=True, exist_ok=True)
+
+        from .build import ensure_binary_exists
+
         ensure_binary_exists(force_rebuild=compile)
 
     def run_from_config(

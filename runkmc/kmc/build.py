@@ -164,3 +164,7 @@ def ensure_binary_exists(force_rebuild: bool = False, verbose: bool = True) -> P
     if verbose:
         print("No precompiled binary found, compiling from source...")
     return build_binary(force=False, verbose=verbose)
+
+
+if __name__ == "__main__":
+    build_binary(force=True, verbose=True)
