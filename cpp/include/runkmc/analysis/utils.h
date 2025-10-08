@@ -23,9 +23,8 @@ namespace analysis
         if (sequence.empty())
             return stats;
 
-        SpeciesID currentMonomer = 0;
+        SpeciesID currentMonomerID = 0;
         size_t currentSequenceLength = 0;
-        bool inSequence = false;
 
         for (size_t i = 0; i < sequence.size(); ++i)
         {
@@ -33,37 +32,26 @@ namespace analysis
             SpeciesID id = sequence[i];
 
             // Skip non-monomer units
-            if (!registry::isType(id, SpeciesType::MONOMER))
+            if (!registry::isMonomer(id)) 
                 continue;
 
-            size_t monomerIndex = registry::getIndex(id, SpeciesType::MONOMER);
-            stats[bucket].monCounts[monomerIndex]++;
-
-            if (id == currentMonomer)
+            if (id == currentMonomerID)
             {
                 currentSequenceLength++;
-            }
-            else if (inSequence)
-            {
-                size_t prevIndex = registry::getIndex(currentMonomer, SpeciesType::MONOMER);
-                stats[bucket].seqCounts[prevIndex] += 1;
-                stats[bucket].seqLengths2[prevIndex] += currentSequenceLength * currentSequenceLength;
-                currentSequenceLength = 1;
-            }
-            else
-            {
-                inSequence = true;
-                currentSequenceLength = 1;
+                continue;
             }
 
-            currentMonomer = id;
+            if (currentSequenceLength > 0)
+                stats[bucket].addSequence(currentMonomerID, currentSequenceLength);
+
+            currentMonomerID = id;
+            currentSequenceLength = 1;
         }
 
         // Add the stats for the last sequence
         size_t bucket = getBucketIndex(sequence.size() - 1, sequence.size(), numBuckets);
-        size_t lastMonomerIdx = registry::getIndex(currentMonomer, SpeciesType::MONOMER);
-        stats[bucket].seqCounts[lastMonomerIdx] += 1;
-        stats[bucket].seqLengths2[lastMonomerIdx] += currentSequenceLength * currentSequenceLength;
+        if (currentSequenceLength > 0)
+            stats[bucket].addSequence(currentMonomerID, currentSequenceLength);
 
         return stats;
     }

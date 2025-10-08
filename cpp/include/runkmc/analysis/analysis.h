@@ -12,7 +12,7 @@ namespace analysis
 
         // SequenceStatsMatrix: (numPolymers x (A Count, B Count, ..., A SeqCount, B SeqCount, ..., A SeqLen2, B SeqLen2, ...))
         // Extract monomer count distribution (shape: numPolymers x numMonomers)
-        Eigen::MatrixXd monomerCountDist = sequenceStatsMatrix.leftCols(registry::NUM_MONOMERS);
+        Eigen::MatrixXd monomerCountDist = sequenceStatsMatrix.leftCols(registry::getNumMonomers());
 
         // Chain length calculations (Get chain lengths by summing monomer counts)
         Eigen::VectorXd chainLengths = monomerCountDist.rowwise().sum();
@@ -54,13 +54,14 @@ namespace analysis
 
         // Sum stats over all polymers -> (1 x (Total A Count, B Count, ..., A SeqCount, B SeqCount, ..., A SeqLen2, B SeqLen2, ...))
         auto totalStats = sequenceStatsMatrix.colwise().sum();
-        auto totalMonomerCounts = totalStats.leftCols(registry::NUM_MONOMERS).sum(); // Total chain length (i.e. total monomer count across all types)
+        auto totalMonomerCounts = totalStats.leftCols(registry::getNumMonomers()).sum(); // Total chain length (i.e. total monomer count across all types)
 
-        for (size_t i = 0; i < registry::NUM_MONOMERS; ++i)
+        auto numMonomers = registry::getNumMonomers();
+        for (size_t i = 0; i < numMonomers; ++i)
         {
-            auto monomerCounts = totalStats(0 * registry::NUM_MONOMERS + i);    // Total count of monomer type i across all polymers
-            auto sequenceCounts = totalStats(1 * registry::NUM_MONOMERS + i);   // Total number of sequences of monomer type i across all polymers
-            auto sequenceLengths2 = totalStats(2 * registry::NUM_MONOMERS + i); // Sum of squared sequence lengths of monomer type i across all polymers
+            auto monomerCounts = totalStats(0 * numMonomers + i);    // Total count of monomer type i across all polymers
+            auto sequenceCounts = totalStats(1 * numMonomers + i);   // Total number of sequences of monomer type i across all polymers
+            auto sequenceLengths2 = totalStats(2 * numMonomers + i); // Sum of squared sequence lengths of monomer type i across all polymers
 
             if (sequenceCounts > 0 && monomerCounts > 0)
             {
@@ -77,13 +78,16 @@ namespace analysis
         auto sequenceData = speciesSet.getRawSequenceData();
         auto summary = analysis::calculateSequenceSummary(sequenceData);
 
-        SequenceState sequenceState = SequenceState{systemState.kmc, summary.positionalStats};
-
         AnalysisState analysisState;
         analysis::analyzeChainLengthDist(summary.sequenceStatsMatrix, speciesSet.getMonomerFWs(), analysisState);
-        analysis::analyzeSequenceLengthDist(summary.sequenceStatsMatrix, analysisState);
-
-        systemState.sequence = sequenceState;
         systemState.analysis = analysisState;
+
+        if (registry::getNumMonomers() <= 1)
+            return;
+
+        SequenceState sequenceState = SequenceState{systemState.kmc, summary.positionalStats};
+        analysis::analyzeSequenceLengthDist(summary.sequenceStatsMatrix, analysisState);
+        systemState.analysis = analysisState;
+        systemState.sequence = sequenceState;
     }
 }

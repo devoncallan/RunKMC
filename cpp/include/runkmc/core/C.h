@@ -4,6 +4,11 @@
 #include <string_view>
 #include <vector>
 
+namespace C
+{
+    inline constexpr double NA = 6.022149e23; // Avogadro's number
+};
+
 namespace C::io
 {
     inline constexpr std::string_view PARAMETERS_SECTION = "parameters";
@@ -35,3 +40,41 @@ namespace C::io
     inline constexpr std::string_view REACTANTS_KEY = "reactants";
     inline constexpr std::string_view PRODUCTS_KEY = "products";
 };
+
+namespace C::state
+{
+    // Basic KMC state info
+    inline constexpr std::string_view ITERATION_KEY = "Iteration";
+    inline constexpr std::string_view KMC_TIME_KEY = "KMC Time";
+    inline constexpr std::string_view KMC_STEP_KEY = "KMC Step";
+    inline constexpr std::string_view NAV_KEY = "NAV";
+
+    // Simulation time info
+    inline constexpr std::string_view SIM_TIME_KEY = "Simulation Time";
+    inline constexpr std::string_view SIM_TIME_PER_1E6_STEPS_KEY = "Simulation Time per 1e6 KMC Steps";
+
+    // Species info
+    inline constexpr std::string_view CONV_PREFIX = "Conv_";
+    inline constexpr std::string_view COUNT_PREFIX = "Count_";
+    inline constexpr std::string_view MONOMER = "Monomer";
+
+    // Chain and molecular weight stats
+    inline constexpr std::string_view NAVGCL_KEY = "nAvgCL";
+    inline constexpr std::string_view WAVGCL_KEY = "wAvgCL";
+    inline constexpr std::string_view DISPCL_KEY = "dispCL";
+    inline constexpr std::string_view NAVGMW_KEY = "nAvgMW";
+    inline constexpr std::string_view WAVGMW_KEY = "wAvgMW";
+    inline constexpr std::string_view DISPMW_KEY = "dispMW";
+
+    // Copolymerization stats
+    inline constexpr std::string_view NAVGCOMP_PREFIX = "nAvgComp_";
+    inline constexpr std::string_view NAVGSL_PREFIX = "nAvgSL_";
+    inline constexpr std::string_view WAVGSL_PREFIX = "wAvgSL_";
+    inline constexpr std::string_view DISPSL_PREFIX = "dispSL_";
+
+    // Sequence stats
+    inline constexpr std::string_view BUCKET_KEY = "Bucket";
+    inline constexpr std::string_view MONCOUNT_PREFIX = "MonCount_";
+    inline constexpr std::string_view SEQCOUNT_PREFIX = "SeqCount_";
+    inline constexpr std::string_view SEQLEN2_PREFIX = "SeqLen2_";
+}

@@ -12,7 +12,7 @@ namespace rxn_print
         return name;
     }
 
-    std::vector<std::string> getReactantStrings(const std::vector<Unit *> &unitReactants, const std::vector<PolymerTypeGroupPtr> &polyReactants, bool with_counts = true)
+    std::vector<std::string> getReactantStrings(const std::vector<Unit *> &unitReactants, const std::vector<PolymerContainerPtr> &polyReactants, bool with_counts = true)
     {
         std::vector<std::string> reactantStrings;
         for (const auto &polyReactant : polyReactants)
@@ -22,7 +22,7 @@ namespace rxn_print
         return reactantStrings;
     }
 
-    std::vector<std::string> getProductStrings(const std::vector<Unit *> &unitProducts, const std::vector<PolymerTypeGroupPtr> &polyProducts, bool with_counts = true)
+    std::vector<std::string> getProductStrings(const std::vector<Unit *> &unitProducts, const std::vector<PolymerContainerPtr> &polyProducts, bool with_counts = true)
     {
         std::vector<std::string> productStrings;
         for (const auto &polyProduct : polyProducts)
@@ -34,9 +34,9 @@ namespace rxn_print
 
     std::string reactionToString(
         const std::vector<Unit *> &unitReactants,
-        const std::vector<PolymerTypeGroupPtr> &polyReactants,
+        const std::vector<PolymerContainerPtr> &polyReactants,
         const std::vector<Unit *> &unitProducts,
-        const std::vector<PolymerTypeGroupPtr> &polyProducts,
+        const std::vector<PolymerContainerPtr> &polyProducts,
         bool with_counts = false)
     {
 

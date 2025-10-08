@@ -11,108 +11,60 @@ public:
     SpeciesSet(
         std::vector<Unit> &&units_,
         std::vector<PolymerType> &&polymerTypes_,
-        std::vector<PolymerCollectionMap> &&polymerCollections_,
+        std::vector<PolymerContainerMap> &&polymerContainerMaps_,
         size_t numParticles_
 
     )
     {
         // Calculate NAV
         double totalC0 = 0;
-        auto unitIDs = registry::getAllUnitIDs();
-        for (const auto &unitID : unitIDs)
-            totalC0 += units_[unitID].C0;
+        for (const auto &unit : units)
+            totalC0 += unit.C0;
         NAV = numParticles_ / totalC0;
 
         // Set initial counts
-        for (const auto &unitID : unitIDs)
+        for (auto &unit : units_)
         {
-            double initAmount = this->units[unitID].C0 * NAV;
+            double initAmount = unit.C0 * NAV;
             uint64_t initCount = static_cast<uint64_t>(initAmount), uint64_t(1);
 
+            // Ensure initial count is at least 1
             if (initAmount < 1)
             {
-                console::input_warning("Initial amount of " + this->units[unitID].name + " is less than 1 (" + std::to_string(initAmount) + "). Setting initial count to 1.");
+                console::input_warning("Initial amount of " + unit.name + " is less than 1 (" + std::to_string(initAmount) + "). Setting initial count to 1.");
                 initCount = 1;
             }
 
             double roundingError = std::abs((initAmount - double(initCount)) / initAmount);
             if (roundingError > 0.10)
-                console::input_error("Initial amount of " + this->units[unitID].name + " has a abs rounding error of " + std::to_string(roundingError * 100) + "%. Consider increasing num_units to reduce this error. Exiting.....");
+                console::input_error("Initial amount of " + unit.name + " has a abs rounding error of " + std::to_string(roundingError * 100) + "%. Consider increasing num_units to reduce this error. Exiting.....");
 
-            this->units[unitID].setInitialCount(initCount);
+            unit.setInitialCount(initCount);
         }
 
-        polymerGroups.reserve(polymerCollections_.size());
-        polymerGroupPtrs.reserve(polymerCollections_.size());
+        polymerContainers.reserve(polymerContainerMaps_.size());
+        polymerContainerPtrs.reserve(polymerContainerMaps_.size());
 
-        // Creating polymer groups
-        for (const auto &polymerGroup : polymerCollections_)
+        // Create polymer containers
+        for (const auto &containerMap : polymerContainerMaps_)
         {
-            auto indices = polymerGroup.polymerTypeIndices;
-            std::vector<PolymerTypePtr> polymerSubTypePtrs;
-            polymerSubTypePtrs.reserve(indices.size());
+            // Get pointers to the polymer types in this container
+            auto indices = containerMap.polymerTypeIndices;
+            std::vector<PolymerTypePtr> polymerTypePtrs;
+            polymerTypePtrs.reserve(indices.size());
             for (const auto &index : indices)
-                polymerSubTypePtrs.push_back(&polymerTypes[index]);
+                polymerTypePtrs.push_back(&polymerTypes_[index]);
 
-            polymerGroups.push_back(PolymerTypeGroup(polymerGroup.name, polymerSubTypePtrs));
-            polymerGroupPtrs.push_back(&polymerGroups.back());
+            polymerContainers.push_back(PolymerContainer(containerMap.ID, containerMap.name, polymerTypePtrs));
+            polymerContainerPtrs.push_back(&polymerContainers.back());
         }
     }
 
-    SpeciesSet(
-        std::vector<PolymerType> &&polymerTypes_,
-        std::vector<PolymerGroupStruct> &&PolymerGroupStructs_,
-        std::vector<Unit> &&units_,
-        size_t numParticles_) : polymerTypes(std::move(polymerTypes_)), units(std::move(units_)), numParticles(numParticles_)
+    void updatePolymerContainers()
     {
-        // Calculate NAV
-        double totalC0 = 0;
-        auto unitIDs = registry::getAllUnitIDs();
-        for (const auto &unitID : unitIDs)
-            totalC0 += this->units[unitID].C0;
-        NAV = numParticles / totalC0;
-
-        // Set initial counts
-        for (const auto &unitID : unitIDs)
-        {
-            double initAmount = this->units[unitID].C0 * NAV;
-            uint64_t initCount = static_cast<uint64_t>(initAmount), uint64_t(1);
-
-            if (initAmount < 1)
-            {
-                console::input_warning("Initial amount of " + this->units[unitID].name + " is less than 1 (" + std::to_string(initAmount) + "). Setting initial count to 1.");
-                initCount = 1;
-            }
-
-            double roundingError = std::abs((initAmount - double(initCount)) / initAmount);
-            if (roundingError > 0.10)
-                console::input_error("Initial amount of " + this->units[unitID].name + " has a abs rounding error of " + std::to_string(roundingError * 100) + "%. Consider increasing num_units to reduce this error. Exiting.....");
-
-            this->units[unitID].setInitialCount(initCount);
-        }
-
-        polymerGroups.reserve(PolymerGroupStructs_.size());
-        polymerGroupPtrs.reserve(PolymerGroupStructs_.size());
-
-        // Creating polymer groups
-        for (const auto &polymerGroup : PolymerGroupStructs_)
-        {
-            auto indices = polymerGroup.polymerTypeIndices;
-            std::vector<PolymerTypePtr> polymerSubTypePtrs;
-            polymerSubTypePtrs.reserve(indices.size());
-            for (const auto &index : indices)
-                polymerSubTypePtrs.push_back(&polymerTypes[index]);
-
-            polymerGroups.push_back(PolymerTypeGroup(polymerGroup.name, polymerSubTypePtrs));
-            polymerGroupPtrs.push_back(&polymerGroups.back());
-        }
-    };
-
-    void updatePolyTypeGroups()
-    {
-        for (const auto &polymerGroupPtr : polymerGroupPtrs)
-            polymerGroupPtr->updatePolymerCounts();
-    };
+        for (const auto &polymerContainerPtr : polymerContainerPtrs)
+            polymerContainerPtr->updatePolymerCounts();
+    }
 
     SpeciesState getStateData() const
     {
@@ -126,27 +78,28 @@ public:
             data.unitConversions.push_back(units[id].calculateConversion());
         }
 
-        // Polymer counts
-        for (const auto &polymerGroup : polymerGroups)
-            data.polymerCounts.push_back(polymerGroup.count);
+        // Monomer conversion
+        data.monomerConversion = calculateMonomerConversion();
 
-        // Total conversion
-        data.totalConversion = calculateConversion();
+        // Polymer counts
+        for (const auto &container : polymerContainers)
+            data.polymerCounts.push_back(container.count);
 
         return data;
     }
 
-    double calculateConversion() const
+    double calculateMonomerConversion() const
     {
         double numerator = 0;
         double denominator = 0;
         uint64_t initialCount;
 
-        auto monomerIDs = registry::MONOMER_IDS;
+        auto monomerIDs = registry::getMonomerIDs();
         for (const auto &id : monomerIDs)
         {
-            initialCount = units[id].getInitialCount();
-            numerator += initialCount - units[id].count;
+            auto monIdx = registry::getMonomerIndex(id);
+            initialCount = units[monIdx].getInitialCount();
+            numerator += initialCount - units[monIdx].count;
             denominator += initialCount;
         }
         if (denominator == 0)
@@ -197,36 +150,35 @@ public:
         for (const auto &unit : units)
             console::log("\t" + unit.toString());
 
-        // console::log("Polymer Types:");
-        // for (const auto &polyType : polymerTypes)
-        //     console::log("\t" + polyType.toString());
-
-        console::log("Polymer Groups:");
-        for (const auto &polyGroup : polymerGroups)
-            console::log("\t" + polyGroup.toString());
+        console::log("Polymer Containers:");
+        for (const auto &container : polymerContainers)
+            console::log("\t" + container.toString());
     }
 
     std::vector<double> getMonomerFWs() const
     {
         std::vector<double> monomerFWs;
-        monomerFWs.reserve(registry::NUM_MONOMERS);
-        for (const auto &id : registry::MONOMER_IDS)
-            monomerFWs.push_back(units[id].FW);
+        monomerFWs.reserve(registry::getNumMonomers());
+
+        for (const auto &id : registry::getMonomerIDs())
+            monomerFWs.push_back(units[registry::getMonomerIndex(id)].FW);
+
         return monomerFWs;
     }
 
     std::vector<Unit> &getUnits() { return units; }
     const std::vector<Unit> &getUnits() const { return units; }
-    std::vector<PolymerTypeGroup> &getPolyTypeGroups() { return polymerGroups; }
-    const std::vector<PolymerTypeGroup> &getPolyTypeGroups() const { return polymerGroups; }
-    std::vector<PolymerTypeGroupPtr> &getPolymerGroupPtrs() { return polymerGroupPtrs; }
-    const std::vector<PolymerTypeGroupPtr> &getPolymerGroupPtrs() const { return polymerGroupPtrs; }
+
+    std::vector<PolymerContainer> &getPolymerContainers() { return polymerContainers; }
+    const std::vector<PolymerContainer> &getPolymerContainers() const { return polymerContainers; }
+    const std::vector<PolymerContainerPtr> &getPolymerContainerPtrs() const { return polymerContainerPtrs; }
+
     double getNAV() const { return NAV; }
 
 private:
     std::vector<PolymerType> polymerTypes;
-    std::vector<PolymerTypeGroup> polymerGroups;
-    std::vector<PolymerTypeGroupPtr> polymerGroupPtrs;
+    std::vector<PolymerContainer> polymerContainers;
+    std::vector<PolymerContainerPtr> polymerContainerPtrs;
 
     std::vector<Unit> units;
     size_t numParticles;

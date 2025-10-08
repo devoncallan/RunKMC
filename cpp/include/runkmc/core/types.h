@@ -40,6 +40,11 @@ public:
         return type == UNIT || type == MONOMER || type == INITIATOR;
     }
 
+    static bool isPolymerType(const std::string &type)
+    {
+        return type == POLYMER || type == LABEL;
+    }
+
     static bool isValidType(const std::string &type)
     {
         for (const auto &validType : validTypes)

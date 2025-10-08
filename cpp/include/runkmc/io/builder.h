@@ -8,28 +8,27 @@
 #include "kmc/kmc.h"
 #include "io/text_parsers.h"
 #include "io/yaml_parsers.h"
+#include "utils/parse.h"
 
 namespace builder
 {
 
     static KMC buildModel(const config::CommandLineConfig &config, const types::KMCInputRead &data)
     {
-        SpeciesSet speciesSet = buildSpeciesSet(data.species);
-
-        registry::builder.build();
+        SpeciesSet speciesSet = buildSpeciesSet(data.species, data.config);
 
         ReactionSet reactionSet = buildReactionSet(data.reactions, data.rateConstants, speciesSet);
 
-        // KMC kmc(simConfig, speciesSet, reactionSet, config.outputDir, config.reportPolymers, config.reportSequences);
-        // return kmc;
+        KMC kmc(speciesSet, reactionSet, config, data.config);
+
+        return kmc;
     }
 
-    SpeciesSet buildSpeciesSet(const types::SpeciesSetRead &data)
+    SpeciesSet buildSpeciesSet(const types::SpeciesSetRead &data, const config::SimulationConfig &config)
     {
-        size_t numUnits = data.units.size();
-        size_t numPolyTypes = data.polymerTypes.size();
-        size_t numPolyLabels = data.polymerLabels.size();
-        size_t numPolyCollections = numPolyTypes + numPolyLabels;
+
+        // size_t numPolyLabels = data.polymerLabels.size();
+        // size_t numPolyCollections = numPolyTypes + numPolyLabels;
 
         std::vector<types::UnitRead> unitsRead = data.units;
         std::stable_sort(
@@ -46,16 +45,25 @@ namespace builder
             };
             return priority(a.type) < priority(b.type); });
 
-        std::vector<Unit> units;
-        std::vector<PolymerType> polymerTypes;
-        std::vector<PolymerContainerMap> polymerContainers;
-
         // Register and create unit species
+        std::vector<Unit> units;
+        size_t numUnits = data.units.size();
+        units.reserve(numUnits);
+
         for (const auto &unitRead : unitsRead)
         {
             SpeciesID id = registry::builder.registerNewSpecies(unitRead.name, unitRead.type);
             units.push_back(Unit(unitRead.type, unitRead.name, id, unitRead.C0, unitRead.FW, unitRead.efficiency));
         }
+
+        // Register and create polymer types
+        std::vector<PolymerType> polymerTypes;
+        size_t numPolyTypes = data.polymerTypes.size();
+        polymerTypes.reserve(numPolyTypes);
+
+        std::vector<PolymerContainerMap> polymerContainerMap;
+        size_t numPolyContainers = data.polymerLabels.size() + numPolyTypes;
+        polymerContainerMap.reserve(numPolyContainers);
 
         // Register and create polymer types
         for (const auto &polyType : data.polymerTypes)
@@ -72,25 +80,37 @@ namespace builder
 
             SpeciesID id = registry::builder.registerNewSpecies(polyType.name, polyType.type);
             polymerTypes.push_back(PolymerType(id, polyType.name, endGroupIDs));
-            polymerContainers.push_back(PolymerContainerMap(id, polyType.name));
+            polymerContainerMap.push_back(PolymerContainerMap(id, polyType.name, {polymerTypes.size() - 1}));
         }
 
-        // Create polymer collections
         for (const auto &label : data.polymerLabels)
         {
-            std::vector<SpeciesID> labelPolyIDs;
-            labelPolyIDs.reserve(label.polymerNames.size());
+            std::vector<size_t> labelPolyIndices;
+            labelPolyIndices.reserve(label.polymerNames.size());
 
             for (const auto &polyName : label.polymerNames)
             {
                 if (!registry::builder.isRegistered(polyName))
                     console::input_error("Polymer " + polyName + " for label " + label.name + " is not registered. Exiting.");
-                labelPolyIDs.push_back(registry::builder.getSpeciesID(polyName));
+
+                // Find index of this polymer type
+                size_t index = input::findInVector(polyName, polymerTypes);
+                if (index == SIZE_T_MAX)
+                    console::input_error("Polymer " + polyName + " for label " + label.name + " is not registered. Exiting.");
+
+                labelPolyIndices.push_back(index);
             }
 
             SpeciesID id = registry::builder.registerNewSpecies(label.name, label.type);
-            polymerContainers.push_back(PolymerContainerMap(id, label.name, labelPolyIDs));
+            polymerContainerMap.push_back(PolymerContainerMap(id, label.name, labelPolyIndices));
         }
+
+        // Finalize registry
+        registry::initialize();
+
+        // Create species set
+        SpeciesSet speciesSet(std::move(units), std::move(polymerTypes), std::move(polymerContainerMap), config.numParticles);
+        return speciesSet;
     }
 
     std::vector<RateConstant> buildRateConstants(const std::vector<types::RateConstantRead> &data)
@@ -112,13 +132,15 @@ namespace builder
 
         const std::vector<RateConstant> rateConstants = buildRateConstants(rateConstantsRead);
 
+        const std::vector<Unit> units = speciesSet.getUnits();
+        const std::vector<PolymerContainer> &polymerContainers = speciesSet.getPolymerContainers();
+
         for (const auto &reactionData : reactionsRead)
         {
-
             std::vector<Unit *> unitReactants;
             std::vector<Unit *> unitProducts;
-            std::vector<PolymerTypeGroupPtr> polyReactants;
-            std::vector<PolymerTypeGroupPtr> polyProducts;
+            std::vector<PolymerContainerPtr> polyReactants;
+            std::vector<PolymerContainerPtr> polyProducts;
             unitReactants.reserve(3);
             unitProducts.reserve(3);
             polyReactants.reserve(3);
@@ -126,75 +148,71 @@ namespace builder
 
             // Find rate constant
             size_t index = input::findInVector(reactionData.rateConstantName, rateConstants);
-            if (index < rateConstants.size())
-                rateConstant = rateConstants[index];
-            else
+            if (index == SIZE_T_MAX)
                 console::input_error("Rate constant " + reactionData.rateConstantName + " not found. Exiting.");
-            // if (index <
+
+            RateConstant rateConstant = rateConstants[index];
 
             // Find reactants
             for (const auto &reactantName : reactionData.reactantNames)
             {
-                size_t index = input::findInVector(reactantName, speciesSet.getUnits());
-                if (index < speciesSet.getUnits().size())
-                    unitReactants.push_back(&speciesSet.getUnits()[index]);
+                auto species = registry::getSpecies(reactantName);
+
+                if (SpeciesType::isUnitType(species.type))
+                    unitReactants.push_back(&speciesSet.getUnits()[registry::getUnitIndex(species.ID)]);
+                else if (SpeciesType::isPolymerType(species.type))
+                    polyReactants.push_back(&speciesSet.getPolymerContainers()[registry::getPolymerIndex(species.ID)]);
                 else
-                {
-                    index = input::findInVector(reactantName, speciesSet.getPolymerTypeGroups());
-                    if (index < speciesSet.getPolymerTypeGroups().size())
-                        polyReactants.push_back(&speciesSet.getPolymerTypeGroups()[index]);
-                    else
-                        console::input_error("Species " + reactantName + " not found. Exiting.");
-                }
+                    console::input_error("Species type " + species.type + " for species " + species.name + " not recognized. Exiting.");
             }
 
-            // Find products
             for (const auto &productName : reactionData.productNames)
             {
-                size_t index = input::findInVector(productName, speciesSet.getUnits());
-                if (index < speciesSet.getUnits().size())
-                    unitProducts.push_back(&speciesSet.getUnits()[index]);
+                auto species = registry::getSpecies(productName);
+
+                if (SpeciesType::isUnitType(species.type))
+                    unitProducts.push_back(&speciesSet.getUnits()[registry::getUnitIndex(species.ID)]);
+                else if (SpeciesType::isPolymerType(species.type))
+                    polyProducts.push_back(&speciesSet.getPolymerContainers()[registry::getPolymerIndex(species.ID)]);
                 else
-                {
-                    index = input::findInVector(productName, speciesSet.getPolymerTypeGroups());
-                    if (index < speciesSet.getPolymerTypeGroups().size())
-                        polyProducts.push_back(&speciesSet.getPolymerTypeGroups()[index]);
-                    else
-                        console::input_error("Species " + productName + " not found. Exiting.");
-                }
+                    console::input_error("Species type " + species.type + " for species " + species.name + " not recognized. Exiting.");
             }
+
             uint8_t sameReactant = 0;
 
             if (reactionData.type == Elementary::TYPE)
                 reactions.push_back(new Elementary(rateConstant, unitReactants, unitProducts));
             else if (reactionData.type == InitiatorDecomposition::TYPE)
                 reactions.push_back(new InitiatorDecomposition(rateConstant, unitReactants[0], unitProducts[0], unitProducts[1], unitReactants[0]->efficiency));
+            else if (reactionData.type == InitiatorDecompositionPolymer::TYPE)
+                reactions.push_back(new InitiatorDecompositionPolymer(rateConstant, unitReactants[0], polyProducts[0], polyProducts[1], unitReactants[0]->efficiency));
+            else if (reactionData.type == Initiation::TYPE)
+                reactions.push_back(new Initiation(rateConstant, unitReactants[0], unitReactants[1], polyProducts[0]));
+            else if (reactionData.type == Propagation::TYPE)
+                reactions.push_back(new Propagation(rateConstant, polyReactants[0], unitReactants[0], polyProducts[0]));
+            else if (reactionData.type == Depropagation::TYPE)
+                reactions.push_back(new Depropagation(rateConstant, polyReactants[0], polyProducts[0], unitProducts[0]));
+            else if (reactionData.type == TerminationCombination::TYPE)
+            {
+                if (polyReactants[0]->name == polyReactants[1]->name)
+                    sameReactant = 1;
+                reactions.push_back(new TerminationCombination(rateConstant, polyReactants[0], polyReactants[1], polyProducts[0], sameReactant));
+            }
+            else if (reactionData.type == TerminationDisproportionation::TYPE)
+            {
+                if (polyReactants[0]->name == polyReactants[1]->name)
+                    sameReactant = 1;
+                reactions.push_back(new TerminationDisproportionation(rateConstant, polyReactants[0], polyReactants[1], polyProducts[0], polyProducts[1], sameReactant));
+            }
+            else if (reactionData.type == ChainTransferToMonomer::TYPE)
+                reactions.push_back(new ChainTransferToMonomer(rateConstant, polyReactants[0], unitReactants[0], polyProducts[0], polyProducts[1]));
+            else if (reactionData.type == ThermalInitiationMonomer::TYPE)
+                reactions.push_back(new ThermalInitiationMonomer(rateConstant, unitReactants[0], unitReactants[1], unitReactants[2], polyProducts[0], polyProducts[1]));
+            else
+                console::input_error(reactionData.type + " is not a valid reaction type.");
         }
 
         ReactionSet reactionSet(reactions, rateConstants);
         return reactionSet;
     };
 };
-
-namespace builder::utils
-{
-
-};
-
-// namespace build
-// {
-//     // Build from file
-//     KMC fromFile(config::CommandLineConfig config);
-//     KMC _fromModelFile(config::CommandLineConfig config);
-//     KMC _fromYamlFile(config::CommandLineConfig config);
-
-//     // Species
-//     static SpeciesSet buildSpeciesSet(const types::SpeciesSetRead &data);
-
-//     // Rate constants
-//     static std::vector<RateConstant> buildRateConstants(const std::vector<types::RateConstantRead> &data);
-
-//     // Reactions
-//     static ReactionSet buildReactionSet(const types::ReactionSetRead &data, SpeciesSet &speciesSet);
-
-// };

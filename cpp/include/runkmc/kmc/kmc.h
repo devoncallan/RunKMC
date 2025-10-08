@@ -3,7 +3,6 @@
 #include "reactions/reaction_set.h"
 #include "species/species_set.h"
 #include "kmc/state.h"
-// #include "kmc/config.h"
 #include "analysis/analysis.h"
 #include "outputs/state.h"
 #include "outputs/polymers.h"
@@ -23,7 +22,7 @@ public:
 
         state.kmc.NAV = speciesSet.getNAV();
 
-        speciesSet.updatePolyTypeGroups();
+        speciesSet.updatePolymerContainers();
 
         reactionSet.updateReactionProbabilities(state.kmc.NAV);
 
@@ -101,7 +100,7 @@ private:
 
         reaction->react();
 
-        speciesSet.updatePolyTypeGroups();
+        speciesSet.updatePolymerContainers();
 
         reactionSet.updateReactionProbabilities(state.kmc.NAV);
 

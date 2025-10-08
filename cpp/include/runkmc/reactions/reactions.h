@@ -75,10 +75,11 @@ public:
     }
 
 protected:
-    std::vector<PolymerTypeGroupPtr> polyReactants;
     std::vector<Unit *> unitReactants;
-    std::vector<PolymerTypeGroupPtr> polyProducts;
     std::vector<Unit *> unitProducts;
+
+    std::vector<PolymerContainerPtr> polyReactants;
+    std::vector<PolymerContainerPtr> polyProducts;
 };
 
 /**
@@ -159,7 +160,7 @@ class InitiatorDecompositionPolymer : public Reaction
 {
 public:
     static inline const std::string &TYPE = ReactionType::INIT_DECOMP_POLY;
-    InitiatorDecompositionPolymer(RateConstant rateConstant, Unit *unitReactant, PolymerTypeGroupPtr polyProduct1, PolymerTypeGroupPtr polyProduct2, double efficiency_)
+    InitiatorDecompositionPolymer(RateConstant rateConstant, Unit *unitReactant, PolymerContainerPtr polyProduct1, PolymerContainerPtr polyProduct2, double efficiency_)
         : Reaction(rateConstant, 0, 1, 2, 0), efficiency(efficiency_)
     {
         unitReactants[0] = unitReactant;
@@ -205,7 +206,7 @@ class Initiation : public Reaction
 {
 public:
     static inline const std::string &TYPE = ReactionType::INITIATION;
-    Initiation(RateConstant rateConstant, Unit *unitReactant1, Unit *unitReactant2, PolymerTypeGroupPtr polyProduct)
+    Initiation(RateConstant rateConstant, Unit *unitReactant1, Unit *unitReactant2, PolymerContainerPtr polyProduct)
         : Reaction(rateConstant, 0, 2, 1, 0)
     {
         unitReactants[0] = unitReactant1; // initiator
@@ -239,7 +240,7 @@ class Propagation : public Reaction
 {
 public:
     static inline const std::string &TYPE = ReactionType::PROPAGATION;
-    Propagation(RateConstant rateConstant, PolymerTypeGroupPtr polyReactant, Unit *unitReactant, PolymerTypeGroupPtr polyProduct)
+    Propagation(RateConstant rateConstant, PolymerContainerPtr polyReactant, Unit *unitReactant, PolymerContainerPtr polyProduct)
         : Reaction(rateConstant, 1, 1, 1, 0)
     {
         polyReactants[0] = polyReactant;
@@ -271,7 +272,7 @@ class Depropagation : public Reaction
 {
 public:
     static inline const std::string &TYPE = ReactionType::DEPROPAGATION;
-    Depropagation(RateConstant rateConstant, PolymerTypeGroupPtr polyReactant, PolymerTypeGroupPtr polyProduct, Unit *unitProduct)
+    Depropagation(RateConstant rateConstant, PolymerContainerPtr polyReactant, PolymerContainerPtr polyProduct, Unit *unitProduct)
         : Reaction(rateConstant, 1, 0, 1, 1)
     {
         polyReactants[0] = polyReactant;
@@ -306,8 +307,8 @@ class TerminationDisproportionation : public Reaction
 {
 public:
     static inline const std::string &TYPE = ReactionType::TERMINATION_D;
-    TerminationDisproportionation(RateConstant rateConstant, PolymerTypeGroupPtr polyReactant1, PolymerTypeGroupPtr polyReactant2,
-                                  PolymerTypeGroupPtr polyProduct1, PolymerTypeGroupPtr polyProduct2, uint8_t sameReactant_)
+    TerminationDisproportionation(RateConstant rateConstant, PolymerContainerPtr polyReactant1, PolymerContainerPtr polyReactant2,
+                                  PolymerContainerPtr polyProduct1, PolymerContainerPtr polyProduct2, uint8_t sameReactant_)
         : Reaction(rateConstant, 2, 0, 2, 0), sameReactant(sameReactant_)
     {
         polyReactants[0] = polyReactant1;
@@ -345,8 +346,8 @@ class TerminationCombination : public Reaction
 {
 public:
     static inline const std::string &TYPE = ReactionType::TERMINATION_C;
-    TerminationCombination(RateConstant rateConstant, PolymerTypeGroupPtr polyReactant1, PolymerTypeGroupPtr polyReactant2,
-                           PolymerTypeGroupPtr polyProduct1, uint8_t sameReactant_)
+    TerminationCombination(RateConstant rateConstant, PolymerContainerPtr polyReactant1, PolymerContainerPtr polyReactant2,
+                           PolymerContainerPtr polyProduct1, uint8_t sameReactant_)
         : Reaction(rateConstant, 2, 0, 1, 0), sameReactant(sameReactant_)
     {
         polyReactants[0] = polyReactant1;
@@ -377,7 +378,7 @@ class ChainTransferToMonomer : public Reaction
 {
 public:
     static inline const std::string &TYPE = ReactionType::CHAINTRANSFER_M;
-    ChainTransferToMonomer(RateConstant rateConstant, PolymerTypeGroupPtr polyReactant, Unit *unitReactant, PolymerTypeGroupPtr polyProduct1, PolymerTypeGroupPtr polyProduct2)
+    ChainTransferToMonomer(RateConstant rateConstant, PolymerContainerPtr polyReactant, Unit *unitReactant, PolymerContainerPtr polyProduct1, PolymerContainerPtr polyProduct2)
         : Reaction(rateConstant, 1, 1, 2, 0)
     {
         polyReactants[0] = polyReactant;
@@ -411,7 +412,7 @@ class ThermalInitiationMonomer : public Reaction
 {
 public:
     static inline const std::string &TYPE = ReactionType::THERM_INIT_M;
-    ThermalInitiationMonomer(RateConstant rateConstant, Unit *unitReactant1, Unit *unitReactant2, Unit *unitReactant3, PolymerTypeGroupPtr polyProduct1, PolymerTypeGroupPtr polyProduct2)
+    ThermalInitiationMonomer(RateConstant rateConstant, Unit *unitReactant1, Unit *unitReactant2, Unit *unitReactant3, PolymerContainerPtr polyProduct1, PolymerContainerPtr polyProduct2)
         : Reaction(rateConstant, 0, 3, 2, 0)
     {
         unitReactants[0] = unitReactant1;
