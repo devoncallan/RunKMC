@@ -2,6 +2,8 @@
 #include <string>
 #include <vector>
 
+#include "C.h"
+
 static const size_t NUM_BUCKETS = 30;
 typedef uint8_t SpeciesID;
 
@@ -65,6 +67,19 @@ public:
         throw std::invalid_argument("Invalid species type: " + type);
     }
 
+    static std::string invalidTypeString(const std::string &type)
+    {
+        return "Invalid species type `" + type + "`. Valid types are: " + validTypesAsString();
+    }
+
+    static std::string validTypesAsString()
+    {
+        std::string types = "";
+        for (const auto &type : validTypes)
+            types += type + " ";
+        return types;
+    }
+
 private:
     SpeciesType() = delete;
     ~SpeciesType() = delete;
@@ -126,8 +141,6 @@ namespace types
         uint64_t count;
         uint64_t initialCount;
     };
-
-    //
 
     struct UnitRead : SpeciesRead
     {

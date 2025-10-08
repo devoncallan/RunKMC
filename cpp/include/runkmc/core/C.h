@@ -9,6 +9,42 @@ namespace C
     inline constexpr double NA = 6.022149e23; // Avogadro's number
 };
 
+namespace C::reaction
+{
+    class type
+    {
+        static inline const std::string ELEMENTARY = "EL";
+        static inline const std::string INITIATOR_DECOMPOSITION = "ID";
+        static inline const std::string INIT_DECOMP_POLY = "IDP";
+        static inline const std::string INITIATION = "IN";
+        static inline const std::string PROPAGATION = "PR";
+        static inline const std::string DEPROPAGATION = "DP";
+        static inline const std::string TERMINATION_C = "TC";
+        static inline const std::string TERMINATION_D = "TD";
+        static inline const std::string CHAINTRANSFER_M = "CTM";
+        static inline const std::string CHAINTRANSFER_S = "CTS";
+        static inline const std::string THERM_INIT_M = "TIM";
+    };
+};
+
+namespace C::species
+{
+    inline constexpr std::string_view UNIT_ID = "U";
+    inline constexpr std::string_view MONOMER_ID = "M";
+    inline constexpr std::string_view INITIATOR_ID = "I";
+    inline constexpr std::string_view POLYMER_ID = "P";
+    inline constexpr std::string_view LABEL_ID = "LABEL";
+    inline constexpr std::string_view UNDEFINED_ID = "?";
+
+    inline constexpr std::string_view UNIT = "UNIT";
+    inline constexpr std::string_view MONOMER = "MONOMER";
+    inline constexpr std::string_view INITIATOR = "INITIATOR";
+    inline constexpr std::string_view POLYMER = "POLYMER";
+    inline constexpr std::string_view LABEL = "LABEL";
+    inline constexpr std::string_view UNDEFINED = "UNDEFINED";
+
+    inline constexpr std::string_view REACTION = "REACTION";
+};
 namespace C::io
 {
     inline constexpr std::string_view PARAMETERS_SECTION = "parameters";
@@ -18,10 +54,13 @@ namespace C::io
     inline constexpr std::string_view END_SECTION = "end";
     inline constexpr std::array<std::string_view, 4> REQUIRED_SECTIONS = {PARAMETERS_SECTION, SPECIES_SECTION, RATE_CONSTANTS_SECTION, REACTIONS_SECTION};
 
+    inline constexpr std::string_view RUN_INFO_SECTION = "run_info";
+
     // General
     inline constexpr std::string_view NAME_KEY = "name";
     inline constexpr std::string_view TYPE_KEY = "type";
     inline constexpr std::string_view VALUE_KEY = "value";
+    inline constexpr std::string_view ID_KEY = "ID";
 
     // Parameters
     inline constexpr std::string_view NUM_UNITS_KEY = "num_units";
@@ -34,6 +73,9 @@ namespace C::io
     inline constexpr std::string_view EFFICIENCY_KEY = "f";
     inline constexpr std::string_view END_GROUP_NAMES_KEY = "end_group_units";
     inline constexpr std::string_view POLYMER_NAMES_KEY = "polymer_names";
+
+    inline constexpr std::string_view UNITS_KEY = "units";
+    inline constexpr std::string_view POLYMERS_KEY = "polymers";
 
     // Reactions
     inline constexpr std::string_view RATE_CONSTANT_KEY = "rate_constant";

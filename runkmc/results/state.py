@@ -8,6 +8,8 @@ from numpy.typing import NDArray
 import pandas as pd
 import yaml
 
+from ..core import C
+
 
 @dataclass
 class StateData:
@@ -22,7 +24,7 @@ class StateData:
 
     # Species State
     unit_convs: Dict[str, NDArray[np.float64]]
-    total_conv: NDArray[np.float64]
+    monomer_conv: NDArray[np.float64]
     unit_counts: Dict[str, NDArray[np.uint64]]
     polymer_counts: Dict[str, NDArray[np.uint64]]
 
@@ -50,40 +52,43 @@ class StateData:
         polymer_names = metadata.get_polymer_names()
 
         return StateData(
-            iteration=df["Iteration"].to_numpy(np.uint64),
-            kmc_step=df["KMC Step"].to_numpy(np.uint64),
-            kmc_time=df["KMC Time"].to_numpy(np.float64),
-            sim_time=df["Simulation Time"].to_numpy(np.float64),
-            sim_time_per_1e6_steps=df["Simulation Time per 1e6 KMC Steps"].to_numpy(
+            iteration=df[C.state.ITERATION_KEY].to_numpy(np.uint64),
+            kmc_step=df[C.state.KMC_STEP_KEY].to_numpy(np.uint64),
+            kmc_time=df[C.state.KMC_TIME_KEY].to_numpy(np.float64),
+            sim_time=df[C.state.SIM_TIME_KEY].to_numpy(np.float64),
+            sim_time_per_1e6_steps=df[C.state.SIM_TIME_PER_1E6_STEPS_KEY].to_numpy(
                 np.float64
             ),
-            NAV=df["NAV"].to_numpy(np.float64),
+            NAV=df[C.state.NAV_KEY].to_numpy(np.float64),
             unit_convs={
-                name: df[f"Conv_{name}"].to_numpy(np.float64) for name in unit_names
+                name: df[C.state.CONV_PREFIX + name].to_numpy(np.float64)
+                for name in unit_names
             },
-            total_conv=df["Conv_Total"].to_numpy(np.float64),
+            monomer_conv=df[C.state.CONV_PREFIX + C.state.MONOMER].to_numpy(np.float64),
             unit_counts={
-                name: df[f"Count_{name}"].to_numpy(np.uint64) for name in unit_names
+                name: df[C.state.COUNT_PREFIX + name].to_numpy(np.uint64)
+                for name in unit_names
             },
             polymer_counts={
-                name: df[f"Count_{name}"].to_numpy(np.uint64) for name in polymer_names
+                name: df[C.state.COUNT_PREFIX + name].to_numpy(np.uint64)
+                for name in polymer_names
             },
-            nAvgCL=df["nAvgCL"].to_numpy(np.float64),
-            wAvgCL=df["wAvgCL"].to_numpy(np.float64),
-            dispCL=df["dispCL"].to_numpy(np.float64),
-            nAvgMW=df["nAvgMW"].to_numpy(np.float64),
-            wAvgMW=df["wAvgMW"].to_numpy(np.float64),
-            dispMW=df["dispMW"].to_numpy(np.float64),
+            nAvgCL=df[C.state.NAVGCL_KEY].to_numpy(np.float64),
+            wAvgCL=df[C.state.WAVGCL_KEY].to_numpy(np.float64),
+            dispCL=df[C.state.DISPCL_KEY].to_numpy(np.float64),
+            nAvgMW=df[C.state.NAVGMW_KEY].to_numpy(np.float64),
+            wAvgMW=df[C.state.WAVGMW_KEY].to_numpy(np.float64),
+            dispMW=df[C.state.DISPMW_KEY].to_numpy(np.float64),
             nAvgSL={
-                name: df[f"nAvgSL_{name}"].to_numpy(np.float64)
+                name: df[C.state.NAVGSL_PREFIX + name].to_numpy(np.float64)
                 for name in monomer_names
             },
             wAvgSL={
-                name: df[f"wAvgSL_{name}"].to_numpy(np.float64)
+                name: df[C.state.WAVGSL_PREFIX + name].to_numpy(np.float64)
                 for name in monomer_names
             },
             dispSL={
-                name: df[f"dispSL_{name}"].to_numpy(np.float64)
+                name: df[C.state.DISP_SL_PREFIX + name].to_numpy(np.float64)
                 for name in monomer_names
             },
             _raw_data=df,
@@ -109,25 +114,25 @@ class SequenceData:
         if monomer_names is None or len(monomer_names) == 0:
             monomer_names = []
             for col in df.columns:
-                if col.startswith("MonCount_"):
-                    monomer_names.append(col.replace("MonCount_", ""))
+                if col.startswith(C.state.MONCOUNT_PREFIX):
+                    monomer_names.append(col.replace(C.state.MONCOUNT_PREFIX, ""))
 
         monomer_names = list(set(monomer_names))
 
         return SequenceData(
-            iteration=df["Iteration"].to_numpy(np.uint64),
-            kmc_time=df["KMC Time"].to_numpy(np.float64),
-            bucket=df["Bucket"].to_numpy(np.uint64),
+            iteration=df[C.state.ITERATION_KEY].to_numpy(np.uint64),
+            kmc_time=df[C.state.KMC_TIME_KEY].to_numpy(np.float64),
+            bucket=df[C.state.BUCKET_KEY].to_numpy(np.uint64),
             monomer_count={
-                name: df[f"monCount_{name}"].to_numpy(np.uint64)
+                name: df[C.state.MONCOUNT_PREFIX + name].to_numpy(np.uint64)
                 for name in monomer_names
             },
             sequence_count={
-                name: df[f"seqCount_{name}"].to_numpy(np.uint64)
+                name: df[C.state.SEQCOUNT_PREFIX + name].to_numpy(np.uint64)
                 for name in monomer_names
             },
             sequence_length2={
-                name: df[f"seqLengths2_{name}"].to_numpy(np.float64)
+                name: df[C.state.SEQLEN2_PREFIX + name].to_numpy(np.float64)
                 for name in monomer_names
             },
             _raw_data=df,
@@ -144,7 +149,7 @@ class SequenceData:
         return SequenceData._from_df(df, monomer_names)
 
     def get_buckets(self) -> List[int]:
-        return sorted(self._raw_data["Bucket"].unique().tolist())
+        return sorted(self._raw_data[C.state.BUCKET_KEY].unique().tolist())
 
     def get_by_bucket(self, bucket: int) -> SequenceData:
 
@@ -154,9 +159,9 @@ class SequenceData:
                 f"Bucket {bucket} not found in sequence data ({min(valid_buckets)}-{max(valid_buckets)})."
             )
 
-        df = self._raw_data[self._raw_data["Bucket"] == bucket]
+        df = self._raw_data[self._raw_data[C.state.BUCKET_KEY] == bucket]
         df = df.reset_index(drop=True)
-        df = df.sort_values("KMC Time")
+        df = df.sort_values(C.state.KMC_TIME_KEY)
 
         return SequenceData._from_df(df, self._monomer_names)
 
@@ -207,7 +212,12 @@ class Metadata:
             data, dict
         ), f"Metadata file {metadata_path} does not contain a valid YAML dictionary."
 
-        required_keys = ["run_info", "parameters", "species", "reactions"]
+        required_keys = [
+            C.io.RUN_INFO_SECTION,
+            C.io.PARAMETERS_SECTION,
+            C.io.SPECIES_SECTION,
+            C.io.REACTIONS_SECTION,
+        ]
         missing_keys = [key for key in required_keys if key not in data.keys()]
         if missing_keys:
             raise ValueError(
@@ -215,10 +225,10 @@ class Metadata:
             )
 
         return Metadata(
-            run_info=data["run_info"],
-            species=data["species"],
-            reactions=data["reactions"],
-            parameters=data["parameters"],
+            run_info=data[C.io.RUN_INFO_SECTION],
+            species=data[C.io.SPECIES_SECTION],
+            reactions=data[C.io.REACTIONS_SECTION],
+            parameters=data[C.io.PARAMETERS_SECTION],
             _metadata_path=metadata_path,
             _raw_data=data,
         )
@@ -229,10 +239,10 @@ class Metadata:
     def get_monomer_names(self) -> List[str]:
 
         monomer_names = []
-        units: List[Dict[str, Any]] = self.species.get("units", [])
+        units: List[Dict[str, Any]] = self.species.get(C.io.UNITS_KEY, [])
         for unit in units:
-            if unit["type"] == "M":
-                monomer_names.append(unit["name"])
+            if unit[C.io.TYPE_KEY] == "M":
+                monomer_names.append(unit[C.io.NAME_KEY])
 
         if len(monomer_names) == 0:
             raise ValueError(f"Metadata file does not contain any monomer information.")
@@ -243,12 +253,12 @@ class Metadata:
 
         unit_names = []
 
-        units: List[Dict[str, Any]] = self.species.get("units", [])
+        units: List[Dict[str, Any]] = self.species.get(C.io.UNITS_KEY, [])
         if len(units) == 0:
             raise ValueError(f"Metadata file does not contain any unit information.")
 
         for unit in units:
-            unit_names.append(unit["name"])
+            unit_names.append(unit[C.io.NAME_KEY])
 
         return unit_names
 
@@ -256,11 +266,11 @@ class Metadata:
 
         polymer_names = []
 
-        polymers: List[Dict[str, Any]] = self.species.get("polymers", [])
+        polymers: List[Dict[str, Any]] = self.species.get(C.io.POLYMERS_KEY, [])
         if len(polymers) == 0:
             raise ValueError(f"Metadata file does not contain any polymer information.")
 
         for polymer in polymers:
-            polymer_names.append(polymer["name"])
+            polymer_names.append(polymer[C.io.NAME_KEY])
 
         return polymer_names

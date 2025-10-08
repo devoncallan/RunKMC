@@ -80,8 +80,9 @@ public:
         auto unitIDs = registry::getAllUnitIDs();
         for (auto &id : unitIDs)
         {
-            data.unitCounts.push_back(units[id].count);
-            data.unitConversions.push_back(units[id].calculateConversion());
+            auto idx = registry::getUnitIndex(id);
+            data.unitCounts.push_back(units[idx].count);
+            data.unitConversions.push_back(units[idx].calculateConversion());
         }
 
         // Monomer conversion
