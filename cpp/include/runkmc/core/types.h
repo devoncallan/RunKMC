@@ -57,27 +57,18 @@ public:
         return false;
     }
 
-    static void checkValid(const std::string &type)
-    {
-        for (const auto &validType : validTypes)
-        {
-            if (type == validType)
-                return;
-        }
-        throw std::invalid_argument("Invalid species type: " + type);
-    }
-
     static std::string invalidTypeString(const std::string &type)
     {
-        return "Invalid species type `" + type + "`. Valid types are: " + validTypesAsString();
+        std::string validTypes = "";
+        for (const auto &validType : validTypes)
+            validTypes += validType + " ";
+        return "Invalid species type `" + type + "`. Valid types are: " + validTypes + ".";
     }
 
-    static std::string validTypesAsString()
+    static void checkValid(const std::string &type)
     {
-        std::string types = "";
-        for (const auto &type : validTypes)
-            types += type + " ";
-        return types;
+        if (!isValidType(type))
+            console::input_error(invalidTypeString(type));
     }
 
 private:

@@ -33,4 +33,6 @@ public:
     std::filesystem::path sequencesFile() const { return baseDir / "sequences.csv"; }
     std::filesystem::path metadataFile() const { return baseDir / "metadata.yaml"; }
     std::filesystem::path inputFile() const { return baseDir / "input.txt"; }
+    std::filesystem::path registryFile() const { return baseDir / "registry.yaml"; }
+    std::filesystem::path inputFileYaml() const { return baseDir / "input.yaml"; }
 };

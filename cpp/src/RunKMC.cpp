@@ -1,15 +1,16 @@
-// #include "kmc/builder.h"
 #include "kmc/builder.h"
 #include "outputs/metadata.h"
 
 int main(int argc, char **argv)
 {
     auto config = builder::parseArguments(argc, argv);
+    auto input = builder::parseKMCInput(config.inputFilepath);
 
-    auto model = builder::fromModelFile(config);
+    auto model = builder::buildModel(config, input);
 
     output::writeMetadata(model);
-    // output::
+    output::writeRegistry(model);
+    output::writeInputFile(model, input);
 
     model.run();
 

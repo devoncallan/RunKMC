@@ -22,23 +22,13 @@ public:
 
         state.kmc.NAV = speciesSet.getNAV();
 
-        console::debug("Calculated NAV: " + std::to_string(state.kmc.NAV));
-
         speciesSet.updatePolymerContainers();
-
-        console::debug("Updated polymer containers successfully.");
 
         reactionSet.updateReactionProbabilities(state.kmc.NAV);
 
-        console::debug("Updated reaction probabilities successfully.");
-
         output::writeStateHeaders(paths, config);
 
-        console::debug("Wrote state headers successfully.");
-
         state.species = speciesSet.getStateData();
-
-        console::debug("Initialized species state successfully.");
     }
 
     void run()

@@ -4,7 +4,6 @@
 
 namespace io::parse::cli
 {
-
     namespace utils
     {
         static bool validateInputFile(const std::string &filepath);

@@ -1,12 +1,6 @@
 #pragma once
-#include <yaml-cpp/yaml.h>
-#include <string>
-#include <vector>
-
 #include "common.h"
 #include "kmc/kmc.h"
-#include "utils/yaml.h"
-#include "core/C.h"
 #include "utils/string.h"
 #include "utils/parse.h"
 
@@ -21,48 +15,6 @@ namespace io::parse::text
         static bool canIgnoreLine(const std::string &line);
         static std::vector<std::string> parseSection(std::ifstream &file, const std::string_view &sectionName);
     };
-
-    struct SectionLines
-    {
-        std::vector<std::string> parameters;
-        std::vector<std::string> species;
-        std::vector<std::string> rateConstants;
-        std::vector<std::string> reactions;
-    };
-
-    static SectionLines parseFile(const std::string &filepath)
-    {
-        std::ifstream modelFile(filepath);
-        if (!modelFile.is_open())
-            console::input_error("Cannot open model file: " + filepath);
-
-        SectionLines sections;
-        std::string line;
-        while (std::getline(modelFile, line))
-        {
-            str::trim(line);
-            if (utils::canIgnoreLine(line))
-                continue;
-
-            if (sections.parameters.empty() && str::startswith(line, C::io::PARAMETERS_SECTION))
-                sections.parameters = utils::parseSection(modelFile, C::io::PARAMETERS_SECTION);
-
-            else if (sections.species.empty() && str::startswith(line, C::io::SPECIES_SECTION))
-                sections.species = utils::parseSection(modelFile, C::io::SPECIES_SECTION);
-
-            else if (sections.rateConstants.empty() && str::startswith(line, C::io::RATE_CONSTANTS_SECTION))
-                sections.rateConstants = utils::parseSection(modelFile, C::io::RATE_CONSTANTS_SECTION);
-
-            else if (sections.reactions.empty() && str::startswith(line, C::io::REACTIONS_SECTION))
-                sections.reactions = utils::parseSection(modelFile, C::io::REACTIONS_SECTION);
-        }
-
-        if (sections.parameters.empty() || sections.species.empty() ||
-            sections.rateConstants.empty() || sections.reactions.empty())
-            console::input_error("Missing required sections in model file.");
-
-        return sections;
-    }
 
     // Parameters
     static config::SimulationConfig parseSimulationConfig(const std::vector<std::string> &paramLines)
@@ -273,17 +225,44 @@ namespace io::parse::text
 
     static types::KMCInputRead parseKMCInput(const std::string &filepath)
     {
-        SectionLines sections = parseFile(filepath);
-        types::KMCInputRead input;
 
-        input.config = parseSimulationConfig(sections.parameters);
-        console::debug("Parsed simulation config successfully.");
-        input.species = parseSpecies(sections.species);
-        console::debug("Parsed species successfully.");
-        input.rateConstants = parseRateConstants(sections.rateConstants);
-        console::debug("Parsed rate constants successfully.");
-        input.reactions = parseReactions(sections.reactions);
-        console::debug("Parsed reactions successfully.");
+        std::ifstream modelFile(filepath);
+        if (!modelFile.is_open())
+            console::input_error("Cannot open model file: " + filepath);
+
+        std::vector<std::string> parameters;
+        std::vector<std::string> species;
+        std::vector<std::string> rateConstants;
+        std::vector<std::string> reactions;
+
+        std::string line;
+        while (std::getline(modelFile, line))
+        {
+            str::trim(line);
+            if (utils::canIgnoreLine(line))
+                continue;
+
+            if (parameters.empty() && str::startswith(line, C::io::PARAMETERS_SECTION))
+                parameters = utils::parseSection(modelFile, C::io::PARAMETERS_SECTION);
+
+            else if (species.empty() && str::startswith(line, C::io::SPECIES_SECTION))
+                species = utils::parseSection(modelFile, C::io::SPECIES_SECTION);
+
+            else if (rateConstants.empty() && str::startswith(line, C::io::RATE_CONSTANTS_SECTION))
+                rateConstants = utils::parseSection(modelFile, C::io::RATE_CONSTANTS_SECTION);
+
+            else if (reactions.empty() && str::startswith(line, C::io::REACTIONS_SECTION))
+                reactions = utils::parseSection(modelFile, C::io::REACTIONS_SECTION);
+        }
+
+        if (parameters.empty() || species.empty() || rateConstants.empty() || reactions.empty())
+            console::input_error("Missing required sections in model file.");
+
+        types::KMCInputRead input;
+        input.config = parseSimulationConfig(parameters);
+        input.species = parseSpecies(species);
+        input.rateConstants = parseRateConstants(rateConstants);
+        input.reactions = parseReactions(reactions);
 
         return input;
     }

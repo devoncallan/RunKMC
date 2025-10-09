@@ -50,7 +50,7 @@ namespace yaml
     static void readVar(const YAML::Node &node, const std::string_view &key, T &value, bool required = false)
     {
         auto keyStr = std::string(key);
-        if (serialization::hasKey(node, key))
+        if (hasKey(node, key))
             value = node[keyStr].as<T>();
         else if (required)
             console::input_error("Missing required key `" + std::string(key) + "` in node `" + node.Tag() + "`.");
@@ -58,6 +58,13 @@ namespace yaml
 
     template <typename T>
     static void readVarRequired(const YAML::Node &node, const std::string_view &key, T &value) { readVar(node, key, value, true); }
+
+    static YAML::Node getRequiredNode(const YAML::Node &root, const std::string_view &sectionName)
+    {
+        if (!hasKey(root, sectionName))
+            console::input_error("YAML input file is missing required section: " + std::string(sectionName) + ".");
+        return root[std::string(sectionName)];
+    }
 
     // +--------------------------
     // | Parameters - Config
@@ -325,6 +332,36 @@ namespace yaml
             node[C::io::RATE_CONSTANT_KEY] = data.rateConstantName;
             node[C::io::REACTANTS_KEY] = data.reactantNames;
             node[C::io::PRODUCTS_KEY] = data.productNames;
+            return node;
+        }
+    };
+
+    template <>
+    struct Parser<types::KMCInputRead>
+    {
+        static types::KMCInputRead read(const YAML::Node &node)
+        {
+            auto parameters = getRequiredNode(node, C::io::PARAMETERS_SECTION);
+            auto species = getRequiredNode(node, C::io::SPECIES_SECTION);
+            auto rateConstants = getRequiredNode(node, C::io::RATE_CONSTANTS_SECTION);
+            auto reactions = getRequiredNode(node, C::io::REACTIONS_SECTION);
+
+            types::KMCInputRead data;
+            data.config = Parser<config::SimulationConfig>::read(parameters);
+            data.species = Parser<types::SpeciesSetRead>::read(species);
+            data.rateConstants = Parser<std::vector<types::RateConstantRead>>::read(rateConstants);
+            data.reactions = Parser<std::vector<types::ReactionRead>>::read(reactions);
+
+            return data;
+        }
+
+        static YAML::Node write(const types::KMCInputRead &data)
+        {
+            YAML::Node node;
+            node[C::io::PARAMETERS_SECTION] = Parser<config::SimulationConfig>::write(data.config);
+            node[C::io::SPECIES_SECTION] = Parser<types::SpeciesSetRead>::write(data.species);
+            node[C::io::RATE_CONSTANTS_SECTION] = Parser<std::vector<types::RateConstantRead>>::write(data.rateConstants);
+            node[C::io::REACTIONS_SECTION] = Parser<std::vector<types::ReactionRead>>::write(data.reactions);
             return node;
         }
     };

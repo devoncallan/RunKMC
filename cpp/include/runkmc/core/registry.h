@@ -103,22 +103,26 @@ private:
 
 class RegistryBuilder
 {
-
 public:
+    size_t findSpecies(const std::string &name) const { return input::findInVector(name, registered_species); }
     bool isRegistered(const std::string &name) const
     {
-        for (const auto &species : registered_species)
-        {
-            if (species.name == name)
-                return true;
-        }
-        return false;
+        size_t index = findSpecies(name);
+        return index != SIZE_T_MAX;
+    }
+
+    types::RegisteredSpecies getSpecies(const std::string &name) const
+    {
+        size_t index = findSpecies(name);
+        if (index != SIZE_T_MAX)
+            return registered_species[index];
+        console::input_error("Species with name " + name + " is not registered.");
     }
 
     SpeciesID registerNewSpecies(const std::string &name, const std::string &type)
     {
         if (finalized)
-            throw std::runtime_error("Cannot register new species after registry has been finalized.");
+            console::error("Cannot register new species after registry has been finalized.");
 
         SpeciesType::checkValid(type);
 

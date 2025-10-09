@@ -9,38 +9,28 @@
 
 namespace builder
 {
-    static config::CommandLineConfig parseArguments(int arc, char **argv);
-    static KMC fromModelFile(const config::CommandLineConfig &config);
-    static KMC buildModel(const config::CommandLineConfig &config, const types::KMCInputRead &data);
     static SpeciesSet buildSpeciesSet(const types::SpeciesSetRead &data, const config::SimulationConfig &config);
     static std::vector<RateConstant> buildRateConstants(const std::vector<types::RateConstantRead> &data);
     static ReactionSet buildReactionSet(const std::vector<types::ReactionRead> &reactionsRead, const std::vector<types::RateConstantRead> &rateConstantsRead, SpeciesSet &speciesSet);
-};
-namespace builder
-{
 
     static config::CommandLineConfig parseArguments(int arc, char **argv)
     {
         return io::parse::cli::parseArguments(arc, argv);
     }
 
-    static KMC fromModelFile(const config::CommandLineConfig &config)
+    static types::KMCInputRead parseKMCInput(const std::string &filepath)
     {
-        using namespace io::parse::text;
-        auto data = parseKMCInput(config.inputFilepath);
-        console::debug("Parsed input file successfully.");
-        return buildModel(config, data);
+        if (str::endswith(filepath, ".yaml") || str::endswith(filepath, ".yml"))
+            return io::parse::parseKMCInputFromYaml(filepath);
+        else
+            return io::parse::text::parseKMCInput(filepath);
     }
 
     static KMC buildModel(const config::CommandLineConfig &config, const types::KMCInputRead &data)
     {
         SpeciesSet speciesSet = buildSpeciesSet(data.species, data.config);
 
-        console::debug("Built species set successfully.");
-
         ReactionSet reactionSet = buildReactionSet(data.reactions, data.rateConstants, speciesSet);
-
-        console::debug("Built reaction set successfully.");
 
         KMC kmc(speciesSet, reactionSet, config, data.config);
 
@@ -48,7 +38,9 @@ namespace builder
 
         return kmc;
     }
-
+};
+namespace builder
+{
     static SpeciesSet buildSpeciesSet(const types::SpeciesSetRead &data, const config::SimulationConfig &config)
     {
 
