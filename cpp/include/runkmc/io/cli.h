@@ -1,14 +1,11 @@
 #pragma once
 #include "common.h"
-#include "core/types.h"
 
-namespace io::parse::cli
+namespace io::cli
 {
-    namespace utils
-    {
-        static bool validateInputFile(const std::string &filepath);
-        static bool prepareOutputDir(const std::string &dirPath);
-    };
+    // Forward declarations of helper functions
+    static bool validateInputFile(const std::string &filepath);
+    static bool prepareOutputDir(const std::string &dirPath);
 
     static config::CommandLineConfig parseArguments(int argc, char **argv)
     {
@@ -41,18 +38,15 @@ namespace io::parse::cli
             }
         }
 
-        if (!utils::validateInputFile(config.inputFilepath))
+        if (!validateInputFile(config.inputFilepath))
             exit(EXIT_FAILURE);
 
-        if (!utils::prepareOutputDir(config.outputDir))
+        if (!prepareOutputDir(config.outputDir))
             exit(EXIT_FAILURE);
 
         return config;
     }
-};
 
-namespace io::parse::cli::utils
-{
     static bool validateInputFile(const std::string &filepath)
     {
         std::ifstream file(filepath);

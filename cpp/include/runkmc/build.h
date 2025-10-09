@@ -8,21 +8,22 @@
 
 namespace builder
 {
+    // Forward declarations of builder functions
     static SpeciesSet buildSpeciesSet(const types::SpeciesSetRead &data, const config::SimulationConfig &config);
     static std::vector<RateConstant> buildRateConstants(const std::vector<types::RateConstantRead> &data);
     static ReactionSet buildReactionSet(const std::vector<types::ReactionRead> &reactionsRead, const std::vector<types::RateConstantRead> &rateConstantsRead, SpeciesSet &speciesSet);
 
     static config::CommandLineConfig parseArguments(int arc, char **argv)
     {
-        return io::parse::cli::parseArguments(arc, argv);
+        return io::cli::parseArguments(arc, argv);
     }
 
-    static types::KMCInputRead parseKMCInput(const std::string &filepath)
+    static types::KMCInputRead parseModelFile(const std::string &filepath)
     {
         if (str::endswith(filepath, ".yaml") || str::endswith(filepath, ".yml"))
-            return io::parse::yaml::parseYamlModelFile(filepath);
+            return io::parseYamlModelFile(filepath);
         else if (str::endswith(filepath, ".txt"))
-            return io::parse::text::parseTextModelFile(filepath);
+            return io::parseTextModelFile(filepath);
         else
             console::input_error("Unrecognized file extension for model file: " + filepath + ".");
     }

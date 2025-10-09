@@ -1,9 +1,7 @@
 #pragma once
 #include "common.h"
-#include "kmc.h"
-#include "utils/parse.h"
 
-namespace io::parse::text
+namespace io::text
 {
     // Forward declarations of helper functions
     template <typename T>
@@ -285,7 +283,7 @@ namespace io::parse::text
     }
 };
 
-namespace io::parse::text
+namespace io
 {
     static types::KMCInputRead parseTextModelFile(const std::string &filepath)
     {

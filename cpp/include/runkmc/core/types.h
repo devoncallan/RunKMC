@@ -1,6 +1,4 @@
 #pragma once
-#include <string>
-#include <vector>
 
 #include "utils/console.h"
 #include "C.h"
@@ -50,9 +48,9 @@ public:
 
     static bool isValidType(const std::string &type)
     {
-        for (const auto &validType : validTypes)
+        for (const auto &_validType : _validTypes)
         {
-            if (type == validType)
+            if (type == _validType)
                 return true;
         }
         return false;
@@ -60,10 +58,10 @@ public:
 
     static std::string invalidTypeString(const std::string &type)
     {
-        std::string validTypes = "";
-        for (const auto &validType : validTypes)
-            validTypes += validType + " ";
-        return "Invalid species type `" + type + "`. Valid types are: " + validTypes + ".";
+        std::string validTypesStr = "";
+        for (const auto &_validType : _validTypes)
+            validTypesStr += _validType + " ";
+        return "Invalid species type `" + type + "`. Valid types are: " + validTypesStr + ".";
     }
 
     static void checkValid(const std::string &type)
@@ -75,7 +73,7 @@ public:
 private:
     SpeciesType() = delete;
     ~SpeciesType() = delete;
-    static inline const std::vector<std::string> validTypes = {UNIT, MONOMER, INITIATOR, POLYMER, UNDEFINED, LABEL};
+    static inline const std::vector<std::string> _validTypes = {UNIT, MONOMER, INITIATOR, POLYMER, UNDEFINED, LABEL};
 };
 
 enum PolymerState

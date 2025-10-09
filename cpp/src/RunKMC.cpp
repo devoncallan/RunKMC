@@ -4,8 +4,7 @@
 int main(int argc, char **argv)
 {
     auto config = builder::parseArguments(argc, argv);
-    auto input = builder::parseKMCInput(config.inputFilepath);
-
+    auto input = builder::parseModelFile(config.inputFilepath);
     auto model = builder::buildModel(config, input);
 
     output::writeMetadata(model);

@@ -12,6 +12,7 @@
 
 #include "utils/console.h"
 #include "utils/random.h"
+#include "utils/parse.h"
 
 #include "core/types.h"
 #include "core/registry.h"

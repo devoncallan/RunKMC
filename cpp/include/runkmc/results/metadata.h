@@ -6,7 +6,7 @@
 
 namespace output
 {
-    using namespace io::parse;
+    using namespace io;
 
     void writeRegistry(const KMC &model)
     {
