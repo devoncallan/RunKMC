@@ -1,5 +1,5 @@
-#include "kmc/builder.h"
-#include "outputs/metadata.h"
+#include "build.h"
+#include "results/metadata.h"
 
 int main(int argc, char **argv)
 {

@@ -1,11 +1,10 @@
 #pragma once
 
 #include "common.h"
+#include "kmc.h"
 #include "io/text.h"
 #include "io/yaml.h"
 #include "io/cli.h"
-#include "utils/parse.h"
-#include "kmc/kmc.h"
 
 namespace builder
 {
@@ -21,9 +20,11 @@ namespace builder
     static types::KMCInputRead parseKMCInput(const std::string &filepath)
     {
         if (str::endswith(filepath, ".yaml") || str::endswith(filepath, ".yml"))
-            return io::parse::parseKMCInputFromYaml(filepath);
+            return io::parse::yaml::parseYamlModelFile(filepath);
+        else if (str::endswith(filepath, ".txt"))
+            return io::parse::text::parseTextModelFile(filepath);
         else
-            return io::parse::text::parseKMCInput(filepath);
+            console::input_error("Unrecognized file extension for model file: " + filepath + ".");
     }
 
     static KMC buildModel(const config::CommandLineConfig &config, const types::KMCInputRead &data)

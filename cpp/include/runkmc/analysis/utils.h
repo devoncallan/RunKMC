@@ -32,7 +32,7 @@ namespace analysis
             SpeciesID id = sequence[i];
 
             // Skip non-monomer units
-            if (!registry::isMonomer(id)) 
+            if (!registry::isMonomer(id))
                 continue;
 
             if (id == currentMonomerID)

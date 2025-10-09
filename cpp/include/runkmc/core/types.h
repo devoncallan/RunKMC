@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 
+#include "utils/console.h"
 #include "C.h"
 
 static const size_t NUM_BUCKETS = 30;

@@ -11,7 +11,6 @@
 #include <sstream>
 #include <iterator>
 
-#include "utils/string.h"
 #include "utils/console.h"
 
 namespace str

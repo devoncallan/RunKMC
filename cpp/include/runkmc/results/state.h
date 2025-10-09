@@ -1,8 +1,8 @@
 #pragma once
 #include "common.h"
-#include "kmc/state.h"
+#include "core/state.h"
 #include "analysis/types.h"
-#include "outputs/paths.h"
+#include "results/paths.h"
 
 namespace output
 {

@@ -2,10 +2,10 @@
 #include "common.h"
 #include "reactions/reaction_set.h"
 #include "species/species_set.h"
-#include "kmc/state.h"
+#include "core/state.h"
 #include "analysis/analysis.h"
-#include "outputs/state.h"
-#include "outputs/polymers.h"
+#include "results/state.h"
+#include "results/polymers.h"
 
 /**
  * @brief Kinetic Monte Carlo simulation class

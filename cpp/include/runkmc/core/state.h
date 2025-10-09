@@ -1,5 +1,6 @@
 #pragma once
 #include "common.h"
+#include "analysis/types.h"
 struct KMCState
 {
     uint64_t iteration = 0;

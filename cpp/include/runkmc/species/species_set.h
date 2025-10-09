@@ -1,7 +1,7 @@
 #pragma once
 #include "common.h"
 #include "species/polymer_type.h"
-#include "kmc/state.h"
+#include "core/state.h"
 
 class SpeciesSet
 {

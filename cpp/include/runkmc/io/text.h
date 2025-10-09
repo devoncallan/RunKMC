@@ -1,28 +1,25 @@
 #pragma once
 #include "common.h"
-#include "kmc/kmc.h"
-#include "utils/string.h"
+#include "kmc.h"
 #include "utils/parse.h"
 
 namespace io::parse::text
 {
-    namespace utils
-    {
-        template <typename T>
-        static void readVar(const std::vector<std::string> &vars, const std::string_view &key, T &value, bool required = false);
-        template <typename T>
-        static types::Variable<T> parseVariable(const std::string &s);
-        static bool canIgnoreLine(const std::string &line);
-        static std::vector<std::string> parseSection(std::ifstream &file, const std::string_view &sectionName);
-    };
+    // Forward declarations of helper functions
+    template <typename T>
+    static void readVar(const std::vector<std::string> &vars, const std::string_view &key, T &value, bool required = false);
+    template <typename T>
+    static types::Variable<T> parseVariable(const std::string &s);
+    static bool canIgnoreLine(const std::string &line);
+    static std::vector<std::string> parseSection(std::ifstream &file, const std::string_view &sectionName);
 
     // Parameters
     static config::SimulationConfig parseSimulationConfig(const std::vector<std::string> &paramLines)
     {
         config::SimulationConfig config;
-        utils::readVar(paramLines, C::io::NUM_UNITS_KEY, config.numParticles, true);
-        utils::readVar(paramLines, C::io::TERMINATION_TIME_KEY, config.terminationTime, true);
-        utils::readVar(paramLines, C::io::ANALYSIS_TIME_KEY, config.analysisTime, true);
+        readVar(paramLines, C::io::NUM_UNITS_KEY, config.numParticles, true);
+        readVar(paramLines, C::io::TERMINATION_TIME_KEY, config.terminationTime, true);
+        readVar(paramLines, C::io::ANALYSIS_TIME_KEY, config.analysisTime, true);
         return config;
         // + more when I think of them
     }
@@ -53,13 +50,13 @@ namespace io::parse::text
 
         std::vector<std::string> vars = {args.begin() + 2, args.end()};
 
-        utils::readVar(vars, C::io::C0_KEY, unit.C0);
-        utils::readVar(vars, C::io::FW_KEY, unit.FW);
+        readVar(vars, C::io::C0_KEY, unit.C0);
+        readVar(vars, C::io::FW_KEY, unit.FW);
 
         if (unit.type == SpeciesType::INITIATOR)
-            utils::readVar(vars, C::io::EFFICIENCY_KEY, unit.efficiency, true); // required for initiators
+            readVar(vars, C::io::EFFICIENCY_KEY, unit.efficiency, true); // required for initiators
         else
-            utils::readVar(vars, C::io::EFFICIENCY_KEY, unit.efficiency);
+            readVar(vars, C::io::EFFICIENCY_KEY, unit.efficiency);
 
         return unit;
     }
@@ -167,7 +164,7 @@ namespace io::parse::text
         for (const auto &line : lines)
         {
             types::RateConstantRead rateConstant;
-            auto var = utils::parseVariable<double>(line);
+            auto var = parseVariable<double>(line);
             rateConstant.name = var.name;
             rateConstant.k = var.value;
             rateConstants.push_back(rateConstant);
@@ -223,53 +220,8 @@ namespace io::parse::text
         return reactions;
     }
 
-    static types::KMCInputRead parseKMCInput(const std::string &filepath)
-    {
+    // ===== Helper functions =====
 
-        std::ifstream modelFile(filepath);
-        if (!modelFile.is_open())
-            console::input_error("Cannot open model file: " + filepath);
-
-        std::vector<std::string> parameters;
-        std::vector<std::string> species;
-        std::vector<std::string> rateConstants;
-        std::vector<std::string> reactions;
-
-        std::string line;
-        while (std::getline(modelFile, line))
-        {
-            str::trim(line);
-            if (utils::canIgnoreLine(line))
-                continue;
-
-            if (parameters.empty() && str::startswith(line, C::io::PARAMETERS_SECTION))
-                parameters = utils::parseSection(modelFile, C::io::PARAMETERS_SECTION);
-
-            else if (species.empty() && str::startswith(line, C::io::SPECIES_SECTION))
-                species = utils::parseSection(modelFile, C::io::SPECIES_SECTION);
-
-            else if (rateConstants.empty() && str::startswith(line, C::io::RATE_CONSTANTS_SECTION))
-                rateConstants = utils::parseSection(modelFile, C::io::RATE_CONSTANTS_SECTION);
-
-            else if (reactions.empty() && str::startswith(line, C::io::REACTIONS_SECTION))
-                reactions = utils::parseSection(modelFile, C::io::REACTIONS_SECTION);
-        }
-
-        if (parameters.empty() || species.empty() || rateConstants.empty() || reactions.empty())
-            console::input_error("Missing required sections in model file.");
-
-        types::KMCInputRead input;
-        input.config = parseSimulationConfig(parameters);
-        input.species = parseSpecies(species);
-        input.rateConstants = parseRateConstants(rateConstants);
-        input.reactions = parseReactions(reactions);
-
-        return input;
-    }
-};
-
-namespace io::parse::text::utils
-{
     template <typename T>
     static void readVar(const std::vector<std::string> &vars, const std::string_view &key, T &value, bool required)
     {
@@ -332,3 +284,48 @@ namespace io::parse::text::utils
         return section;
     }
 };
+
+namespace io::parse::text
+{
+    static types::KMCInputRead parseTextModelFile(const std::string &filepath)
+    {
+        std::ifstream modelFile(filepath);
+        if (!modelFile.is_open())
+            console::input_error("Cannot open model file: " + filepath);
+
+        std::vector<std::string> parameters;
+        std::vector<std::string> species;
+        std::vector<std::string> rateConstants;
+        std::vector<std::string> reactions;
+
+        std::string line;
+        while (std::getline(modelFile, line))
+        {
+            str::trim(line);
+            if (text::canIgnoreLine(line))
+                continue;
+
+            if (parameters.empty() && str::startswith(line, C::io::PARAMETERS_SECTION))
+                parameters = text::parseSection(modelFile, C::io::PARAMETERS_SECTION);
+
+            else if (species.empty() && str::startswith(line, C::io::SPECIES_SECTION))
+                species = text::parseSection(modelFile, C::io::SPECIES_SECTION);
+
+            else if (rateConstants.empty() && str::startswith(line, C::io::RATE_CONSTANTS_SECTION))
+                rateConstants = text::parseSection(modelFile, C::io::RATE_CONSTANTS_SECTION);
+
+            else if (reactions.empty() && str::startswith(line, C::io::REACTIONS_SECTION))
+                reactions = text::parseSection(modelFile, C::io::REACTIONS_SECTION);
+        }
+
+        if (parameters.empty() || species.empty() || rateConstants.empty() || reactions.empty())
+            console::input_error("Missing required sections in model file.");
+
+        types::KMCInputRead input;
+        input.config = text::parseSimulationConfig(parameters);
+        input.species = text::parseSpecies(species);
+        input.rateConstants = text::parseRateConstants(rateConstants);
+        input.reactions = text::parseReactions(reactions);
+        return input;
+    }
+}

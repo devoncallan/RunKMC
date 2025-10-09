@@ -1,11 +1,11 @@
 #pragma once
 #include <yaml-cpp/yaml.h>
 
-#include "types.h"
-#include "C.h"
+#include "core/types.h"
+#include "core/C.h"
 #include "utils/console.h"
 
-namespace yaml
+namespace io::parse::yaml
 {
     template <typename T>
     struct Parser
@@ -366,3 +366,13 @@ namespace yaml
         }
     };
 };
+
+namespace io::parse::yaml
+{
+    static types::KMCInputRead parseYamlModelFile(const std::string &filepath)
+    {
+        YAML::Node root = YAML::LoadFile(filepath);
+        types::KMCInputRead input = io::parse::yaml::Parser<types::KMCInputRead>::read(root);
+        return input;
+    }
+}

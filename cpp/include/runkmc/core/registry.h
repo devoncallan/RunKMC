@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 
+#include "utils/parse.h"
 #include "utils/console.h"
 #include "types.h"
 

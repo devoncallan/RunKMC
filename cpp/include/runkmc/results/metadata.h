@@ -2,10 +2,12 @@
 #include <yaml-cpp/yaml.h>
 
 #include "common.h"
-#include "kmc/kmc.h"
+#include "kmc.h"
 
 namespace output
 {
+    using namespace io::parse;
+
     void writeRegistry(const KMC &model)
     {
 
