@@ -1,7 +1,7 @@
 #pragma once
 #include "common.h"
-#include "core/state.h"
-#include "analysis/types.h"
+#include "kmc/state.h"
+#include "kmc/analysis/types.h"
 #include "results/paths.h"
 
 namespace output
@@ -90,7 +90,7 @@ namespace output
         const SequenceState &sequenceState;
     };
 
-    void writeStateHeaders(const SimulationPaths &paths, const config::CommandLineConfig &config)
+    void writeStateHeaders(const SimulationPaths &paths, const io::types::CommandLineConfig &config)
     {
 
         console::debug("Preparing to write state headers to " + paths.resultsFile().string());
@@ -112,7 +112,7 @@ namespace output
         console::debug("Finished writing sequence headers.");
     }
 
-    void writeState(const SystemState &state, const SimulationPaths &paths, const config::CommandLineConfig &config)
+    void writeState(const SystemState &state, const SimulationPaths &paths, const io::types::CommandLineConfig &config)
     {
         auto resultsFile = std::ofstream(paths.resultsFile(), std::ios::app);
         ResultsWriter writer(state.kmc, state.species, state.analysis);

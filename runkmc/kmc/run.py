@@ -1,22 +1,39 @@
 from typing import Optional
 from pathlib import Path
+from dataclasses import dataclass
+from typing import Dict, Any
 
 from uuid import uuid4
 
-from .config import SimulationConfig
 from .execution import execute_simulation
 from runkmc.results import SimulationResult
 from runkmc.models import create_input_file
 
 
+@dataclass
+class SimulationConfig:
+
+    model_name: str
+    kmc_inputs: Dict[str, Any]
+    report_polymers: bool = False
+    report_sequences: bool = False
+
+
+@dataclass
+class KMCConfig:
+
+    num_units: int
+    termination_time: float
+    analysis_time: float
+
+
 class RunKMC:
 
     def __init__(self, base_dir: Path | str, compile: bool = False):
-        self.base_dir = Path(base_dir)
-        self.base_dir.mkdir(parents=True, exist_ok=True)
-
         from .build import ensure_binary_exists
 
+        self.base_dir = Path(base_dir)
+        self.base_dir.mkdir(parents=True, exist_ok=True)
         ensure_binary_exists(force_rebuild=compile)
 
     def run_from_config(

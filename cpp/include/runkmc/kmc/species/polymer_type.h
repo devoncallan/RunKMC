@@ -1,7 +1,7 @@
 #pragma once
 #include "common.h"
 #include "polymer.h"
-#include "analysis/types.h"
+#include "kmc/analysis/types.h"
 
 /**
  * @brief Stores pointers to polymer objects of a specific type.

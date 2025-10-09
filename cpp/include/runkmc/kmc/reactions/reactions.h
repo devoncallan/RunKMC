@@ -1,7 +1,7 @@
 #pragma once
 #include "common.h"
-#include "species/polymer_type.h"
-#include "reactions/utils.h"
+#include "kmc/species/polymer_type.h"
+#include "kmc/reactions/utils.h"
 
 struct RateConstant
 {

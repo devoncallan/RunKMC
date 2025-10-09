@@ -3,9 +3,9 @@
 
 int main(int argc, char **argv)
 {
-    auto config = builder::parseArguments(argc, argv);
-    auto input = builder::parseModelFile(config.inputFilepath);
-    auto model = builder::buildModel(config, input);
+    auto config = build::parseArguments(argc, argv);
+    auto input = build::parseModelFile(config.inputFilepath);
+    auto model = build::buildModel(config, input);
 
     output::writeMetadata(model);
     output::writeRegistry(model);

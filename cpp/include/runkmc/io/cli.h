@@ -1,5 +1,6 @@
 #pragma once
 #include "common.h"
+#include "io/types.h"
 
 namespace io::cli
 {
@@ -7,7 +8,7 @@ namespace io::cli
     static bool validateInputFile(const std::string &filepath);
     static bool prepareOutputDir(const std::string &dirPath);
 
-    static config::CommandLineConfig parseArguments(int argc, char **argv)
+    static types::CommandLineConfig parseArguments(int argc, char **argv)
     {
         if (argc < 3)
         {
@@ -18,7 +19,7 @@ namespace io::cli
             exit(EXIT_FAILURE);
         }
 
-        config::CommandLineConfig config;
+        types::CommandLineConfig config;
         config.inputFilepath = argv[1];
         config.outputDir = argv[2];
 

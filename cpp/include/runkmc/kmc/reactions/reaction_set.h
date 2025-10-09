@@ -1,7 +1,7 @@
 #pragma once
 #include "common.h"
-#include "reactions/reactions.h"
-#include "reactions/utils.h"
+#include "kmc/reactions/reactions.h"
+#include "kmc/reactions/utils.h"
 
 /**
  * @brief Stores set of all reactions and can calculate cumulative properties such as

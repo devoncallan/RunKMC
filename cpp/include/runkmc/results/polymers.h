@@ -1,6 +1,6 @@
 #pragma once
 #include "common.h"
-#include "species/species_set.h"
+#include "kmc/species/species_set.h"
 #include "results/paths.h"
 
 namespace output

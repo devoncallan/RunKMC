@@ -1,9 +1,9 @@
 #pragma once
 #include "common.h"
-#include "reactions/reaction_set.h"
-#include "species/species_set.h"
-#include "core/state.h"
-#include "analysis/analysis.h"
+#include "kmc/state.h"
+#include "kmc/reactions/reaction_set.h"
+#include "kmc/species/species_set.h"
+#include "kmc/analysis/analysis.h"
 #include "results/state.h"
 #include "results/polymers.h"
 
@@ -14,7 +14,7 @@
 class KMC
 {
 public:
-    KMC(SpeciesSet &species, ReactionSet &reactions, config::CommandLineConfig config_, config::SimulationConfig options_)
+    KMC(SpeciesSet &species, ReactionSet &reactions, io::types::CommandLineConfig config_, io::types::SimulationConfig options_)
         : speciesSet(std::move(species)), reactionSet(std::move(reactions)), config(config_), options(options_)
     {
         paths = SimulationPaths(config.outputDir, config_);
@@ -69,8 +69,8 @@ public:
             output::writePolymers(paths, speciesSet);
     }
 
-    const config::CommandLineConfig &getConfig() const { return config; };
-    const config::SimulationConfig &getOptions() const { return options; };
+    const io::types::CommandLineConfig &getConfig() const { return config; };
+    const io::types::SimulationConfig &getOptions() const { return options; };
     const SimulationPaths &getPaths() const { return paths; };
     const SystemState &getState() const { return state; };
     const SpeciesSet &getSpeciesSet() const { return speciesSet; };
@@ -128,8 +128,8 @@ private:
     }
 
     // Simulation inputs
-    config::CommandLineConfig config;
-    config::SimulationConfig options;
+    io::types::CommandLineConfig config;
+    io::types::SimulationConfig options;
 
     // Managing outputs
     SimulationPaths paths;

@@ -1,6 +1,6 @@
 #pragma once
 #include "common.h"
-
+#include "io/types.h"
 namespace io::text
 {
     // Forward declarations of helper functions
@@ -12,9 +12,9 @@ namespace io::text
     static std::vector<std::string> parseSection(std::ifstream &file, const std::string_view &sectionName);
 
     // Parameters
-    static config::SimulationConfig parseSimulationConfig(const std::vector<std::string> &paramLines)
+    static types::SimulationConfig parseSimulationConfig(const std::vector<std::string> &paramLines)
     {
-        config::SimulationConfig config;
+        types::SimulationConfig config;
         readVar(paramLines, C::io::NUM_UNITS_KEY, config.numParticles, true);
         readVar(paramLines, C::io::TERMINATION_TIME_KEY, config.terminationTime, true);
         readVar(paramLines, C::io::ANALYSIS_TIME_KEY, config.analysisTime, true);

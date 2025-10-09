@@ -2,6 +2,7 @@
 #include <yaml-cpp/yaml.h>
 
 #include "common.h"
+#include "io/types.h"
 namespace io::yaml
 {
     template <typename T>
@@ -67,18 +68,18 @@ namespace io::yaml
     // | Parameters - Config
     // +--------------------------
     template <>
-    struct Parser<config::SimulationConfig>
+    struct Parser<types::SimulationConfig>
     {
-        static config::SimulationConfig read(const YAML::Node &node)
+        static types::SimulationConfig read(const YAML::Node &node)
         {
-            config::SimulationConfig data;
+            types::SimulationConfig data;
             readVarRequired(node, C::io::NUM_UNITS_KEY, data.numParticles);
             readVarRequired(node, C::io::TERMINATION_TIME_KEY, data.terminationTime);
             readVarRequired(node, C::io::ANALYSIS_TIME_KEY, data.analysisTime);
             return data;
         }
 
-        static YAML::Node write(const config::SimulationConfig &data)
+        static YAML::Node write(const types::SimulationConfig &data)
         {
             YAML::Node node;
             node[C::io::NUM_UNITS_KEY] = data.numParticles;
@@ -344,7 +345,7 @@ namespace io::yaml
             auto reactions = getRequiredNode(node, C::io::REACTIONS_SECTION);
 
             types::KMCInputRead data;
-            data.config = Parser<config::SimulationConfig>::read(parameters);
+            data.config = Parser<types::SimulationConfig>::read(parameters);
             data.species = Parser<types::SpeciesSetRead>::read(species);
             data.rateConstants = Parser<std::vector<types::RateConstantRead>>::read(rateConstants);
             data.reactions = Parser<std::vector<types::ReactionRead>>::read(reactions);
@@ -355,7 +356,7 @@ namespace io::yaml
         static YAML::Node write(const types::KMCInputRead &data)
         {
             YAML::Node node;
-            node[C::io::PARAMETERS_SECTION] = Parser<config::SimulationConfig>::write(data.config);
+            node[C::io::PARAMETERS_SECTION] = Parser<types::SimulationConfig>::write(data.config);
             node[C::io::SPECIES_SECTION] = Parser<types::SpeciesSetRead>::write(data.species);
             node[C::io::RATE_CONSTANTS_SECTION] = Parser<std::vector<types::RateConstantRead>>::write(data.rateConstants);
             node[C::io::REACTIONS_SECTION] = Parser<std::vector<types::ReactionRead>>::write(data.reactions);

@@ -1,6 +1,6 @@
 #pragma once
 #include "common.h"
-#include "analysis/types.h"
+#include "kmc/analysis/types.h"
 
 namespace analysis
 {

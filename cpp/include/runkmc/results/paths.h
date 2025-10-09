@@ -2,6 +2,7 @@
 #include <filesystem>
 
 #include "common.h"
+#include "io/types.h"
 
 class SimulationPaths
 {
@@ -10,7 +11,7 @@ class SimulationPaths
 public:
     SimulationPaths() = default;
 
-    SimulationPaths(const std::string &dir, const config::CommandLineConfig &config) : baseDir(dir)
+    SimulationPaths(const std::string &dir, const io::types::CommandLineConfig &config) : baseDir(dir)
     {
         if (!std::filesystem::exists(baseDir))
             std::filesystem::create_directories(baseDir);

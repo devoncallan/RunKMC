@@ -1,8 +1,8 @@
 #pragma once
 #include "common.h"
-#include "core/state.h"
-#include "analysis/utils.h"
-#include "species/species_set.h"
+#include "kmc/state.h"
+#include "kmc/analysis/utils.h"
+#include "kmc/species/species_set.h"
 
 namespace analysis
 {

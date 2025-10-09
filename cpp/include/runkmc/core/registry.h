@@ -5,6 +5,7 @@
 #include "utils/parse.h"
 #include "utils/console.h"
 #include "types.h"
+#include "io/types.h"
 
 /**
  * @brief Immutable, optimized, cached lookups for species information.
@@ -17,9 +18,9 @@ public:
     ~Registry() = default;
 
     // Helper functions
-    const std::vector<types::RegisteredSpecies> &getAllSpecies() const { return _species; }
-    const types::RegisteredSpecies &getSpecies(const SpeciesID &id) const { return _idToSpecies.at(id); }
-    const types::RegisteredSpecies &getSpecies(const std::string &name) const { return _nameToSpecies.at(name); }
+    const std::vector<io::types::RegisteredSpecies> &getAllSpecies() const { return _species; }
+    const io::types::RegisteredSpecies &getSpecies(const SpeciesID &id) const { return _idToSpecies.at(id); }
+    const io::types::RegisteredSpecies &getSpecies(const std::string &name) const { return _nameToSpecies.at(name); }
 
     // Unit helper functions
     const std::vector<SpeciesID> &getAllUnitIDs() const { return _allUnitIDs; }
@@ -41,7 +42,7 @@ private:
     friend class RegistryBuilder;
 
     Registry(
-        const std::vector<types::RegisteredSpecies> &species)
+        const std::vector<io::types::RegisteredSpecies> &species)
     {
         _species = species; // in order of registration
         for (const auto &s : _species)
@@ -77,10 +78,10 @@ private:
     };
 
     // All species
-    std::vector<types::RegisteredSpecies> _species;
+    std::vector<io::types::RegisteredSpecies> _species;
 
-    std::unordered_map<std::string, types::RegisteredSpecies> _nameToSpecies;
-    std::unordered_map<SpeciesID, types::RegisteredSpecies> _idToSpecies;
+    std::unordered_map<std::string, io::types::RegisteredSpecies> _nameToSpecies;
+    std::unordered_map<SpeciesID, io::types::RegisteredSpecies> _idToSpecies;
     std::unordered_map<std::string, std::vector<std::string>> _typeToNames;
 
     // Unit data (cached)
@@ -112,7 +113,7 @@ public:
         return index != SIZE_T_MAX;
     }
 
-    types::RegisteredSpecies getSpecies(const std::string &name) const
+    io::types::RegisteredSpecies getSpecies(const std::string &name) const
     {
         size_t index = findSpecies(name);
         if (index != SIZE_T_MAX)
@@ -153,7 +154,7 @@ public:
 
 private:
     bool finalized = false;
-    std::vector<types::RegisteredSpecies> registered_species;
+    std::vector<io::types::RegisteredSpecies> registered_species;
 };
 
 namespace registry
@@ -165,9 +166,9 @@ namespace registry
     static void initialize() { _instance = builder.build(); }
 
     // Helper functions
-    static inline const std::vector<types::RegisteredSpecies> &getAllSpecies() { return _instance.getAllSpecies(); }
-    static inline const types::RegisteredSpecies &getSpecies(const SpeciesID &id) { return _instance.getSpecies(id); }
-    static inline const types::RegisteredSpecies &getSpecies(const std::string &name) { return _instance.getSpecies(name); }
+    static inline const std::vector<io::types::RegisteredSpecies> &getAllSpecies() { return _instance.getAllSpecies(); }
+    static inline const io::types::RegisteredSpecies &getSpecies(const SpeciesID &id) { return _instance.getSpecies(id); }
+    static inline const io::types::RegisteredSpecies &getSpecies(const std::string &name) { return _instance.getSpecies(name); }
 
     // Unit helpers
     static inline std::vector<SpeciesID> getAllUnitIDs() { return _instance.getAllUnitIDs(); }

@@ -1,4 +1,3 @@
-from .config import SimulationConfig, KMCConfig
-from .run import RunKMC
+from .run import SimulationConfig, KMCConfig, RunKMC
 
 __all__ = ["SimulationConfig", "KMCConfig", "RunKMC"]

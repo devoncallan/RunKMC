@@ -1,6 +1,6 @@
 #pragma once
 #include "common.h"
-#include "species/polymer_type.h"
+#include "kmc/species/polymer_type.h"
 
 namespace rxn_print
 {

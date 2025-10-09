@@ -1,24 +1,24 @@
 #pragma once
 
 #include "common.h"
-#include "kmc.h"
 #include "io/text.h"
 #include "io/yaml.h"
 #include "io/cli.h"
+#include "kmc/kmc.h"
 
-namespace builder
+namespace build
 {
     // Forward declarations of builder functions
-    static SpeciesSet buildSpeciesSet(const types::SpeciesSetRead &data, const config::SimulationConfig &config);
-    static std::vector<RateConstant> buildRateConstants(const std::vector<types::RateConstantRead> &data);
-    static ReactionSet buildReactionSet(const std::vector<types::ReactionRead> &reactionsRead, const std::vector<types::RateConstantRead> &rateConstantsRead, SpeciesSet &speciesSet);
+    static SpeciesSet buildSpeciesSet(const io::types::SpeciesSetRead &data, const io::types::SimulationConfig &config);
+    static std::vector<RateConstant> buildRateConstants(const std::vector<io::types::RateConstantRead> &data);
+    static ReactionSet buildReactionSet(const std::vector<io::types::ReactionRead> &reactionsRead, const std::vector<io::types::RateConstantRead> &rateConstantsRead, SpeciesSet &speciesSet);
 
-    static config::CommandLineConfig parseArguments(int arc, char **argv)
+    static io::types::CommandLineConfig parseArguments(int arc, char **argv)
     {
         return io::cli::parseArguments(arc, argv);
     }
 
-    static types::KMCInputRead parseModelFile(const std::string &filepath)
+    static io::types::KMCInputRead parseModelFile(const std::string &filepath)
     {
         if (str::endswith(filepath, ".yaml") || str::endswith(filepath, ".yml"))
             return io::parseYamlModelFile(filepath);
@@ -28,7 +28,7 @@ namespace builder
             console::input_error("Unrecognized file extension for model file: " + filepath + ".");
     }
 
-    static KMC buildModel(const config::CommandLineConfig &config, const types::KMCInputRead &data)
+    static KMC buildModel(const io::types::CommandLineConfig &config, const io::types::KMCInputRead &data)
     {
         SpeciesSet speciesSet = buildSpeciesSet(data.species, data.config);
 
@@ -41,16 +41,16 @@ namespace builder
         return kmc;
     }
 };
-namespace builder
+namespace build
 {
-    static SpeciesSet buildSpeciesSet(const types::SpeciesSetRead &data, const config::SimulationConfig &config)
+    static SpeciesSet buildSpeciesSet(const io::types::SpeciesSetRead &data, const io::types::SimulationConfig &config)
     {
 
-        std::vector<types::UnitRead> unitsRead = data.units;
+        std::vector<io::types::UnitRead> unitsRead = data.units;
         std::stable_sort(
             unitsRead.begin(),
             unitsRead.end(),
-            [](const types::UnitRead &a, const types::UnitRead &b)
+            [](const io::types::UnitRead &a, const io::types::UnitRead &b)
             {
             auto priority = [](const std::string &type) {
                 if (type == SpeciesType::MONOMER) return 0;
@@ -129,7 +129,7 @@ namespace builder
         return speciesSet;
     }
 
-    static std::vector<RateConstant> buildRateConstants(const std::vector<types::RateConstantRead> &data)
+    static std::vector<RateConstant> buildRateConstants(const std::vector<io::types::RateConstantRead> &data)
     {
         std::vector<RateConstant> rateConstants;
         rateConstants.reserve(data.size());
@@ -142,7 +142,7 @@ namespace builder
         return rateConstants;
     }
 
-    static ReactionSet buildReactionSet(const std::vector<types::ReactionRead> &reactionsRead, const std::vector<types::RateConstantRead> &rateConstantsRead, SpeciesSet &speciesSet)
+    static ReactionSet buildReactionSet(const std::vector<io::types::ReactionRead> &reactionsRead, const std::vector<io::types::RateConstantRead> &rateConstantsRead, SpeciesSet &speciesSet)
     {
         std::vector<Reaction *> reactions;
 
