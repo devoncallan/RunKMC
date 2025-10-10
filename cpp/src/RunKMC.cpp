@@ -7,9 +7,12 @@ int main(int argc, char **argv)
     auto input = build::parseModelFile(config.inputFilepath);
     auto model = build::buildModel(config, input);
 
-    output::writeMetadata(model);
-    output::writeRegistry(model);
     output::writeInputFile(model, input);
+    output::writeRegistry(model);
+    output::writeMetadata(model);
+
+    if (config.parseOnly)
+        return EXIT_SUCCESS;
 
     model.run();
 

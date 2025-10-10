@@ -67,3 +67,11 @@ class state:
     MONCOUNT_PREFIX = "MonCount_"
     SEQCOUNT_PREFIX = "SeqCount_"
     SEQLEN2_PREFIX = "SeqLen2_"
+
+class paths:
+    
+    INPUT_FILE = "input.txt"
+    RESULTS_FILE = "results.csv"
+    SEQUENCES_FILE = "sequences.csv"
+    POLYMERS_FILE = "polymers.dat"
+    METADATA_FILE = "metadata.yaml"

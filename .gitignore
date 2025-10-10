@@ -21,3 +21,5 @@ cpp/include/eigen-3.4.0/**
 **/bin
 **/build
 **output_dir/
+profiling/**
+CLAUDE.md

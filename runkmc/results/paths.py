@@ -1,4 +1,5 @@
 from pathlib import Path
+from runkmc.core import C
 
 
 # Should mirror c++ implementation

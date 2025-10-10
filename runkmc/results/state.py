@@ -36,9 +36,9 @@ class StateData:
     wAvgMW: NDArray[np.float64]
     dispMW: NDArray[np.float64]
 
-    nAvgSL: Dict[str, NDArray[np.float64]]
-    wAvgSL: Dict[str, NDArray[np.float64]]
-    dispSL: Dict[str, NDArray[np.float64]]
+    nAvgSL: Dict[str, NDArray[np.float64]] | None
+    wAvgSL: Dict[str, NDArray[np.float64]] | None
+    dispSL: Dict[str, NDArray[np.float64]] | None
 
     _raw_data: pd.DataFrame
 
@@ -50,6 +50,8 @@ class StateData:
         unit_names = metadata.get_unit_names()
         monomer_names = metadata.get_monomer_names()
         polymer_names = metadata.get_polymer_names()
+
+        no_sequence = len(monomer_names) <= 1
 
         return StateData(
             iteration=df[C.state.ITERATION_KEY].to_numpy(np.uint64),
@@ -79,18 +81,30 @@ class StateData:
             nAvgMW=df[C.state.NAVGMW_KEY].to_numpy(np.float64),
             wAvgMW=df[C.state.WAVGMW_KEY].to_numpy(np.float64),
             dispMW=df[C.state.DISPMW_KEY].to_numpy(np.float64),
-            nAvgSL={
-                name: df[C.state.NAVGSL_PREFIX + name].to_numpy(np.float64)
-                for name in monomer_names
-            },
-            wAvgSL={
-                name: df[C.state.WAVGSL_PREFIX + name].to_numpy(np.float64)
-                for name in monomer_names
-            },
-            dispSL={
-                name: df[C.state.DISP_SL_PREFIX + name].to_numpy(np.float64)
-                for name in monomer_names
-            },
+            nAvgSL=(
+                {
+                    name: df[C.state.NAVGSL_PREFIX + name].to_numpy(np.float64)
+                    for name in monomer_names
+                }
+                if not no_sequence
+                else None
+            ),
+            wAvgSL=(
+                {
+                    name: df[C.state.WAVGSL_PREFIX + name].to_numpy(np.float64)
+                    for name in monomer_names
+                }
+                if not no_sequence
+                else None
+            ),
+            dispSL=(
+                {
+                    name: df[C.state.DISP_SL_PREFIX + name].to_numpy(np.float64)
+                    for name in monomer_names
+                }
+                if not no_sequence
+                else None
+            ),
             _raw_data=df,
         )
 
@@ -142,11 +156,12 @@ class SequenceData:
     @staticmethod
     def from_csv(filepath: Path | str, metadata: Metadata) -> SequenceData:
 
-        df = pd.read_csv(filepath)
-
-        monomer_names = metadata.get_monomer_names()
-
-        return SequenceData._from_df(df, monomer_names)
+        try:
+            df = pd.read_csv(filepath)
+            monomer_names = metadata.get_monomer_names()
+            return SequenceData._from_df(df, monomer_names)
+        except Exception as e:
+            raise ValueError(f"Error loading sequence data from {filepath}: {e}")
 
     def get_buckets(self) -> List[int]:
         return sorted(self._raw_data[C.state.BUCKET_KEY].unique().tolist())

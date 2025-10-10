@@ -1,0 +1,30 @@
+parameters
+    num_units = 1000000000
+    termination_time = 10800.0
+    analysis_time = 100.0
+end
+
+species
+    I I     [C0]=0.001   FW=3.0   f=0.5
+    M M     [C0]=2.0   FW=100.0
+    P R
+    P D
+end
+
+rateconstants
+    kd	    = 0.0001
+    kp      = 10000.0
+    kpr     = 0.0
+    ktc     = 0.0
+    ktd     = 50000000.0
+    kfm     = 0.0
+end
+
+reactions
+    IDP I -kd-> R + R
+    PR R + M -kp-> R
+    DP R -kpr-> R + M
+    TC R + R -ktc-> D
+    TD R + R -ktd-> D + D
+    CTM R + M -kfm-> D + R
+end

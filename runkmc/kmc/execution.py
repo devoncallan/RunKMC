@@ -13,6 +13,7 @@ class CommandLineConfig:
     output_dir: Path
     report_polymers: bool = False
     report_sequences: bool = False
+    parse_only: bool = False
 
     def to_command(self) -> List[str]:
         cmd = [
@@ -24,6 +25,8 @@ class CommandLineConfig:
             cmd.append("--report-polymers")
         if self.report_sequences:
             cmd.append("--report-sequences")
+        if self.parse_only:
+            cmd.append("--parse-only")
         return cmd
 
 
@@ -43,7 +46,7 @@ def _execute_simulation(config: CommandLineConfig) -> None:
         stdout, stderr = process.communicate()
 
         if process.returncode != 0:
-            error_msg = f"Simulation failed with return code {process.returncode}\n"
+            error_msg = f"Process failed with return code {process.returncode}\n"
             if stderr:
                 error_msg += f"Error output:\n{stderr}"
             if stdout:
@@ -56,9 +59,24 @@ def _execute_simulation(config: CommandLineConfig) -> None:
             process.wait(timeout=3)
         except subprocess.TimeoutExpired:
             process.kill()
-        raise KeyboardInterrupt("Simulation interrupted by user.")
+        raise KeyboardInterrupt("Process interrupted by user.")
 
     print(f"RunKMC executed successfully.")
+
+
+def parse_only(
+    input_filepath: Path | str,
+    output_dir: Path | str,
+) -> None:
+
+    config = CommandLineConfig(
+        input_filepath=Path(input_filepath),
+        output_dir=Path(output_dir),
+        report_polymers=False,
+        report_sequences=False,
+        parse_only=True,
+    )
+    _execute_simulation(config)
 
 
 def execute_simulation(
@@ -73,5 +91,8 @@ def execute_simulation(
         output_dir=Path(output_dir),
         report_polymers=report_polymers,
         report_sequences=report_sequences,
+        parse_only=False,
     )
     _execute_simulation(config)
+
+

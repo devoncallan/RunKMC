@@ -120,3 +120,40 @@ namespace C::state
     inline constexpr std::string_view SEQCOUNT_PREFIX = "SeqCount_";
     inline constexpr std::string_view SEQLEN2_PREFIX = "SeqLen2_";
 }
+
+namespace C::paths
+{
+    inline constexpr std::string_view INPUT_FILE = "input.txt";
+    inline constexpr std::string_view RESULTS_FILE = "results.csv";
+    inline constexpr std::string_view SEQUENCES_FILE = "sequences.csv";
+    inline constexpr std::string_view POLYMERS_FILE = "polymers.dat";
+    inline constexpr std::string_view METADATA_FILE = "metadata.yaml";
+    inline constexpr std::string_view SPECIES_FILE = "species.yaml";
+    inline constexpr std::string_view PARSED_INPUT_SUFFIX = ".kmc.yaml";
+};
+
+namespace C::io::color
+{
+    inline bool enabled() { return std::getenv("NO_COLOR") == nullptr; }
+
+    inline constexpr std::string_view DEFAULT = "\x1b[0m";
+    inline constexpr std::string_view ULINE = "\x1b[4m";
+
+    inline constexpr std::string_view BLK = "\x1b[0;30m";
+    inline constexpr std::string_view RED = "\x1b[0;31m";
+    inline constexpr std::string_view GRN = "\x1b[0;32m";
+    inline constexpr std::string_view YLW = "\x1b[0;33m";
+    inline constexpr std::string_view BLU = "\x1b[0;34m";
+    inline constexpr std::string_view MAG = "\x1b[0;35m";
+    inline constexpr std::string_view CYN = "\x1b[0;36m";
+    inline constexpr std::string_view WHT = "\x1b[0;37m";
+
+    inline std::string_view on(std::string_view code) { return enabled() ? code : std::string_view{}; }
+
+    inline std::string underline(std::string_view text)
+    {
+        if (on(ULINE).empty())
+            return std::string(text);
+        return std::string(ULINE) + std::string(text) + std::string(DEFAULT);
+    }
+};

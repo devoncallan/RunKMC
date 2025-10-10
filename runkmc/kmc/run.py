@@ -2,12 +2,15 @@ from typing import Optional
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Dict, Any
+import tempfile
+import hashlib
 
 from uuid import uuid4
 
-from .execution import execute_simulation
-from runkmc.results import SimulationResult
+from .execution import execute_simulation, parse_only
+from runkmc.results import SimulationResult, SimulationPaths
 from runkmc.models import create_input_file
+from runkmc.results.registry import SimulationRegistry
 
 
 @dataclass
@@ -35,6 +38,8 @@ class RunKMC:
         self.base_dir = Path(base_dir)
         self.base_dir.mkdir(parents=True, exist_ok=True)
         ensure_binary_exists(force_rebuild=compile)
+
+        self.registry = SimulationRegistry(self.base_dir)
 
     def run_from_config(
         self, config: SimulationConfig, sim_id: Optional[str] = None
@@ -79,3 +84,34 @@ class RunKMC:
         results = SimulationResult.load(output_dir)
 
         return results
+
+    def run_simulation(
+        self,
+        input_filepath: Path | str,
+        output_dir: Path | str,
+        overwrite: bool = False,
+        **kwargs,
+    ) -> SimulationResult:
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+
+            temp_dir = Path(temp_dir)
+
+            parse_only(input_filepath, temp_dir)
+
+            input_hash = hashlib.sha256(
+                SimulationPaths(temp_dir).input_filepath.read_bytes()
+            ).hexdigest()
+
+            if not overwrite and (record := self.registry.find_by_hash(input_hash)):
+                print(
+                    f"Found existing simulation with matching input hash: {record.sim_id}"
+                )
+                return SimulationResult.from_record(record)
+
+        
+
+
+        execute_simulation(input_filepath, output_dir, **kwargs)
+        
+        return SimulationResult.load(output_dir)

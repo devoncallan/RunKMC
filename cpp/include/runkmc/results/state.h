@@ -93,7 +93,7 @@ namespace output
     void writeStateHeaders(const SimulationPaths &paths, const io::types::CommandLineConfig &config)
     {
 
-        console::debug("Preparing to write state headers to " + paths.resultsFile().string());
+        console::debug("Writing results to " + paths.resultsFile().string());
 
         auto resultsFile = std::ofstream(paths.resultsFile());
 

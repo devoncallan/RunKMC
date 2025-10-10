@@ -27,6 +27,7 @@ def create_parser() -> argparse.ArgumentParser:
             runkmc input.txt output/
             runkmc input.txt output/ --report-polymers
             runkmc input.txt output/ --report-polymers --report-sequences
+            runkmc input.txt output/ --parse-only
         """,
     )
 
@@ -48,6 +49,12 @@ def create_parser() -> argparse.ArgumentParser:
         "--report-sequences",
         action="store_true",
         help="Generate sequence analysis reports",
+    )
+
+    parser.add_argument(
+        "--parse-only",
+        action="store_true",
+        help="Only parse the input file and generate input files without running the simulation",
     )
 
     parser.add_argument(
@@ -77,6 +84,7 @@ def main() -> None:
         output_dir=args.output_dir,
         report_polymers=args.report_polymers,
         report_sequences=args.report_sequences,
+        parse_only=args.parse_only,
     )
 
 

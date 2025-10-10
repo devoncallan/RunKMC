@@ -107,11 +107,7 @@ class RegistryBuilder
 {
 public:
     size_t findSpecies(const std::string &name) const { return input::findInVector(name, registered_species); }
-    bool isRegistered(const std::string &name) const
-    {
-        size_t index = findSpecies(name);
-        return index != SIZE_T_MAX;
-    }
+    bool isRegistered(const std::string &name) const { return findSpecies(name) != SIZE_T_MAX; }
 
     io::types::RegisteredSpecies getSpecies(const std::string &name) const
     {
@@ -120,6 +116,8 @@ public:
             return registered_species[index];
         console::input_error("Species with name " + name + " is not registered.");
     }
+
+    SpeciesID getSpeciesID(const std::string &name) const { return getSpecies(name).ID; }
 
     SpeciesID registerNewSpecies(const std::string &name, const std::string &type)
     {
@@ -131,19 +129,10 @@ public:
         if (isRegistered(name))
             console::input_error("Species with name " + name + " already registered.");
 
+        // Assign IDs sequentially
         SpeciesID newID = registered_species.size() + 1;
         registered_species.push_back({name, type, newID});
         return newID;
-    }
-
-    SpeciesID getSpeciesID(const std::string &name) const
-    {
-        for (const auto &species : registered_species)
-        {
-            if (species.name == name)
-                return species.ID;
-        }
-        throw std::runtime_error("Species with name " + name + " is not registered.");
     }
 
     Registry build()

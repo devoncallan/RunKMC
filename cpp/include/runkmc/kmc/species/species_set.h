@@ -29,19 +29,18 @@ public:
         for (auto &unit : units)
         {
             double initAmount = unit.C0 * NAV;
-            uint64_t initCount = static_cast<uint64_t>(initAmount), uint64_t(1);
-
-            // Ensure initial count is at least 1
-            if (initAmount < 1)
+            uint64_t initCount = static_cast<uint64_t>(initAmount);
+            if (initAmount > 0)
             {
-                console::input_warning("Initial amount of " + unit.name + " is less than 1 (" + std::to_string(initAmount) + "). Setting initial count to 1.");
-                initCount = 1;
+                double roundingError = std::abs((initAmount - double(initCount)) / initAmount);
+                if (initAmount < 1)
+                {
+                    console::input_warning("Initial amount of " + unit.name + " is less than 1 (" + std::to_string(initAmount) + "). Setting initial count to 1.");
+                    initCount = 1;
+                }
+                if (roundingError > 0.10)
+                    console::input_error("Initial amount of " + unit.name + " has a abs rounding error of " + std::to_string(roundingError * 100) + "%. Consider increasing num_units to reduce this error. Exiting.....");
             }
-
-            double roundingError = std::abs((initAmount - double(initCount)) / initAmount);
-            if (roundingError > 0.10)
-                console::input_error("Initial amount of " + unit.name + " has a abs rounding error of " + std::to_string(roundingError * 100) + "%. Consider increasing num_units to reduce this error. Exiting.....");
-
             unit.setInitialCount(initCount);
         }
 

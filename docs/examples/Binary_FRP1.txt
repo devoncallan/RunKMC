@@ -1,0 +1,38 @@
+parameters
+    num_units = 1000000000
+    termination_time = 10800.0
+    analysis_time = 100.0
+end
+
+species
+    I I     [C0]=0.001   FW=3.0   f=0.5
+    U R
+    M A     [C0]=1.0   FW=100.0
+    M B     [C0]=1.0   FW=37.0
+    P PA
+    P PB
+    LABEL P PA|PB
+    P D
+end
+
+rateconstants
+    kd	    = 0.0001
+    kpAA    = 10000.0
+    kpAB    = 10000.0
+    kpBA    = 10000.0
+    kpBB    = 10000.0
+    ktc     = 0.0
+    ktd     = 50000000.0
+end
+
+reactions
+    IDP I -kd-> R + R
+    PR R + A -kpAA-> PA
+    PR R + B -kpBB-> PB
+    PR PA + A -kpAA-> PA
+    PR PA + B -kpAB-> PB
+    PR PB + A -kpBA-> PA
+    PR PB + B -kpBB-> PB
+    TC P + P -ktc-> D
+    TD P + P -ktd-> D
+end

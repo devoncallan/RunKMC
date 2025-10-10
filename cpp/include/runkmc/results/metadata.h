@@ -23,7 +23,7 @@ namespace output
         root["monomers"] = registry::getMonomerNames();
         root["polymers"] = registry::getPolymerNames();
 
-        std::ofstream file(paths.registryFile());
+        std::ofstream file(paths.speciesFile());
         file << root;
     }
 
@@ -38,7 +38,7 @@ namespace output
         root[C::io::REACTIONS_SECTION] = yaml::Parser<std::vector<types::ReactionRead>>::write(data.reactions);
 
         auto paths = model.getPaths();
-        std::ofstream file(paths.inputFileYaml());
+        std::ofstream file(paths.parsedInputFile());
         file << root;
     }
 };

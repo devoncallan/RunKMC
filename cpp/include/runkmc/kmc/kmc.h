@@ -17,7 +17,7 @@ public:
     KMC(SpeciesSet &species, ReactionSet &reactions, io::types::CommandLineConfig config_, io::types::SimulationConfig options_)
         : speciesSet(std::move(species)), reactionSet(std::move(reactions)), config(config_), options(options_)
     {
-        paths = SimulationPaths(config.outputDir, config_);
+        paths = SimulationPaths(config_);
         state = SystemState();
 
         state.kmc.NAV = speciesSet.getNAV();

@@ -11,6 +11,7 @@ namespace io::types
         std::string outputDir;
         bool reportPolymers = false;
         bool reportSequences = false;
+        bool parseOnly = false;
     };
 
     struct SimulationConfig
