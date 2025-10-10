@@ -10,6 +10,8 @@
 #include <vector>
 #include <sstream>
 #include <iterator>
+#include <cmath>
+#include <limits>
 
 #include "utils/console.h"
 
@@ -88,19 +90,70 @@ namespace str
 
 namespace input
 {
+    /**
+     * @brief Convert string to numeric type, handling scientific notation correctly.
+     *
+     * This function handles all numeric formats including:
+     * - Integers: "1000", "1000000000"
+     * - Scientific notation: "1e9", "1.5e3", "1e-6"
+     * - Decimals: "0.001", "10000.0"
+     *
+     * For integer types (int, uint64_t), the function:
+     * 1. Parses as double to handle scientific notation
+     * 2. Validates the value is a valid integer
+     * 3. Converts to the target integer type
+     *
+     * This ensures "1e9" is correctly parsed as 1,000,000,000 rather than 1.
+     */
     template <typename T>
     static T convertValue(const std::string &s)
     {
-        if constexpr (std::is_same<T, int>::value)
-            return std::stoi(s);
-        else if constexpr (std::is_same<T, uint64_t>::value)
-            return static_cast<uint64_t>(std::stoull(s));
-        else if constexpr (std::is_same<T, double>::value)
+        if constexpr (std::is_same<T, double>::value)
+        {
             return std::stod(s);
+        }
+        else if constexpr (std::is_same<T, uint64_t>::value)
+        {
+            // Parse as double first to handle scientific notation (e.g., "1e9")
+            double d = std::stod(s);
+
+            // Validate it's a non-negative integer value
+            if (d < 0)
+                console::input_error("Expected non-negative integer, got negative value: " + s);
+
+            if (d != std::floor(d))
+                console::input_error("Expected integer value, got decimal: " + s);
+
+            // Check for overflow (uint64_t max is ~1.8e19)
+            if (d > static_cast<double>(std::numeric_limits<uint64_t>::max()))
+                console::input_error("Value too large for uint64_t: " + s);
+
+            return static_cast<uint64_t>(d);
+        }
+        else if constexpr (std::is_same<T, int>::value)
+        {
+            // Parse as double first to handle scientific notation
+            double d = std::stod(s);
+
+            // Validate it's an integer value
+            if (d != std::floor(d))
+                console::input_error("Expected integer value, got decimal: " + s);
+
+            // Validate it fits in int range
+            if (d < static_cast<double>(std::numeric_limits<int>::min()) ||
+                d > static_cast<double>(std::numeric_limits<int>::max()))
+                console::input_error("Integer value out of range: " + s);
+
+            return static_cast<int>(d);
+        }
         else if constexpr (std::is_same<T, std::string>::value)
+        {
             return s;
+        }
         else
-            static_assert("Unsupported type for convertValue");
+        {
+            static_assert(sizeof(T) == 0, "Unsupported type for convertValue");
+        }
     }
 
     template <typename T>

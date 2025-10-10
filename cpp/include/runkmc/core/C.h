@@ -7,6 +7,7 @@
 namespace C
 {
     inline constexpr double NA = 6.022149e23; // Avogadro's number
+    inline constexpr int PRECISION = std::numeric_limits<double>::max_digits10;
 };
 
 namespace C::reaction

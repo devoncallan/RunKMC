@@ -1,11 +1,14 @@
 from __future__ import annotations
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 from dataclasses import dataclass
 
 from .paths import SimulationPaths
 from .state import StateData, Metadata, SequenceData
 from .polymers import read_polymer_file, create_polymer_matrix, PolymerSequence
+
+if TYPE_CHECKING:
+    from .registry import SimulationRecord
 
 
 @dataclass
@@ -48,3 +51,15 @@ class SimulationResult:
             polymer_data = read_polymer_file(paths.polymers_filepath)
 
         return SimulationResult(paths, metadata, results, sequence_data, polymer_data)
+
+    @staticmethod
+    def from_record(record: SimulationRecord) -> SimulationResult:
+        """Load a simulation result from a registry record.
+
+        Args:
+            record: SimulationRecord containing the output directory path
+
+        Returns:
+            SimulationResult loaded from the record's output directory
+        """
+        return SimulationResult.load(record.dir)

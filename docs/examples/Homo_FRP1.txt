@@ -1,5 +1,5 @@
 parameters
-    num_units = 1000000000
+    num_units = 100000000
     termination_time = 10800.0
     analysis_time = 100.0
 end

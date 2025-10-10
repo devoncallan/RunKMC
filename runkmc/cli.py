@@ -58,6 +58,10 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
+        "--debug", action="store_true", help="Enable debug mode with verbose output"
+    )
+
+    parser.add_argument(
         "--version", action="version", version=f"runkmc {get_version()}"
     )
 
@@ -85,6 +89,7 @@ def main() -> None:
         report_polymers=args.report_polymers,
         report_sequences=args.report_sequences,
         parse_only=args.parse_only,
+        debug=args.debug,
     )
 
 

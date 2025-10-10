@@ -15,7 +15,7 @@ namespace io::cli
             std::cerr
                 << "Usage: " << argv[0]
                 << " <inputFilePath> <outputDirectory>"
-                << " [--report-polymers] [--report-sequences] [--parse-only]\n";
+                << " [--report-polymers] [--report-sequences] [--parse-only] [--debug]\n";
             exit(EXIT_FAILURE);
         }
 
@@ -34,6 +34,8 @@ namespace io::cli
                 config.reportSequences = true;
             else if (arg == "--parse-only")
                 config.parseOnly = true;
+            else if (arg == "--debug")
+                config.debug = true;
             else
             {
                 std::cerr << "Unknown argument: " << arg << std::endl;

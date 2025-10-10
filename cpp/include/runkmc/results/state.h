@@ -94,22 +94,17 @@ namespace output
     {
 
         console::debug("Writing results to " + paths.resultsFile().string());
+        console::debug("Writing results to " + console::term::linkPath(paths.resultsFile()));
 
         auto resultsFile = std::ofstream(paths.resultsFile());
 
-        console::debug("Writing state headers to " + paths.resultsFile().string());
-
         ResultsWriter::writeHeader(resultsFile);
-
-        console::debug("Finished writing state headers.");
 
         if (config.reportSequences)
         {
             auto sequenceFile = std::ofstream(paths.sequencesFile());
             SequenceWriter::writeHeader(sequenceFile);
         }
-
-        console::debug("Finished writing sequence headers.");
     }
 
     void writeState(const SystemState &state, const SimulationPaths &paths, const io::types::CommandLineConfig &config)

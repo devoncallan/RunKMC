@@ -363,8 +363,23 @@ namespace io::yaml
             return node;
         }
     };
-};
 
+    // +--------------------------
+    // | File I/O
+    // +--------------------------
+    static void writeYamlToFile(const std::filesystem::path &filepath, const YAML::Node &node)
+    {
+        std::ofstream file(filepath);
+
+        if (!file.is_open())
+        {
+            throw std::runtime_error("Failed to open file for writing: " + filepath.string());
+        }
+
+        file << std::setprecision(C::PRECISION);
+        file << node;
+    }
+};
 namespace io
 {
     static types::KMCInputRead parseYamlModelFile(const std::string &filepath)

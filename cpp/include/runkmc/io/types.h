@@ -12,6 +12,7 @@ namespace io::types
         bool reportPolymers = false;
         bool reportSequences = false;
         bool parseOnly = false;
+        bool debug = false;
     };
 
     struct SimulationConfig

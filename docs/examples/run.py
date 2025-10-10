@@ -14,16 +14,14 @@ if __name__ == "__main__":
 
     input_filepath = EXAMPLES_DIR / "Homo_FRP1.txt"
     output_dir = EXAMPLES_DIR / "output_dir/"
-    print(input_filepath)
-    print(output_dir)
+    # print(input_filepath)
+    # print(output_dir)
 
     kmc = RunKMC(base_dir=output_dir, compile=True)
-    result = kmc.run_from_file(
-        input_filepath, report_polymers=True, report_sequences=True
-    )
+    result = kmc.run_simulation(input_filepath)
 
-    ax = plot_monomer_conversion(result)
-    fig = plt.gcf()
+    # ax = plot_monomer_conversion(result)
+    # fig = plt.gcf()
 
-    IMG_PATH = output_dir / "conversion.png"
-    fig.savefig(IMG_PATH, dpi=300)
+    # IMG_PATH = output_dir / "conversion.png"
+    # fig.savefig(IMG_PATH, dpi=300)
