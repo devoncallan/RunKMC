@@ -1,7 +1,6 @@
 #pragma once
 #include "common.h"
 #include "kmc/state.h"
-#include "kmc/analysis/types.h"
 #include "results/paths.h"
 
 namespace output
@@ -14,38 +13,16 @@ namespace output
 
         static void writeHeader(std::ostream &out)
         {
-            auto kmcHeaders = KMCState::getTitles();
-            auto speciesHeaders = SpeciesState::getTitles();
-            auto analysisHeaders = AnalysisState::getTitles();
-
-            std::string headerRow = "";
-            for (const auto &header : kmcHeaders)
-                headerRow += header + ",";
-            for (const auto &header : speciesHeaders)
-                headerRow += header + ",";
-            for (const auto &header : analysisHeaders)
-                headerRow += header + ",";
-
-            headerRow.pop_back(); // remove last comma
-            out << headerRow << std::endl;
+            out << str::join(KMCState::getTitles(), ",", true);
+            out << str::join(SpeciesState::getTitles(), ",", true);
+            out << str::join(AnalysisState::getTitles(), ",") << std::endl;
         }
 
         void writeState(std::ostream &out) const
         {
-            auto kmcData = kmcState.getDataAsVector();
-            auto speciesData = speciesState.getDataAsVector();
-            auto analysisData = analysisState.getDataAsVector();
-
-            std::string row = "";
-            for (const auto &data : kmcData)
-                row += data + ",";
-            for (const auto &data : speciesData)
-                row += data + ",";
-            for (const auto &data : analysisData)
-                row += data + ",";
-
-            row.pop_back(); // remove last comma
-            out << row << std::endl;
+            out << str::join(kmcState.getDataAsVector(), ",", true);
+            out << str::join(speciesState.getDataAsVector(), ",", true);
+            out << str::join(analysisState.getDataAsVector(), ",") << std::endl;
         }
 
     private:
@@ -59,31 +36,15 @@ namespace output
     public:
         SequenceWriter(const SequenceState &seq) : sequenceState(seq) {}
 
+        static void writeHeader(std::ostream &out)
+        {
+            out << str::join(SequenceState::getTitles(), ",") << std::endl;
+        }
+
         void writeState(std::ostream &out) const
         {
             for (size_t bucket = 0; bucket < sequenceState.stats.size(); ++bucket)
-            {
-                auto data = sequenceState.getDataAsVector(bucket);
-
-                std::string row = "";
-                for (const auto &d : data)
-                    row += d + ",";
-
-                row.pop_back(); // remove last comma
-                out << row << std::endl;
-            }
-        }
-
-        static void writeHeader(std::ostream &out)
-        {
-            auto headers = SequenceState::getTitles();
-
-            std::string headerRow = "";
-            for (const auto &header : headers)
-                headerRow += header + ",";
-
-            headerRow.pop_back(); // remove last comma
-            out << headerRow << std::endl;
+                out << str::join(sequenceState.getDataAsVector(bucket), ",") << std::endl;
         }
 
     private:
@@ -92,12 +53,9 @@ namespace output
 
     void writeStateHeaders(const SimulationPaths &paths, const io::types::CommandLineConfig &config)
     {
-
         console::debug("Writing results to " + paths.resultsFile().string());
-        console::debug("Writing results to " + console::term::linkPath(paths.resultsFile()));
 
         auto resultsFile = std::ofstream(paths.resultsFile());
-
         ResultsWriter::writeHeader(resultsFile);
 
         if (config.reportSequences)

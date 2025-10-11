@@ -115,6 +115,7 @@ private:
 
     // ********** State functions **********
 
+    // 
     void updateSystemState()
     {
         auto currentTime = std::chrono::steady_clock::now();
@@ -124,7 +125,7 @@ private:
 
         state.species = speciesSet.getStateData();
 
-        analysis::analyze(speciesSet, state);
+        speciesSet.analyze(state);
     }
 
     // Simulation inputs

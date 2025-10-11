@@ -1,7 +1,7 @@
 #pragma once
 #include "common.h"
 #include "kmc/species/unit.h"
-#include "kmc/analysis/utils.h"
+#include "kmc/analysis/analysis.h"
 
 class Polymer
 {

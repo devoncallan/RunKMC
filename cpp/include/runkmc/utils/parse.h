@@ -15,7 +15,7 @@
 
 namespace str
 {
-
+    // Convert vector of strings to vector of string_views
     static std::vector<std::string_view> to_views(const std::vector<std::string> &strings)
     {
         return std::vector<std::string_view>(strings.begin(), strings.end());
@@ -79,25 +79,27 @@ namespace str
     }
 
     // Join a vector of strings with a delimiter
-    static std::string join(const std::vector<std::string_view> &strings, std::string_view delim = ", ")
+    static std::string join(const std::vector<std::string_view> &strings, std::string_view delim = ", ", bool addEndDelim = false)
     {
         std::ostringstream os;
         for (size_t i = 0; i < strings.size(); ++i)
         {
             os << strings[i];
-            if (i < strings.size() - 1)
+            if (addEndDelim || (i < strings.size() - 1))
                 os << delim;
         }
         return os.str();
     }
-    static std::string join(const std::vector<std::string> &strings, std::string_view delim = ", ") { return join(to_views(strings), delim); }
+    
+    static std::string join(const std::vector<std::string> &strings, std::string_view delim = ", ", bool addEndDelim = false) { return join(to_views(strings), delim, addEndDelim); }
 
+    // Find variable name in vector of T (must have 'name' member)
     template <typename T>
-    size_t findInVector(const std::string &varName, const std::vector<T> &vec)
+    size_t findInVector(const std::string &name, const std::vector<T> &vec)
     {
         for (size_t i = 0; i < vec.size(); ++i)
         {
-            if (vec[i].name == varName)
+            if (vec[i].name == name)
                 return i;
         }
         return SIZE_T_MAX;

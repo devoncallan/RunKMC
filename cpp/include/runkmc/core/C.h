@@ -35,15 +35,18 @@ namespace C::io
     inline constexpr std::string_view TERMINATION_TIME_KEY = "termination_time";
     inline constexpr std::string_view ANALYSIS_TIME_KEY = "analysis_time";
 
+    // Species registry keys
+    inline constexpr std::string_view SPECIES_KEY = "species";
+    inline constexpr std::string_view UNITS_KEY = "units";
+    inline constexpr std::string_view MONOMERS_KEY = "monomers";
+    inline constexpr std::string_view POLYMERS_KEY = "polymers";
+
     // Species
     inline constexpr std::string_view FW_KEY = "FW";
     inline constexpr std::string_view C0_KEY = "[C0]";
     inline constexpr std::string_view EFFICIENCY_KEY = "f";
     inline constexpr std::string_view END_GROUP_NAMES_KEY = "end_group_units";
     inline constexpr std::string_view POLYMER_NAMES_KEY = "polymer_names";
-
-    inline constexpr std::string_view UNITS_KEY = "units";
-    inline constexpr std::string_view POLYMERS_KEY = "polymers";
 
     // Reactions
     inline constexpr std::string_view RATE_CONSTANT_KEY = "rate_constant";
@@ -95,9 +98,8 @@ namespace C::paths
     inline constexpr std::string_view RESULTS_FILE = "results.csv";
     inline constexpr std::string_view SEQUENCES_FILE = "sequences.csv";
     inline constexpr std::string_view POLYMERS_FILE = "polymers.dat";
-    inline constexpr std::string_view METADATA_FILE = "metadata.yaml";
     inline constexpr std::string_view SPECIES_FILE = "species.yaml";
-    inline constexpr std::string_view PARSED_INPUT_SUFFIX = ".kmc.yaml";
+    inline constexpr std::string_view PARSED_INPUT_FILE = "parsed_input.yaml";
 };
 
 namespace C::io::color
@@ -116,7 +118,7 @@ namespace C::io::color
     inline constexpr std::string_view CYN = "\x1b[0;36m";
     inline constexpr std::string_view WHT = "\x1b[0;37m";
 
-    inline std::string_view on(std::string_view code) { return enabled() ? code : std::string_view{}; }
+    inline std::string_view on(std::string_view color) { return enabled() ? color : std::string_view{}; }
 
     inline std::string underline(std::string_view text)
     {

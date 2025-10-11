@@ -14,27 +14,36 @@ public:
     uint64_t count = 0;
     uint64_t initCount = 0;
 
-    // Species(SpeciesID ID, std::string name, std::string type)
-    //     : RegisteredSpecies{ID, name, type} {};
-
     Species(SpeciesID ID, std::string name, std::string_view type)
         : RegisteredSpecies{ID, name, std::string(type)} {};
 
     virtual ~Species() {};
 
-    void setInitialCount(uint64_t initialCount)
+    // Set the initial count for the species
+    void setInitCount(uint64_t initialCount)
     {
         initCount = initialCount;
         count = initCount;
     }
 
-    uint64_t getInitialCount() const { return initCount; }
+    uint64_t getInitCount() const { return initCount; }
 
+    // Calculate the conversion from initial and current counts
     double calculateConversion() const
     {
         if (initCount == 0)
             return 0;
         return double(initCount - count) / initCount;
+    }
+
+    std::string toString() const
+    {
+        return name + " (" + std::to_string(count) + ")";
+    }
+
+    std::string printSummary() const
+    {
+        return name + " (" + std::to_string(ID) + "): " + std::to_string(count) + " / " + std::to_string(getInitCount());
     }
 };
 
@@ -156,9 +165,7 @@ public:
         if (finalized)
             console::error("Cannot register new species after registry has been finalized.");
 
-        console::log("Registering species: " + name + " of type " + type);
         SpeciesType::checkValid(type);
-        console::log("Species type " + type + " is valid.");
 
         if (isRegistered(name))
             console::input_error("Species with name " + name + " already registered.");

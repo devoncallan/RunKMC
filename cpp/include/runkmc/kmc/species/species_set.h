@@ -2,7 +2,12 @@
 #include "common.h"
 #include "kmc/state.h"
 #include "kmc/species/polymer_type.h"
+#include "kmc/analysis/analysis.h"
 
+namespace species
+{
+    constexpr console::LogContext logger("KMC::Species");
+}
 class SpeciesSet
 {
 public:
@@ -41,7 +46,7 @@ public:
                 if (roundingError > 0.10)
                     console::input_error("Initial amount of " + unit.name + " has a abs rounding error of " + std::to_string(roundingError * 100) + "%. Consider increasing num_units to reduce this error. Exiting.....");
             }
-            unit.setInitialCount(initCount);
+            unit.setInitCount(initCount);
         }
 
         polymerContainers.reserve(polymerContainerMaps_.size());
@@ -70,7 +75,6 @@ public:
             polymerContainerPtr->updatePolymerCounts();
     }
 
-    // TODO: Fix indexing
     SpeciesState getStateData() const
     {
         SpeciesState data;
@@ -104,7 +108,7 @@ public:
         for (const auto &id : monomerIDs)
         {
             auto monIdx = registry::getMonomerIndex(id);
-            initialCount = units[monIdx].getInitialCount();
+            initialCount = units[monIdx].getInitCount();
             numerator += initialCount - units[monIdx].count;
             denominator += initialCount;
         }
@@ -150,15 +154,33 @@ public:
         return sequenceData;
     };
 
+    void analyze(SystemState &systemState)
+    {
+        auto sequenceData = getRawSequenceData();
+        auto summary = analysis::calculateSequenceSummary(sequenceData);
+
+        AnalysisState analysisState;
+        analysis::analyzeChainLengthDist(summary.sequenceStatsMatrix, getMonomerFWs(), analysisState);
+        systemState.analysis = analysisState;
+
+        if (registry::getNumMonomers() <= 1)
+            return;
+
+        SequenceState sequenceState = SequenceState{systemState.kmc, summary.positionalStats};
+        analysis::analyzeSequenceLengthDist(summary.sequenceStatsMatrix, analysisState);
+        systemState.analysis = analysisState;
+        systemState.sequence = sequenceState;
+    }
+
     void printSummary() const
     {
-        console::log("Units:");
+        species::logger.info("Units:");
         for (const auto &unit : units)
-            console::log("\t" + unit.toString());
+            species::logger.info("\t" + unit.printSummary());
 
-        console::log("Polymer Containers:");
+        species::logger.info("Polymer Containers:");
         for (const auto &container : polymerContainers)
-            console::log("\t" + container.toString());
+            species::logger.info("\t" + container.printSummary());
     }
 
     std::vector<double> getMonomerFWs() const

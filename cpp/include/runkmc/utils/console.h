@@ -12,6 +12,132 @@
 namespace console
 {
     namespace color = C::io::color;
+
+    enum class LogLevel : uint8_t
+    {
+        SILENT = 0,
+        ERROR = 1,
+        WARNING = 2,
+        INFO = 3,
+        DEBUG = 4,
+        TRACE = 5
+    };
+
+    class NullStream : public std::ostream
+    {
+        class NullBuffer : public std::streambuf
+        {
+        public:
+            int overflow(int c) override { return c; }
+        } buffer;
+
+    public:
+        NullStream() : std::ostream(&buffer) {}
+    };
+
+    class Logger
+    {
+    private:
+        static inline LogLevel currentLevel = LogLevel::INFO;
+        static inline NullStream nullStream;
+        static inline std::ofstream logFile;
+        static inline bool fileLoggingEnabled = false;
+
+    public:
+        static void setLevel(LogLevel level) { currentLevel = level; }
+
+        static void enableFileLogging(const std::filesystem::path &path)
+        {
+            logFile.open(path, std::ios::out | std::ios::app);
+            fileLoggingEnabled = logFile.is_open();
+            if (!fileLoggingEnabled)
+                std::cout << "Failed to open log file: " << path.string() << std::endl;
+            // warning("Failed to open log file: " + path.string());
+        }
+
+        static void disableFileLogging()
+        {
+            if (logFile.is_open())
+                logFile.close();
+            fileLoggingEnabled = false;
+        }
+
+        static bool shouldLog(LogLevel level) { return level <= currentLevel; }
+        static std::ostream &consoleStream() { return std::cout; }
+        static std::ostream &fileStream() { return logFile; }
+        static bool isFileLoggingEnabled() { return fileLoggingEnabled; }
+    };
+
+    static inline void _printWithContext(
+        std::string_view title,
+        std::string_view context,
+        std::string_view msg,
+        std::string_view c,
+        LogLevel level,
+        bool fatal = false)
+    {
+        if (!Logger::shouldLog(level))
+            return;
+
+        std::cout << color::on(c);
+        std::cout << "[" << context << "] ";
+        std::cout << "[" << title << "] : ";
+        std::cout << msg;
+        std::cout << color::on(color::DEFAULT) << std::endl;
+
+        if (Logger::isFileLoggingEnabled())
+        {
+            auto &fs = Logger::fileStream();
+            fs << "[" << context << "] ";
+            fs << "[" << title << "] : ";
+            fs << msg << std::endl;
+            fs.flush();
+        }
+
+        if (fatal)
+            exit(EXIT_FAILURE);
+    }
+
+    class LogContext
+    {
+    private:
+        const char *name;
+
+    public:
+        constexpr LogContext(const char *n) : name(n) {}
+        inline void trace(std::string_view msg) const
+        {
+            if (!Logger::shouldLog(LogLevel::TRACE))
+                return;
+            _printWithContext("TRACE", name, msg, color::CYN, LogLevel::TRACE);
+        }
+
+        inline void debug(std::string_view msg) const
+        {
+            if (!Logger::shouldLog(LogLevel::DEBUG))
+                return;
+            _printWithContext("DEBUG", name, msg, color::BLU, LogLevel::DEBUG);
+        }
+
+        inline void info(std::string_view msg) const
+        {
+            if (!Logger::shouldLog(LogLevel::INFO))
+                return;
+            _printWithContext("INFO", name, msg, color::GRN, LogLevel::INFO);
+        }
+
+        inline void warning(std::string_view msg) const
+        {
+            if (!Logger::shouldLog(LogLevel::WARNING))
+                return;
+            _printWithContext("WARNING", name, msg, color::YLW, LogLevel::WARNING);
+        }
+
+        [[noreturn]] void error(std::string_view msg) const
+        {
+            _printWithContext("ERROR", name, msg, color::RED, LogLevel::ERROR, true);
+        }
+    };
 }
 
 namespace console::term
@@ -72,7 +198,6 @@ namespace console
         _print(title, term::linkPath(path, label), c);
     }
 
-    static inline void debug_rxn(std::string_view msg) { _print("DEBUG", msg, color::MAG); }
     static inline void debug(std::string_view msg) { _print("DEBUG", msg, color::BLU); }
     static inline void debug_msg(std::string_view msg) { _print("DEBUG", msg, color::BLU); }
     static inline void log(std::string_view msg) { _print("LOG", msg, color::GRN); }

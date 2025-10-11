@@ -136,56 +136,106 @@ for func, count in sorted_funcs[:20]:
 
 print()
 print("=" * 80)
-print("CATEGORY BREAKDOWN")
+print("CATEGORY BREAKDOWN (Leaf Functions Only)")
 print("=" * 80)
+print("Note: Excludes parent functions like KMC::run, KMC::step, main, start")
+print()
 
-# Calculate categories
-analysis_time = sum(count for func, count in sorted_funcs if 'analysis' in func.lower())
-malloc_time = sum(count for func, count in sorted_funcs if 'malloc' in func.lower() or 'free' in func.lower() or 'new' in func.lower())
-kmc_time = sum(count for func, count in sorted_funcs if 'KMC::step' in func or 'KMC::run' in func)
-reaction_time = sum(count for func, count in sorted_funcs if 'react' in func.lower() or 'Reaction' in func)
-registry_time = sum(count for func, count in sorted_funcs if 'Registry' in func or 'registry' in func)
+# Exclude parent/wrapper functions that just call other things
+exclude_funcs = {'start', 'main', 'KMC::run', 'KMC::step', 'KMC::runToTime',
+                 'KMC::updateSystemState', 'SpeciesSet::analyze'}
+
+# Get leaf functions only
+leaf_funcs = [(f, c) for f, c in sorted_funcs if f not in exclude_funcs]
+leaf_total = sum(c for _, c in leaf_funcs)
+
+# Calculate categories from leaf functions
+analysis_time = sum(count for func, count in leaf_funcs if 'analysis' in func.lower() or 'SequenceStats' in func)
+malloc_time = sum(count for func, count in leaf_funcs if 'malloc' in func.lower() or 'free' in func.lower() or 'new' in func.lower() or 'szone' in func.lower())
+math_time = sum(count for func, count in leaf_funcs if func in ['log', 'exp', 'sqrt', 'pow'])
+reaction_time = sum(count for func, count in leaf_funcs if '::react' in func or 'Reaction' in func)
+polymer_ops = sum(count for func, count in leaf_funcs if 'Polymer' in func and 'Container' not in func)
+container_ops = sum(count for func, count in leaf_funcs if 'Container' in func)
+registry_time = sum(count for func, count in leaf_funcs if 'Registry' in func or 'registry' in func)
 
 categories = [
+    ("Math (log, exp, etc.)", math_time),
+    ("Polymer container operations", container_ops),
     ("Analysis (sequence stats)", analysis_time),
-    ("Memory allocation/deallocation", malloc_time),
-    ("Core KMC simulation", kmc_time),
     ("Reaction execution", reaction_time),
+    ("Polymer operations", polymer_ops),
+    ("Memory allocation/deallocation", malloc_time),
     ("Registry lookups", registry_time),
 ]
 
 for name, time in sorted(categories, key=lambda x: x[1], reverse=True):
-    pct = 100.0 * time / total_samples
-    bar_length = int(pct / 2)  # Scale to 50 chars max
-    bar = "█" * bar_length
-    print(f"{name:30} {pct:>5.1f}%  {bar}")
+    if time > 0:
+        pct = 100.0 * time / total_samples
+        bar_length = int(pct / 2)  # Scale to 50 chars max
+        bar = "█" * bar_length
+        print(f"{name:35} {pct:>5.1f}%  {bar}")
+
+# Show unaccounted time
+accounted = sum(t for _, t in categories)
+unaccounted = leaf_total - accounted
+unaccounted_pct = 100.0 * unaccounted / total_samples
+print(f"{'Other/distributed':35} {unaccounted_pct:>5.1f}%  {'█' * int(unaccounted_pct / 2)}")
 
 print()
 print("=" * 80)
 print("KEY FINDINGS")
 print("=" * 80)
 
-# Identify top bottleneck
+# Get top individual functions (excluding parents)
+top_leaf = [f for f in leaf_funcs[:5]]
+
+print("Top 5 hottest functions:")
+for func, count in top_leaf:
+    pct = 100.0 * count / total_samples
+    print(f"  • {func:45} {pct:>5.1f}%")
+
+print()
+
+# Identify top category bottleneck
 top_category = max(categories, key=lambda x: x[1])
 pct = 100.0 * top_category[1] / total_samples
 
-if pct > 20:
-    print(f"🔥 PRIMARY BOTTLENECK: {top_category[0]} ({pct:.1f}% of runtime)")
+if pct > 10:
+    print(f"🔥 PRIMARY CATEGORY: {top_category[0]} ({pct:.1f}% of runtime)")
+    print()
 
-    if 'analysis' in top_category[0].lower():
-        print("   → Consider optimizing sequence analysis code")
+    if 'math' in top_category[0].lower():
+        print("   Analysis:")
+        print("   → Mathematical operations (log, exp) are expected in KMC")
+        print("   → Gillespie algorithm requires log() per step")
+        print("   → This is likely optimal unless you switch algorithms")
+    elif 'container' in top_category[0].lower():
+        print("   Optimization opportunities:")
+        print("   → Profile removeRandomPolymer() - may need better data structure")
+        print("   → Consider using std::unordered_set or vector with swap-and-pop")
+        print("   → Benchmark different random selection strategies")
+    elif 'analysis' in top_category[0].lower():
+        print("   Optimization opportunities:")
+        print("   → Sequence analysis has O(n) complexity per polymer")
+        print("   → Consider making --report-sequences less frequent")
         print("   → Pre-allocate SequenceStats objects")
-        print("   → Make --report-sequences optional/less frequent")
     elif 'malloc' in top_category[0].lower():
+        print("   Optimization opportunities:")
         print("   → Excessive memory allocation detected")
-        print("   → Consider object pooling or pre-allocation")
-    elif 'kmc' in top_category[0].lower():
-        print("   → Core simulation loop is the bottleneck")
-        print("   → Consider incremental rate updates")
-        print("   → Profile reaction calculations")
+        print("   → Consider object pooling for Polymer objects")
+        print("   → Pre-allocate containers with reserve()")
+    elif 'polymer' in top_category[0].lower():
+        print("   Optimization opportunities:")
+        print("   → Profile Polymer::terminate() and insertPolymer()")
+        print("   → Consider more efficient polymer data structures")
 else:
     print("✓ No single dominant bottleneck found")
     print("  Runtime is well-distributed across components")
+    print()
+    print("  This is good! It means:")
+    print("  • No obvious low-hanging fruit for optimization")
+    print("  • The simulation is well-balanced")
+    print("  • Any speedup would require algorithmic changes")
 
 print()
 print("Full profile saved to: ${PROFILE_LOG}")

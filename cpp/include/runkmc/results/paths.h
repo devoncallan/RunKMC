@@ -39,15 +39,11 @@ public:
     // Return the original input file path the user provided (may be outside output dir)
     std::filesystem::path sourceInputFile() const { return _inputFilepath; }
     std::string localInputFile() const { return _baseDir / _inputFilepath.filename().string(); }
-    std::string parsedInputFile() const { return _baseDir / (_inputFilepath.stem().string() + std::string(C::paths::PARSED_INPUT_SUFFIX)); }
 
     // Processed/output files inside the base output directory
+    std::string parsedInputFile() const { return _baseDir / C::paths::PARSED_INPUT_FILE; }
     std::filesystem::path speciesFile() const { return _baseDir / C::paths::SPECIES_FILE; }
     std::filesystem::path resultsFile() const { return _baseDir / C::paths::RESULTS_FILE; }
     std::filesystem::path polymerFile() const { return _baseDir / C::paths::POLYMERS_FILE; }
     std::filesystem::path sequencesFile() const { return _baseDir / C::paths::SEQUENCES_FILE; }
-
-    std::filesystem::path metadataFile() const { return _baseDir / "metadata.yaml"; }
-    // std::filesystem::path registryFile() const { return _baseDir / "registry.yaml"; }
-    // std::filesystem::path inputFileYaml() const { return _baseDir / "input.yaml"; }
 };

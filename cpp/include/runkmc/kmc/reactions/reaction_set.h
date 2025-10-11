@@ -1,7 +1,11 @@
 #pragma once
 #include "common.h"
 #include "kmc/reactions/reactions.h"
-#include "kmc/reactions/utils.h"
+
+namespace reactions
+{
+    constexpr console::LogContext logger("KMC::Reactions");
+}
 
 /**
  * @brief Stores set of all reactions and can calculate cumulative properties such as
@@ -54,13 +58,9 @@ public:
 
     void printSummary() const
     {
-        console::log("Reaction Set Summary:");
-        console::log("Number of reactions: " + std::to_string(numReactions));
-        console::log("Reactions:");
+        reactions::logger.info("Reaction Set (" + std::to_string(numReactions) + " reactions):");
         for (size_t i = 0; i < numReactions; ++i)
-        {
-            console::log(reactions[i]->toStringWithCounts());
-        }
+            reactions::logger.info("\t" + std::to_string(i + 1) + ": " + reactions[i]->toString());
     }
 
     Reaction *getReaction(size_t reactionIndex) const { return reactions[reactionIndex]; }

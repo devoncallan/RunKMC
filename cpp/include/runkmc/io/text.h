@@ -1,6 +1,7 @@
 #pragma once
 #include "common.h"
 #include "io/types.h"
+
 namespace io::text
 {
     // Forward declarations of helper functions

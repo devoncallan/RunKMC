@@ -1,7 +1,6 @@
 #pragma once
 #include "common.h"
-#include "kmc/species/polymer_type.h"
-#include "kmc/reactions/utils.h"
+#include "../species/polymer_type.h"
 
 struct RateConstant
 {
@@ -110,8 +109,24 @@ public:
     virtual double calculateRate(double NAV) const = 0;
     virtual std::string_view getType() const { return schema.type; }
 
-    std::string toStringWithCounts() const { return ""; }
-    // { return rxn_print::reactionToString()
+    std::string toString() const
+    {
+        std::string output = "";
+        for (size_t i = 0; i < species.reactants.size(); ++i)
+        {
+            output += species.reactants[i]->toString();
+            if (i < species.reactants.size() - 1)
+                output += " + ";
+        }
+        output += " -> ";
+        for (size_t i = 0; i < species.products.size(); ++i)
+        {
+            output += species.products[i]->toString();
+            if (i < species.products.size() - 1)
+                output += " + ";
+        }
+        return output;
+    }
 
 protected:
     RateConstant rateConstant;

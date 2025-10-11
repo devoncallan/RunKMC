@@ -1,11 +1,7 @@
-from typing import Optional
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Dict, Any
 import tempfile
-import hashlib
-
-from uuid import uuid4
 
 from .execution import execute_simulation, parse_only
 from runkmc.results import SimulationResult, SimulationPaths

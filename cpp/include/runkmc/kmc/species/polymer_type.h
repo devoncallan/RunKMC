@@ -93,7 +93,8 @@ public:
                 return;
             }
         }
-        console::error("End sequence for inserted polymer does not match. Exiting.....");
+        // Should never reach here.
+        console::error("End sequence for inserted polymer does not match. Exiting.");
     }
 
     void updatePolymerCounts()

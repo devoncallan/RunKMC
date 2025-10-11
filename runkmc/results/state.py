@@ -9,6 +9,7 @@ import pandas as pd
 import yaml
 
 from ..core import C
+from ..core.species import SpeciesRegistry
 
 
 @dataclass
@@ -43,13 +44,13 @@ class StateData:
     _raw_data: pd.DataFrame
 
     @staticmethod
-    def from_csv(filepath: Path | str, metadata: Metadata) -> StateData:
+    def from_csv(filepath: Path | str, species: SpeciesRegistry) -> StateData:
 
         df = pd.read_csv(filepath)
 
-        unit_names = metadata.get_unit_names()
-        monomer_names = metadata.get_monomer_names()
-        polymer_names = metadata.get_polymer_names()
+        unit_names = species.get_unit_names()
+        monomer_names = species.get_monomer_names()
+        polymer_names = species.get_polymer_names()
 
         no_sequence = len(monomer_names) <= 1
 
@@ -154,12 +155,11 @@ class SequenceData:
         )
 
     @staticmethod
-    def from_csv(filepath: Path | str, metadata: Metadata) -> SequenceData:
+    def from_csv(filepath: Path | str, species: SpeciesRegistry) -> SequenceData:
 
         try:
             df = pd.read_csv(filepath)
-            monomer_names = metadata.get_monomer_names()
-            return SequenceData._from_df(df, monomer_names)
+            return SequenceData._from_df(df, species.get_monomer_names())
         except Exception as e:
             raise ValueError(f"Error loading sequence data from {filepath}: {e}")
 
@@ -201,91 +201,3 @@ class SequenceData:
                 where=self.sequence_count[name] != 0,
             )
         return wAvgSL
-
-
-@dataclass
-class Metadata:
-    run_info: Dict[str, Any]
-    species: Dict[str, Any]
-    reactions: Dict[str, Any]
-    parameters: Dict[str, Any]
-
-    _metadata_path: Optional[Path] = None
-    _raw_data: Optional[Dict[str, Any]] = None
-
-    @staticmethod
-    def load(metadata_path: Path | str) -> Metadata:
-
-        metadata_path = Path(metadata_path)
-        with open(metadata_path, "r") as file:
-            data = yaml.safe_load(file)
-
-        assert (
-            data is not None
-        ), f"Metadata file {metadata_path} is empty or invalid YAML."
-        assert isinstance(
-            data, dict
-        ), f"Metadata file {metadata_path} does not contain a valid YAML dictionary."
-
-        required_keys = [
-            C.io.RUN_INFO_SECTION,
-            C.io.PARAMETERS_SECTION,
-            C.io.SPECIES_SECTION,
-            C.io.REACTIONS_SECTION,
-        ]
-        missing_keys = [key for key in required_keys if key not in data.keys()]
-        if missing_keys:
-            raise ValueError(
-                f"Metadata file {metadata_path} is missing required keys: {missing_keys}"
-            )
-
-        return Metadata(
-            run_info=data[C.io.RUN_INFO_SECTION],
-            species=data[C.io.SPECIES_SECTION],
-            reactions=data[C.io.REACTIONS_SECTION],
-            parameters=data[C.io.PARAMETERS_SECTION],
-            _metadata_path=metadata_path,
-            _raw_data=data,
-        )
-
-    def to_dict(self) -> Dict[str, Any]:
-        return self._raw_data if self._raw_data is not None else {}
-
-    def get_monomer_names(self) -> List[str]:
-
-        monomer_names = []
-        units: List[Dict[str, Any]] = self.species.get(C.io.UNITS_KEY, [])
-        for unit in units:
-            if unit[C.io.TYPE_KEY] == "M":
-                monomer_names.append(unit[C.io.NAME_KEY])
-
-        if len(monomer_names) == 0:
-            raise ValueError(f"Metadata file does not contain any monomer information.")
-
-        return monomer_names
-
-    def get_unit_names(self) -> List[str]:
-
-        unit_names = []
-
-        units: List[Dict[str, Any]] = self.species.get(C.io.UNITS_KEY, [])
-        if len(units) == 0:
-            raise ValueError(f"Metadata file does not contain any unit information.")
-
-        for unit in units:
-            unit_names.append(unit[C.io.NAME_KEY])
-
-        return unit_names
-
-    def get_polymer_names(self) -> List[str]:
-
-        polymer_names = []
-
-        polymers: List[Dict[str, Any]] = self.species.get(C.io.POLYMERS_KEY, [])
-        if len(polymers) == 0:
-            raise ValueError(f"Metadata file does not contain any polymer information.")
-
-        for polymer in polymers:
-            polymer_names.append(polymer[C.io.NAME_KEY])
-
-        return polymer_names

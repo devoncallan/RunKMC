@@ -23,7 +23,6 @@ from .kmc import RunKMC, SimulationConfig, KMCConfig
 from .results import (
     SimulationResult,
     StateData,
-    Metadata,
     SequenceData,
     SimulationPaths,
 )
@@ -36,7 +35,6 @@ __all__ = [
     "KMCConfig",
     "SimulationResult",
     "StateData",
-    "Metadata",
     "SequenceData",
     "SimulationPaths",
 ]

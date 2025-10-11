@@ -8,6 +8,8 @@
 
 namespace build
 {
+    inline constexpr console::LogContext logger("KMC::Build");
+
     // Forward declarations of builder functions
     static SpeciesSet buildSpeciesSet(const io::types::SpeciesSetRead &data, const io::types::SimulationConfig &config);
     static std::vector<RateConstant> buildRateConstants(const std::vector<io::types::RateConstantRead> &data);
@@ -87,7 +89,8 @@ namespace build
             for (const auto &unitName : polyType.endGroupUnitNames)
             {
                 if (!registry::builder.isRegistered(unitName))
-                    console::input_error("End group unit " + unitName + " for polymer " + polyType.name + " is not registered. Exiting.");
+                    logger.error("End group unit " + unitName + " for polymer " + polyType.name + " is not registered. Exiting.");
+                // console::input_error("End group unit " + unitName + " for polymer " + polyType.name + " is not registered. Exiting.");
                 endGroupIDs.push_back(registry::builder.getSpeciesID(unitName));
             }
 
@@ -151,7 +154,6 @@ namespace build
                 console::input_error("Reactant species " + reactantName + " not registered. Exiting.");
 
             auto speciesInfo = registry::getSpecies(reactantName);
-            console::log("Reactant: " + speciesInfo.name + " of type " + std::string(speciesInfo.type));
             if (SpeciesType::isUnitType(speciesInfo.type))
                 species.reactants.push_back(&speciesSet.getUnits()[registry::getUnitIndex(speciesInfo.ID)]);
             else if (SpeciesType::isPolymerType(speciesInfo.type))

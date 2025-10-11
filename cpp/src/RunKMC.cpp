@@ -13,8 +13,6 @@ int main(int argc, char **argv)
 
     output::writeSpeciesRegistry(paths.speciesFile());
 
-    output::writeMetadata(model);
-
     if (config.parseOnly)
         return EXIT_SUCCESS;
 

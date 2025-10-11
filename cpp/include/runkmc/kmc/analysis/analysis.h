@@ -1,11 +1,80 @@
 #pragma once
 #include "common.h"
 #include "kmc/state.h"
-#include "kmc/analysis/utils.h"
-#include "kmc/species/species_set.h"
 
 namespace analysis
 {
+
+    namespace utils
+    {
+        static size_t getBucketIndex(size_t position, size_t chainLength, size_t numBuckets);
+        template <typename Func>
+        void forEachStats(const RawSequenceData &sequenceData, size_t numBuckets, Func callback);
+    }
+
+    SequenceSummary calculateSequenceSummary(const analysis::RawSequenceData &sequenceData)
+    {
+        // Calculate sequence stats matrix (polymers x (monomers*fields)) -> Summed across all buckets
+        // Calculate positional average stats (buckets x (monomers*fields)) -> Summed across all polymers
+        Eigen::MatrixXd sequenceStatsMatrix = Eigen::MatrixXd::Zero(sequenceData.length, SequenceStats::SIZE());
+        std::vector<SequenceStats> positionalStats(NUM_BUCKETS);
+
+        utils::forEachStats(
+            sequenceData,
+            NUM_BUCKETS,
+            [&](size_t index, const std::vector<SequenceStats> &allStats)
+            {
+                for (size_t bucket = 0; bucket < NUM_BUCKETS; ++bucket)
+                {
+                    const auto &stats = allStats[bucket];
+                    sequenceStatsMatrix.row(index) += stats.toEigen();
+                    positionalStats[bucket] += stats;
+                }
+            });
+
+        return SequenceSummary{sequenceStatsMatrix, positionalStats};
+    }
+
+    // Calculate sequence statistics for a single polymer sequence, divided into buckets
+    std::vector<SequenceStats> calculatePositionalSequenceStats(const std::vector<SpeciesID> &sequence, const size_t &numBuckets)
+    {
+        std::vector<SequenceStats> stats(numBuckets);
+        if (sequence.empty())
+            return stats;
+
+        SpeciesID currentMonomerID = 0;
+        size_t currentSequenceLength = 0;
+
+        for (size_t i = 0; i < sequence.size(); ++i)
+        {
+            size_t bucket = utils::getBucketIndex(i, sequence.size(), numBuckets);
+            SpeciesID id = sequence[i];
+
+            // Skip non-monomer units
+            if (!registry::isMonomer(id))
+                continue;
+
+            if (id == currentMonomerID)
+            {
+                currentSequenceLength++;
+                continue;
+            }
+
+            if (currentSequenceLength > 0)
+                stats[bucket].addSequence(currentMonomerID, currentSequenceLength);
+
+            currentMonomerID = id;
+            currentSequenceLength = 1;
+        }
+
+        // Add the stats for the last sequence
+        size_t bucket = utils::getBucketIndex(sequence.size() - 1, sequence.size(), numBuckets);
+        if (currentSequenceLength > 0)
+            stats[bucket].addSequence(currentMonomerID, currentSequenceLength);
+
+        return stats;
+    }
+
     void analyzeChainLengthDist(Eigen::MatrixXd &sequenceStatsMatrix, const std::vector<double> &monomerFWs, AnalysisState &state)
     {
         if (sequenceStatsMatrix.rows() == 0 || sequenceStatsMatrix.cols() == 0)
@@ -74,21 +143,37 @@ namespace analysis
         }
     }
 
-    void analyze(const SpeciesSet &speciesSet, SystemState &systemState)
+};
+
+namespace analysis::utils
+{
+    static size_t getBucketIndex(size_t position, size_t chainLength, size_t numBuckets)
     {
-        auto sequenceData = speciesSet.getRawSequenceData();
-        auto summary = analysis::calculateSequenceSummary(sequenceData);
+        if (chainLength <= 1)
+            return 0;
 
-        AnalysisState analysisState;
-        analysis::analyzeChainLengthDist(summary.sequenceStatsMatrix, speciesSet.getMonomerFWs(), analysisState);
-        systemState.analysis = analysisState;
+        double normalizedPos = static_cast<double>(position) / (chainLength);
 
-        if (registry::getNumMonomers() <= 1)
-            return;
+        size_t bucket = static_cast<size_t>(normalizedPos * numBuckets);
+        return (bucket == numBuckets) ? numBuckets - 1 : bucket;
+    }
 
-        SequenceState sequenceState = SequenceState{systemState.kmc, summary.positionalStats};
-        analysis::analyzeSequenceLengthDist(summary.sequenceStatsMatrix, analysisState);
-        systemState.analysis = analysisState;
-        systemState.sequence = sequenceState;
+    template <typename Func>
+    void forEachStats(const RawSequenceData &sequenceData, size_t numBuckets, Func callback)
+    {
+        // Process sequences on-the-fly
+        auto numSequences = sequenceData.sequences.size();
+        for (size_t i = 0; i < numSequences; ++i)
+        {
+            auto stats = calculatePositionalSequenceStats(sequenceData.sequences[i], numBuckets);
+            callback(i, stats);
+        }
+
+        // Process precomputed
+        auto numPrecomputed = sequenceData.precomputedStats.size();
+        for (size_t i = 0; i < numPrecomputed; ++i)
+        {
+            callback(numSequences + i, sequenceData.precomputedStats[i]);
+        }
     }
 }

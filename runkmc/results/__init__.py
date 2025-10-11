@@ -1,5 +1,5 @@
 from .paths import SimulationPaths
-from .state import StateData, Metadata, SequenceData
+from .state import StateData, SequenceData
 from .results import SimulationResult
 from .polymers import (
     read_polymer_file,
@@ -12,7 +12,6 @@ from .polymers import (
 __all__ = [
     "SimulationPaths",
     "StateData",
-    "Metadata",
     "SequenceData",
     "SimulationResult",
     "read_polymer_file",

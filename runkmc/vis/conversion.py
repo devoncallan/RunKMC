@@ -13,9 +13,8 @@ def plot_monomer_conversion(result: SimulationResult, ax: Optional[Axes] = None)
     if ax is None:
         fig, ax = plt.subplots(figsize=(3.5, 3.5), dpi=300)
 
-
     state = result.results
-    monomer_names = result.metadata.get_monomer_names()
+    monomer_names = result.species.get_monomer_names()
 
     for monomer_name in monomer_names:
         monomer_conv = state.unit_convs[monomer_name]
@@ -37,7 +36,7 @@ def plot_monomer_counts(result: SimulationResult, ax: Optional[Axes] = None):
         fig, ax = plt.subplots(figsize=(3.5, 3.5), dpi=300)
 
     state = result.results
-    monomer_names = result.metadata.get_monomer_names()
+    monomer_names = result.species.get_monomer_names()
 
     for monomer_name in monomer_names:
         monomer_count = state.unit_counts[monomer_name]
