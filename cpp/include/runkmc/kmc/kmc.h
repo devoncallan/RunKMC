@@ -108,7 +108,7 @@ private:
             return;
 
         // Update time
-        double rn = rng_utils::dis(rng_utils::rng) + 1e-40;
+        double rn = rng::rand();
         state.kmc.kmcTime -= log(rn) / reactionSet.getTotalReactionRate();
         state.kmc.kmcStep += 1;
     }

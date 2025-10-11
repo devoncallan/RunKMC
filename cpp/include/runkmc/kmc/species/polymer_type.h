@@ -7,14 +7,10 @@
  * @brief Stores pointers to polymer objects of a specific type.
  *
  */
-class PolymerType
+class PolymerType : public Species
 {
 public:
-    SpeciesID ID;
-    std::string name;
-    uint64_t count;
-
-    PolymerType(const SpeciesID &ID_, const std::string &name_, const std::vector<SpeciesID> &endGroup_) : ID(ID_), name(name_), endGroup(endGroup_), count(0) {};
+    PolymerType(const SpeciesID &ID_, const std::string &name_, const std::vector<SpeciesID> &endGroup_) : Species(ID_, name_, SpeciesType::POLYMER), endGroup(endGroup_) {};
 
     ~PolymerType() {};
 
@@ -27,7 +23,7 @@ public:
     Polymer *removeRandomPolymer()
     {
         --count;
-        size_t randomIndex = int(rng_utils::dis(rng_utils::rng) * polymers.size());
+        size_t randomIndex = rng::randIndex(polymers.size());
         Polymer *polymer = polymers[randomIndex];           // get random polymer
         polymers[randomIndex] = std::move(polymers.back()); // swap
         polymers.pop_back();                                // and pop!
@@ -43,24 +39,21 @@ private:
     std::vector<SpeciesID> endGroup; // endGroup to identify the terminal units on the chain end.
 };
 
-typedef PolymerType *PolymerTypePtr;
+// typedef PolymerType *PolymerTypePtr;
 
 /**
  * @brief Stores a collection of PolymerType pointers.
  *
  */
-class PolymerContainer
+class PolymerContainer : public Species
 {
 public:
-    SpeciesID ID;
-    std::string name;
-    uint64_t count = 0;
-
-    PolymerContainer(const SpeciesID &ID_, const std::string &name_, const std::vector<PolymerTypePtr> &polymerTypePtrs_)
-        : ID(ID_), name(name_), polymerTypePtrs(polymerTypePtrs_)
+    PolymerContainer(const SpeciesID &ID_, const std::string &name_, const std::vector<PolymerType *> &polymerTypePtrs_)
+        : Species(ID_, name_, SpeciesType::POLYMER), polymerTypePtrs(polymerTypePtrs_)
     {
         polymerTypeCounts.resize(polymerTypePtrs_.size());
     };
+
     ~PolymerContainer() {}
 
     Polymer *removeRandomPolymer()
@@ -72,8 +65,7 @@ public:
             return polymerTypePtrs[0]->removeRandomPolymer();
         }
 
-        std::discrete_distribution<size_t> discrete_dis(polymerTypeCounts.begin(), polymerTypeCounts.end());
-        size_t typeIndex = discrete_dis(rng_utils::rng);
+        size_t typeIndex = rng::randIndexWeighted(polymerTypeCounts);
         --count;
         --polymerTypeCounts[typeIndex];
         return polymerTypePtrs[typeIndex]->removeRandomPolymer();
@@ -121,14 +113,12 @@ public:
         return name + ": " + std::to_string(count);
     }
 
-    const std::vector<PolymerTypePtr> &getPolymerTypes() const { return polymerTypePtrs; }
+    const std::vector<PolymerType *> &getPolymerTypes() const { return polymerTypePtrs; }
 
 private:
-    std::vector<PolymerTypePtr> polymerTypePtrs;
+    std::vector<PolymerType *> polymerTypePtrs;
     std::vector<uint64_t> polymerTypeCounts;
 };
-
-typedef PolymerContainer *PolymerContainerPtr;
 
 struct PolymerContainerMap
 {

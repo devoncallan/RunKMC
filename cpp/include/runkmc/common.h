@@ -15,5 +15,5 @@
 #include "utils/parse.h"
 
 #include "core/types.h"
-#include "core/registry.h"
+#include "core/species.h"
 #include "core/C.h"

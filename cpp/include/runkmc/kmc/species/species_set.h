@@ -52,7 +52,7 @@ public:
         {
             // Get pointers to the polymer types in this container
             auto indices = containerMap.polymerTypeIndices;
-            std::vector<PolymerTypePtr> polymerTypePtrs;
+            std::vector<PolymerType *> polymerTypePtrs;
             polymerTypePtrs.reserve(indices.size());
             for (const auto &index : indices)
                 polymerTypePtrs.push_back(&polymerTypes[index]);
@@ -177,14 +177,14 @@ public:
 
     std::vector<PolymerContainer> &getPolymerContainers() { return polymerContainers; }
     const std::vector<PolymerContainer> &getPolymerContainers() const { return polymerContainers; }
-    const std::vector<PolymerContainerPtr> &getPolymerContainerPtrs() const { return polymerContainerPtrs; }
+    const std::vector<PolymerContainer *> &getPolymerContainerPtrs() const { return polymerContainerPtrs; }
 
     double getNAV() const { return NAV; }
 
 private:
     std::vector<PolymerType> polymerTypes;
     std::vector<PolymerContainer> polymerContainers;
-    std::vector<PolymerContainerPtr> polymerContainerPtrs;
+    std::vector<PolymerContainer *> polymerContainerPtrs;
 
     std::vector<Unit> units;
     size_t numParticles;

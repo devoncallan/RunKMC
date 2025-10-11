@@ -9,17 +9,17 @@ typedef uint8_t SpeciesID;
 class ReactionType
 {
 public:
-    static inline const std::string ELEMENTARY = "EL";
-    static inline const std::string INITIATOR_DECOMPOSITION = "ID";
-    static inline const std::string INIT_DECOMP_POLY = "IDP";
-    static inline const std::string INITIATION = "IN";
-    static inline const std::string PROPAGATION = "PR";
-    static inline const std::string DEPROPAGATION = "DP";
-    static inline const std::string TERMINATION_C = "TC";
-    static inline const std::string TERMINATION_D = "TD";
-    static inline const std::string CHAINTRANSFER_M = "CTM";
-    static inline const std::string CHAINTRANSFER_S = "CTS";
-    static inline const std::string THERM_INIT_M = "TIM";
+    static constexpr std::string_view ELEMENTARY = "EL";
+    static constexpr std::string_view INITIATOR_DECOMPOSITION = "ID";
+    static constexpr std::string_view INIT_DECOMP_POLY = "IDP";
+    static constexpr std::string_view INITIATION = "IN";
+    static constexpr std::string_view PROPAGATION = "PR";
+    static constexpr std::string_view DEPROPAGATION = "DP";
+    static constexpr std::string_view TERMINATION_C = "TC";
+    static constexpr std::string_view TERMINATION_D = "TD";
+    static constexpr std::string_view CHAINTRANSFER_M = "CTM";
+    static constexpr std::string_view CHAINTRANSFER_S = "CTS";
+    static constexpr std::string_view THERM_INIT_M = "TIM";
 
 private:
     ReactionType() = delete;
@@ -29,24 +29,24 @@ private:
 class SpeciesType
 {
 public:
-    static inline const std::string UNIT = "U";
-    static inline const std::string MONOMER = "M";
-    static inline const std::string INITIATOR = "I";
-    static inline const std::string POLYMER = "P";
-    static inline const std::string UNDEFINED = "?";
-    static inline const std::string LABEL = "LABEL";
+    static constexpr std::string_view UNIT = "U";
+    static constexpr std::string_view MONOMER = "M";
+    static constexpr std::string_view INITIATOR = "I";
+    static constexpr std::string_view POLYMER = "P";
+    static constexpr std::string_view UNDEFINED = "?";
+    static constexpr std::string_view LABEL = "LABEL";
 
-    static bool isUnitType(const std::string &type)
+    static bool isUnitType(std::string_view type)
     {
         return type == UNIT || type == MONOMER || type == INITIATOR;
     }
 
-    static bool isPolymerType(const std::string &type)
+    static bool isPolymerType(std::string_view type)
     {
         return type == POLYMER || type == LABEL;
     }
 
-    static bool isValidType(const std::string &type)
+    static bool isValidType(std::string_view type)
     {
         for (const auto &_validType : _validTypes)
         {
@@ -56,15 +56,15 @@ public:
         return false;
     }
 
-    static std::string invalidTypeString(const std::string &type)
+    static std::string invalidTypeString(std::string_view type)
     {
         std::string validTypesStr = "";
         for (const auto &_validType : _validTypes)
-            validTypesStr += _validType + " ";
-        return "Invalid species type `" + type + "`. Valid types are: " + validTypesStr + ".";
+            validTypesStr += std::string(_validType) + " ";
+        return "Invalid species type `" + std::string(type) + "`. Valid types are: " + validTypesStr + ".";
     }
 
-    static void checkValid(const std::string &type)
+    static void checkValid(std::string_view type)
     {
         if (!isValidType(type))
             console::input_error(invalidTypeString(type));
@@ -73,7 +73,7 @@ public:
 private:
     SpeciesType() = delete;
     ~SpeciesType() = delete;
-    static inline const std::vector<std::string> _validTypes = {UNIT, MONOMER, INITIATOR, POLYMER, UNDEFINED, LABEL};
+    static inline const std::vector<std::string_view> _validTypes = {UNIT, MONOMER, INITIATOR, POLYMER, UNDEFINED, LABEL};
 };
 
 enum PolymerState

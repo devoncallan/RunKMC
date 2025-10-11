@@ -5,7 +5,9 @@
 #include <iomanip>
 #include <filesystem>
 #include <sstream>
+
 #include "core/C.h"
+#include "utils/parse.h"
 
 namespace console
 {
@@ -60,6 +62,11 @@ namespace console
             exit(EXIT_FAILURE);
     }
 
+    static inline void _printVector(std::string_view title, const std::vector<std::string_view> &vec, std::string_view c = color::DEFAULT)
+    {
+        std::cout << color::on(c) << "[" << title << "] : " << str::join(vec, ", ") << color::on(color::DEFAULT) << std::endl;
+    }
+
     static inline void _printLink(std::string_view title, const std::filesystem::path &path, std::string_view label = {}, std::string_view c = color::DEFAULT)
     {
         _print(title, term::linkPath(path, label), c);
@@ -74,4 +81,7 @@ namespace console
     static inline void error(std::string_view msg) { _print("ERROR", msg, color::RED, true); }
     static inline void input_error(std::string_view msg) { _print("INPUT ERROR", msg, color::RED, true); }
     static inline void link(const std::filesystem::path &path, std::string_view label = {}) { _printLink("LINK", path, label, color::GRN); }
+
+    static inline void logVector(const std::vector<std::string_view> &vec) { log(str::join(vec, ", ")); }
+    static inline void logVector(const std::vector<std::string> &vec) { log(str::join(vec, ", ")); }
 };

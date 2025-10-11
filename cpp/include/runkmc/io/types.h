@@ -40,17 +40,6 @@ namespace io::types
         std::string type;
     };
 
-    struct RegisteredSpecies : SpeciesRead
-    {
-        SpeciesID ID;
-    };
-
-    struct SpeciesWrite : RegisteredSpecies
-    {
-        uint64_t count;
-        uint64_t initialCount;
-    };
-
     struct UnitRead : SpeciesRead
     {
         double C0 = 0.0;

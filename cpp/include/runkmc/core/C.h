@@ -7,47 +7,14 @@
 namespace C
 {
     inline constexpr double NA = 6.022149e23; // Avogadro's number
-    inline constexpr int PRECISION = std::numeric_limits<double>::max_digits10;
+
 };
 
-namespace C::reaction
-{
-    class type
-    {
-        static inline const std::string ELEMENTARY = "EL";
-        static inline const std::string INITIATOR_DECOMPOSITION = "ID";
-        static inline const std::string INIT_DECOMP_POLY = "IDP";
-        static inline const std::string INITIATION = "IN";
-        static inline const std::string PROPAGATION = "PR";
-        static inline const std::string DEPROPAGATION = "DP";
-        static inline const std::string TERMINATION_C = "TC";
-        static inline const std::string TERMINATION_D = "TD";
-        static inline const std::string CHAINTRANSFER_M = "CTM";
-        static inline const std::string CHAINTRANSFER_S = "CTS";
-        static inline const std::string THERM_INIT_M = "TIM";
-    };
-};
-
-namespace C::species
-{
-    inline constexpr std::string_view UNIT_ID = "U";
-    inline constexpr std::string_view MONOMER_ID = "M";
-    inline constexpr std::string_view INITIATOR_ID = "I";
-    inline constexpr std::string_view POLYMER_ID = "P";
-    inline constexpr std::string_view LABEL_ID = "LABEL";
-    inline constexpr std::string_view UNDEFINED_ID = "?";
-
-    inline constexpr std::string_view UNIT = "UNIT";
-    inline constexpr std::string_view MONOMER = "MONOMER";
-    inline constexpr std::string_view INITIATOR = "INITIATOR";
-    inline constexpr std::string_view POLYMER = "POLYMER";
-    inline constexpr std::string_view LABEL = "LABEL";
-    inline constexpr std::string_view UNDEFINED = "UNDEFINED";
-
-    inline constexpr std::string_view REACTION = "REACTION";
-};
 namespace C::io
 {
+
+    inline constexpr int PRECISION = std::numeric_limits<double>::max_digits10;
+
     inline constexpr std::string_view PARAMETERS_SECTION = "parameters";
     inline constexpr std::string_view SPECIES_SECTION = "species";
     inline constexpr std::string_view RATE_CONSTANTS_SECTION = "rateconstants";

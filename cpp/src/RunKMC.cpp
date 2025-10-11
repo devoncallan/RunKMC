@@ -5,10 +5,14 @@ int main(int argc, char **argv)
 {
     auto config = build::parseArguments(argc, argv);
     auto input = build::parseModelFile(config.inputFilepath);
+
+    SimulationPaths paths(config);
+    output::writeInputFile(input, paths.parsedInputFile());
+
     auto model = build::buildModel(config, input);
 
-    output::writeInputFile(model, input);
-    output::writeRegistry(model);
+    output::writeSpeciesRegistry(paths.speciesFile());
+
     output::writeMetadata(model);
 
     if (config.parseOnly)

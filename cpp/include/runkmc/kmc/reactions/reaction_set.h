@@ -42,10 +42,10 @@ public:
 
     size_t chooseRandomReactionIndex() const
     {
-        double randomNumber = rng_utils::dis(rng_utils::rng);
+        double rn = rng::rand();
         for (size_t reactionIndex = 0; reactionIndex < numReactions; ++reactionIndex)
         {
-            if (randomNumber <= reactionCumulativeProbabilities[reactionIndex])
+            if (rn <= reactionCumulativeProbabilities[reactionIndex])
                 return reactionIndex;
         }
         console::error("Uh oh! No reaction was chosen - something is wrong with the cumulative probability vector. Exiting.");

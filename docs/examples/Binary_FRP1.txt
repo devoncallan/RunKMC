@@ -6,9 +6,10 @@ end
 
 species
     I I     [C0]=0.001   FW=3.0   f=0.5
-    U R
     M A     [C0]=1.0   FW=100.0
     M B     [C0]=1.0   FW=37.0
+    
+    P R
     P PA
     P PB
     LABEL P PA|PB
@@ -34,5 +35,5 @@ reactions
     PR PB + A -kpBA-> PA
     PR PB + B -kpBB-> PB
     TC P + P -ktc-> D
-    TD P + P -ktd-> D
+    TD P + P -ktd-> D + D
 end

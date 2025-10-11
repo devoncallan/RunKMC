@@ -1,26 +1,58 @@
 #pragma once
-#include <string>
-#include <vector>
+#include "core/types.h"
 
-#include "utils/parse.h"
-#include "utils/console.h"
-#include "types.h"
-#include "io/types.h"
+struct RegisteredSpecies
+{
+    SpeciesID ID;
+    std::string name;
+    std::string type;
+};
+
+class Species : public RegisteredSpecies
+{
+public:
+    uint64_t count = 0;
+    uint64_t initCount = 0;
+
+    // Species(SpeciesID ID, std::string name, std::string type)
+    //     : RegisteredSpecies{ID, name, type} {};
+
+    Species(SpeciesID ID, std::string name, std::string_view type)
+        : RegisteredSpecies{ID, name, std::string(type)} {};
+
+    virtual ~Species() {};
+
+    void setInitialCount(uint64_t initialCount)
+    {
+        initCount = initialCount;
+        count = initCount;
+    }
+
+    uint64_t getInitialCount() const { return initCount; }
+
+    double calculateConversion() const
+    {
+        if (initCount == 0)
+            return 0;
+        return double(initCount - count) / initCount;
+    }
+};
 
 /**
  * @brief Immutable, optimized, cached lookups for species information.
  *
  */
-class Registry
+class SpeciesRegistry
 {
 public:
-    Registry() = default;
-    ~Registry() = default;
+    SpeciesRegistry() = default;
+    ~SpeciesRegistry() = default;
 
     // Helper functions
-    const std::vector<io::types::RegisteredSpecies> &getAllSpecies() const { return _species; }
-    const io::types::RegisteredSpecies &getSpecies(const SpeciesID &id) const { return _idToSpecies.at(id); }
-    const io::types::RegisteredSpecies &getSpecies(const std::string &name) const { return _nameToSpecies.at(name); }
+    bool isRegistered(const std::string &name) const { return _nameToSpecies.find(name) != _nameToSpecies.end(); }
+    const std::vector<RegisteredSpecies> &getAllSpecies() const { return _species; }
+    const RegisteredSpecies &getSpecies(const SpeciesID &id) const { return _idToSpecies.at(id); }
+    const RegisteredSpecies &getSpecies(const std::string &name) const { return _nameToSpecies.at(name); }
 
     // Unit helper functions
     const std::vector<SpeciesID> &getAllUnitIDs() const { return _allUnitIDs; }
@@ -41,15 +73,15 @@ public:
 private:
     friend class RegistryBuilder;
 
-    Registry(
-        const std::vector<io::types::RegisteredSpecies> &species)
+    SpeciesRegistry(
+        const std::vector<RegisteredSpecies> &species)
     {
         _species = species; // in order of registration
         for (const auto &s : _species)
         {
             _nameToSpecies[s.name] = s;
             _idToSpecies[s.ID] = s;
-            _typeToNames[s.type].push_back(s.name);
+            _typeToNames[std::string(s.type)].push_back(s.name);
 
             if (SpeciesType::isUnitType(s.type))
             {
@@ -78,10 +110,10 @@ private:
     };
 
     // All species
-    std::vector<io::types::RegisteredSpecies> _species;
+    std::vector<RegisteredSpecies> _species;
 
-    std::unordered_map<std::string, io::types::RegisteredSpecies> _nameToSpecies;
-    std::unordered_map<SpeciesID, io::types::RegisteredSpecies> _idToSpecies;
+    std::unordered_map<std::string, RegisteredSpecies> _nameToSpecies;
+    std::unordered_map<SpeciesID, RegisteredSpecies> _idToSpecies;
     std::unordered_map<std::string, std::vector<std::string>> _typeToNames;
 
     // Unit data (cached)
@@ -106,10 +138,10 @@ private:
 class RegistryBuilder
 {
 public:
-    size_t findSpecies(const std::string &name) const { return input::findInVector(name, registered_species); }
+    size_t findSpecies(const std::string &name) const { return str::findInVector(name, registered_species); }
     bool isRegistered(const std::string &name) const { return findSpecies(name) != SIZE_T_MAX; }
 
-    io::types::RegisteredSpecies getSpecies(const std::string &name) const
+    RegisteredSpecies getSpecies(const std::string &name) const
     {
         size_t index = findSpecies(name);
         if (index != SIZE_T_MAX)
@@ -119,45 +151,48 @@ public:
 
     SpeciesID getSpeciesID(const std::string &name) const { return getSpecies(name).ID; }
 
-    SpeciesID registerNewSpecies(const std::string &name, const std::string &type)
+    SpeciesID registerNewSpecies(const std::string &name, std::string type)
     {
         if (finalized)
             console::error("Cannot register new species after registry has been finalized.");
 
+        console::log("Registering species: " + name + " of type " + type);
         SpeciesType::checkValid(type);
+        console::log("Species type " + type + " is valid.");
 
         if (isRegistered(name))
             console::input_error("Species with name " + name + " already registered.");
 
         // Assign IDs sequentially
         SpeciesID newID = registered_species.size() + 1;
-        registered_species.push_back({name, type, newID});
+        registered_species.push_back({newID, name, type});
         return newID;
     }
 
-    Registry build()
+    SpeciesRegistry build()
     {
         finalized = true;
-        return Registry(registered_species);
+        return SpeciesRegistry(registered_species);
     }
 
 private:
     bool finalized = false;
-    std::vector<io::types::RegisteredSpecies> registered_species;
+    std::vector<RegisteredSpecies> registered_species;
 };
 
 namespace registry
 {
     static RegistryBuilder builder;
-    static Registry _instance;
+    static SpeciesRegistry _instance;
 
     // Initialize registry
     static void initialize() { _instance = builder.build(); }
 
     // Helper functions
-    static inline const std::vector<io::types::RegisteredSpecies> &getAllSpecies() { return _instance.getAllSpecies(); }
-    static inline const io::types::RegisteredSpecies &getSpecies(const SpeciesID &id) { return _instance.getSpecies(id); }
-    static inline const io::types::RegisteredSpecies &getSpecies(const std::string &name) { return _instance.getSpecies(name); }
+    bool isRegistered(const std::string &name) { return _instance.isRegistered(name); }
+    static inline const std::vector<RegisteredSpecies> &getAllSpecies() { return _instance.getAllSpecies(); }
+    static inline const RegisteredSpecies &getSpecies(const SpeciesID &id) { return _instance.getSpecies(id); }
+    static inline const RegisteredSpecies &getSpecies(const std::string &name) { return _instance.getSpecies(name); }
 
     // Unit helpers
     static inline std::vector<SpeciesID> getAllUnitIDs() { return _instance.getAllUnitIDs(); }

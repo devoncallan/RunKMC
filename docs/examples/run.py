@@ -12,7 +12,7 @@ if __name__ == "__main__":
 
     from runkmc import RunKMC
 
-    input_filepath = EXAMPLES_DIR / "Homo_FRP1.txt"
+    input_filepath = EXAMPLES_DIR / "Binary_FRP1.txt"
     output_dir = EXAMPLES_DIR / "output_dir/"
     # print(input_filepath)
     # print(output_dir)

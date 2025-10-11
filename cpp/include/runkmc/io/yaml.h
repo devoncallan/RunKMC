@@ -101,8 +101,7 @@ namespace io::yaml
             readVarRequired(node, C::io::NAME_KEY, data.name);
             readVarRequired(node, C::io::TYPE_KEY, data.type);
 
-            if (!SpeciesType::isValidType(data.type))
-                console::input_error(SpeciesType::invalidTypeString(data.type));
+            SpeciesType::checkValid(data.type);
 
             return data;
         }
@@ -120,23 +119,26 @@ namespace io::yaml
     // | Species - Registered
     // +--------------------------
     template <>
-    struct Parser<types::RegisteredSpecies>
+    struct Parser<RegisteredSpecies>
     {
-        static types::RegisteredSpecies read(const YAML::Node &node)
+        static RegisteredSpecies read(const YAML::Node &node)
         {
-            types::SpeciesRead species = Parser<types::SpeciesRead>::read(node);
-            types::RegisteredSpecies data;
-            data.name = species.name;
-            data.type = species.type;
-
+            RegisteredSpecies data;
+            readVarRequired(node, C::io::NAME_KEY, data.name);
+            readVarRequired(node, C::io::TYPE_KEY, data.type);
             readVarRequired(node, C::io::ID_KEY, data.ID);
+
+            SpeciesType::checkValid(data.type);
+
             return data;
         }
 
-        static YAML::Node write(const types::RegisteredSpecies &data)
+        static YAML::Node write(const RegisteredSpecies &data)
         {
-            YAML::Node node = Parser<types::SpeciesRead>::write(data);
-            node[C::io::ID_KEY] = std::to_string(data.ID);
+            YAML::Node node;
+            node[C::io::NAME_KEY] = data.name;
+            node[C::io::TYPE_KEY] = data.type;
+            node[C::io::ID_KEY] = int(data.ID);
             return node;
         }
     };
@@ -240,8 +242,8 @@ namespace io::yaml
                     polymerNodes.push_back(specNode);
                 else if (species.type == SpeciesType::LABEL)
                     labelNodes.push_back(specNode);
-                else
-                    console::input_error(SpeciesType::invalidTypeString(species.type));
+
+                SpeciesType::checkValid(species.type);
             }
 
             // ===== PASS 2: Parse in order: Units, Polymers, Labels =====
@@ -376,7 +378,7 @@ namespace io::yaml
             throw std::runtime_error("Failed to open file for writing: " + filepath.string());
         }
 
-        file << std::setprecision(C::PRECISION);
+        file << std::setprecision(C::io::PRECISION);
         file << node;
     }
 };

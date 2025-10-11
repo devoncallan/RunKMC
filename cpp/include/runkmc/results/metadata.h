@@ -8,34 +8,31 @@ namespace output
 {
     using namespace io;
 
-    void writeRegistry(const KMC &model)
+    void writeSpeciesRegistry(const std::filesystem::path &filepath)
     {
-
-        auto paths = model.getPaths();
 
         YAML::Node root;
 
-        std::vector<types::RegisteredSpecies> species = registry::getAllSpecies();
+        std::vector<RegisteredSpecies> species = registry::getAllSpecies();
 
-        root["species"] = yaml::Parser<std::vector<types::RegisteredSpecies>>::write(species);
+        root["species"] = yaml::Parser<std::vector<RegisteredSpecies>>::write(species);
 
         root["units"] = registry::getAllUnitNames();
         root["monomers"] = registry::getMonomerNames();
         root["polymers"] = registry::getPolymerNames();
 
-        io::yaml::writeYamlToFile(paths.speciesFile(), root);
+        io::yaml::writeYamlToFile(filepath, root);
     }
 
-    void writeInputFile(const KMC &model, const types::KMCInputRead &data)
+    void writeInputFile(const types::KMCInputRead &data, const std::filesystem::path &filepath)
     {
-
         YAML::Node root;
         root[C::io::PARAMETERS_SECTION] = yaml::Parser<io::types::SimulationConfig>::write(data.config);
         root[C::io::SPECIES_SECTION] = yaml::Parser<types::SpeciesSetRead>::write(data.species);
         root[C::io::RATE_CONSTANTS_SECTION] = yaml::Parser<std::vector<types::RateConstantRead>>::write(data.rateConstants);
         root[C::io::REACTIONS_SECTION] = yaml::Parser<std::vector<types::ReactionRead>>::write(data.reactions);
 
-        io::yaml::writeYamlToFile(model.getPaths().parsedInputFile(), root);
+        io::yaml::writeYamlToFile(filepath, root);
     }
 };
 
@@ -177,13 +174,13 @@ namespace output
         {
             YAML::Node node;
             node["type"] = reaction.getType();
-            node["rate_constant"] = reaction.rateConstant.name;
+            // node["rate_constant"] = reaction.rateConstant.name;
 
-            std::vector<std::string> reactantNames = reaction.getReactantNames();
-            node["reactants"] = reactantNames;
+            // std::vector<std::string> reactantNames = reaction.getReactantNames();
+            // node["reactants"] = reactantNames;
 
-            std::vector<std::string> productNames = reaction.getProductNames();
-            node["products"] = productNames;
+            // std::vector<std::string> productNames = reaction.getProductNames();
+            // node["products"] = productNames;
 
             return node;
         }

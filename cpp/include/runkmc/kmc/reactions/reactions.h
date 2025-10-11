@@ -11,75 +11,112 @@ struct RateConstant
         : name(name_), value(value_) {};
 };
 
-class Reaction
+// Container for reactant and product species in a reaction
+struct ReactionSpecies
 {
-public:
-    RateConstant rateConstant;
-    Reaction(RateConstant rateConstant_, size_t numPolyReactants, size_t numUnitReactants,
-             size_t numPolyProducts, size_t numUnitProducts) : rateConstant(rateConstant_)
-    {
-        polyReactants.resize(numPolyReactants);
-        unitReactants.resize(numUnitReactants);
-        polyProducts.resize(numPolyProducts);
-        unitProducts.resize(numUnitProducts);
-    };
-    virtual ~Reaction() = default;
-    Reaction(const Reaction &) = default;
-    Reaction &operator=(const Reaction &) = default;
-    Reaction(Reaction &&) = default;
-    Reaction &operator=(Reaction &&) = default;
+    std::vector<Species *> reactants;
+    std::vector<Species *> products;
 
-    /**
-     * @brief Undergoes reaction. Automatically updates unit counts and moves pointers to Polymer objects
-     * into containers based on type.
-     */
-    virtual void react() = 0;
+    // ----- Helper functions to get species as specific types -----
 
-    /**
-     * @brief Calculates rate of reaction for a given NAV.
-     *
-     * @return double
-     */
-    virtual double calculateRate(double NAV) const = 0;
+    // Get a reactant species by index as a PolymerContainer pointer
+    template <size_t Idx>
+    PolymerContainer *r_poly() const { return static_cast<PolymerContainer *>(reactants[Idx]); }
 
-    virtual const std::string &getType() const = 0;
+    // Get a product species by index as a PolymerContainer pointer
+    template <size_t Idx>
+    PolymerContainer *p_poly() const { return static_cast<PolymerContainer *>(products[Idx]); }
+
+    // Get a reactant species by index as a Unit pointer
+    template <size_t Idx>
+    Unit *r_unit() const { return static_cast<Unit *>(reactants[Idx]); }
+
+    // Get a product species by index as a Unit pointer
+    template <size_t Idx>
+    Unit *p_unit() const { return static_cast<Unit *>(products[Idx]); }
+};
+
+struct ReactionSchema
+{
+    std::string_view type;
+    std::vector<std::string_view> reactantTypes;
+    std::vector<std::string_view> productTypes;
 
     std::string toString() const
     {
-        return rxn_print::reactionToString(unitReactants, polyReactants, unitProducts, polyProducts, false);
+        return std::string(type) + ": " + str::join(reactantTypes, " + ") + " --> " + str::join(productTypes, " + ");
     }
 
-    std::string toStringWithCounts() const
+    constexpr void validateSchema() const
     {
-        return rxn_print::reactionToString(unitReactants, polyReactants, unitProducts, polyProducts, true);
+        for (const auto &type : reactantTypes)
+            SpeciesType::checkValid(type);
+        for (const auto &type : productTypes)
+            SpeciesType::checkValid(type);
     }
 
-    std::vector<std::string> getReactantNames() const
+    void validate(const ReactionSpecies &species) const
     {
-        std::vector<std::string> reactantNames;
-        for (const auto &unit : unitReactants)
-            reactantNames.push_back(unit->name);
-        for (const auto &poly : polyReactants)
-            reactantNames.push_back(poly->name);
-        return reactantNames;
+        // Elementary reactions have no type / size constraints
+        if (type == ReactionType::ELEMENTARY)
+            return;
+
+        if (species.reactants.size() != reactantTypes.size())
+            console::input_error("Reaction " + std::string(type) + " expects " + std::to_string(reactantTypes.size()) + " reactants, got " + std::to_string(species.reactants.size()) + ".");
+        if (species.products.size() != productTypes.size())
+            console::input_error("Reaction " + std::string(type) + " expects " + std::to_string(productTypes.size()) + " products, got " + std::to_string(species.products.size()) + ".");
+
+        for (size_t i = 0; i < species.reactants.size(); ++i)
+        {
+            if (!species.reactants[i])
+                console::input_error("Reaction " + std::string(type) + " has null reactant at position " + std::to_string(i) + ". Expected type: " + std::string(reactantTypes[i]) + ".");
+            if (!typesMatch(reactantTypes[i], species.reactants[i]->type))
+                console::input_error("Reaction " + std::string(type) + " has reactant type mismatch at position " + std::to_string(i) + ". Expected type: " + std::string(reactantTypes[i]) + ", got type: " + std::string(species.reactants[i]->type) + ".");
+        }
+
+        for (size_t i = 0; i < species.products.size(); ++i)
+        {
+            if (!species.products[i])
+                console::input_error("Reaction " + std::string(type) + " has null product at position " + std::to_string(i) + ". Expected type: " + std::string(productTypes[i]) + ".");
+            if (!typesMatch(productTypes[i], species.products[i]->type))
+                console::input_error("Reaction " + std::string(type) + " has product type mismatch at position " + std::to_string(i) + ". Expected type: " + std::string(productTypes[i]) + ", got type: " + std::string(species.products[i]->type) + ".");
+        }
     }
 
-    std::vector<std::string> getProductNames() const
+private:
+    static bool typesMatch(std::string_view expected, std::string_view actual)
     {
-        std::vector<std::string> productNames;
-        for (const auto &unit : unitProducts)
-            productNames.push_back(unit->name);
-        for (const auto &poly : polyProducts)
-            productNames.push_back(poly->name);
-        return productNames;
+        if (expected == actual)
+            return true;
+        if (expected == SpeciesType::UNIT && SpeciesType::isUnitType(actual))
+            return true;
+        if (expected == SpeciesType::POLYMER && SpeciesType::isPolymerType(actual))
+            return true;
+        return false;
     }
+};
+
+class Reaction
+{
+public:
+    Reaction(RateConstant rc, const ReactionSchema &schema_, const ReactionSpecies &species_)
+        : rateConstant(rc), schema(schema_), species(species_)
+    {
+        schema.validateSchema();
+        schema.validate(species);
+    }
+
+    virtual void react() = 0;
+    virtual double calculateRate(double NAV) const = 0;
+    virtual std::string_view getType() const { return schema.type; }
+
+    std::string toStringWithCounts() const { return ""; }
+    // { return rxn_print::reactionToString()
 
 protected:
-    std::vector<Unit *> unitReactants;
-    std::vector<Unit *> unitProducts;
-
-    std::vector<PolymerContainerPtr> polyReactants;
-    std::vector<PolymerContainerPtr> polyProducts;
+    RateConstant rateConstant;
+    ReactionSchema schema;
+    ReactionSpecies species;
 };
 
 /**
@@ -89,67 +126,61 @@ protected:
 class Elementary : public Reaction
 {
 public:
-    static inline const std::string &TYPE = ReactionType::ELEMENTARY;
-    Elementary(RateConstant rateConstant, std::vector<Unit *> unitReactants_, std::vector<Unit *> unitProducts_)
-        : Reaction(rateConstant, 0, unitReactants_.size(), 0, unitProducts_.size())
-    {
-        unitReactants = std::move(unitReactants_);
-        unitProducts = std::move(unitProducts_);
-    };
+    static inline const ReactionSchema &SCHEMA = {
+        ReactionType::ELEMENTARY,
+        {},
+        {}};
 
-    void react()
+    Elementary(RateConstant rateConstant, const ReactionSpecies &species)
+        : Reaction(rateConstant, SCHEMA, species) {}
+
+    void react() override
     {
-        for (size_t i = 0; i < unitReactants.size(); ++i)
-            --unitReactants[i]->count;
-        for (size_t i = 0; i < unitProducts.size(); ++i)
-            ++unitProducts[i]->count;
+        for (size_t i = 0; i < species.reactants.size(); ++i)
+            --species.reactants[i]->count;
+        for (size_t i = 0; i < species.products.size(); ++i)
+            ++species.products[i]->count;
     }
 
-    double calculateRate(double NAV) const
+    double calculateRate(double NAV) const override
     {
         double rate = rateConstant.value;
-        for (size_t i = 0; i < unitReactants.size(); ++i)
-            rate *= unitReactants[i]->count;
+        for (size_t i = 0; i < species.reactants.size(); ++i)
+            rate *= species.reactants[i]->count;
         return rate;
     }
-
-    const std::string &getType() const { return TYPE; }
 };
 
 /**
  * @brief Initiator decomposition reaction (e.g., AIBN ––> I + I)
- * Decomoposition of initiator molecule to form two active primary radicals.
+ * Decomposition of initiator molecule to form two active primary radicals.
  */
 class InitiatorDecomposition : public Reaction
 {
 public:
-    static inline const std::string &TYPE = ReactionType::INITIATOR_DECOMPOSITION;
-    InitiatorDecomposition(RateConstant rateConstant, Unit *unitReactant, Unit *unitProduct1, Unit *unitProduct2, double efficiency_)
-        : Reaction(rateConstant, 0, 1, 0, 2), efficiency(efficiency_)
+    static inline const ReactionSchema &SCHEMA = {
+        ReactionType::INITIATOR_DECOMPOSITION,
+        {SpeciesType::INITIATOR},
+        {SpeciesType::UNIT, SpeciesType::UNIT}};
+
+    InitiatorDecomposition(RateConstant rateConstant, const ReactionSpecies &species)
+        : Reaction(rateConstant, SCHEMA, species) {}
+
+    void react() override
     {
-        unitReactants[0] = unitReactant;
-        unitProducts[0] = unitProduct1;
-        unitProducts[1] = unitProduct2;
+        auto init = species.r_unit<0>();
+        --init->count;
+
+        if (rng::rand() <= init->efficiency)
+            ++species.p_unit<0>()->count;
+        if (rng::rand() <= init->efficiency)
+            ++species.p_unit<1>()->count;
     }
 
-    void react()
+    double calculateRate(double NAV) const override
     {
-        --unitReactants[0]->count;
-        if (rng_utils::dis(rng_utils::rng) <= efficiency)
-            ++unitProducts[0]->count;
-        if (rng_utils::dis(rng_utils::rng) <= efficiency)
-            ++unitProducts[1]->count;
+        return rateConstant.value * species.r_unit<0>()->count;
     }
-
-    double calculateRate(double NAV) const
-    {
-        return rateConstant.value * unitReactants[0]->count;
-    }
-
-    const std::string &getType() const { return TYPE; }
-
-protected:
-    double efficiency; // Reaction efficiency (0, 1]
 };
 
 /**
@@ -159,43 +190,37 @@ protected:
 class InitiatorDecompositionPolymer : public Reaction
 {
 public:
-    static inline const std::string &TYPE = ReactionType::INIT_DECOMP_POLY;
-    InitiatorDecompositionPolymer(RateConstant rateConstant, Unit *unitReactant, PolymerContainerPtr polyProduct1, PolymerContainerPtr polyProduct2, double efficiency_)
-        : Reaction(rateConstant, 0, 1, 2, 0), efficiency(efficiency_)
-    {
-        unitReactants[0] = unitReactant;
-        polyProducts[0] = polyProduct1;
-        polyProducts[1] = polyProduct2;
-    }
+    static inline const ReactionSchema &SCHEMA = {
+        ReactionType::INIT_DECOMP_POLY,
+        {SpeciesType::INITIATOR},
+        {SpeciesType::POLYMER, SpeciesType::POLYMER}};
 
-    void react()
-    {
-        --unitReactants[0]->count;
+    InitiatorDecompositionPolymer(RateConstant rateConstant, ReactionSpecies species)
+        : Reaction(rateConstant, SCHEMA, species) {}
 
-        if (rng_utils::dis(rng_utils::rng) <= efficiency)
+    void react() override
+    {
+        auto init = species.r_unit<0>();
+        --init->count;
+
+        if (rng::rand() <= init->efficiency)
         {
             Polymer *polymer = new Polymer();
-            polymer->initiate((unitReactants[0]->ID));
-            polyProducts[0]->insertPolymer(polymer);
+            polymer->initiate(init->ID);
+            species.p_poly<0>()->insertPolymer(polymer);
         }
-
-        if (rng_utils::dis(rng_utils::rng) <= efficiency)
+        if (rng::rand() <= init->efficiency)
         {
             Polymer *polymer = new Polymer();
-            polymer->initiate((unitReactants[0]->ID));
-            polyProducts[1]->insertPolymer(polymer);
+            polymer->initiate(init->ID);
+            species.p_poly<1>()->insertPolymer(polymer);
         }
     }
 
-    double calculateRate(double NAV) const
+    double calculateRate(double NAV) const override
     {
-        return rateConstant.value * unitReactants[0]->count;
+        return rateConstant.value * species.r_unit<0>()->count;
     }
-
-    const std::string &getType() const { return TYPE; }
-
-protected:
-    double efficiency; // Reaction efficiency (0, 1]
 };
 
 /**
@@ -205,63 +230,62 @@ protected:
 class Initiation : public Reaction
 {
 public:
-    static inline const std::string &TYPE = ReactionType::INITIATION;
-    Initiation(RateConstant rateConstant, Unit *unitReactant1, Unit *unitReactant2, PolymerContainerPtr polyProduct)
-        : Reaction(rateConstant, 0, 2, 1, 0)
-    {
-        unitReactants[0] = unitReactant1; // initiator
-        unitReactants[1] = unitReactant2; // monomer
-        polyProducts[0] = polyProduct;
-    };
+    static inline const ReactionSchema &SCHEMA = {
+        ReactionType::INITIATION,
+        {SpeciesType::UNIT, SpeciesType::UNIT},
+        {SpeciesType::POLYMER}};
 
-    void react()
+    Initiation(RateConstant rateConstant, const ReactionSpecies &species)
+        : Reaction(rateConstant, SCHEMA, species) {}
+
+    void react() override
     {
-        --unitReactants[0]->count;
-        --unitReactants[1]->count;
+        auto init = species.r_unit<0>();
+        auto mon = species.r_unit<1>();
+        auto prod = species.p_poly<0>();
+
+        --init->count;
+        --mon->count;
+
         Polymer *polymer = new Polymer();
-        polymer->addUnitToEnd((unitReactants[0])->ID);
-        polymer->addUnitToEnd((unitReactants[1])->ID);
-        polyProducts[0]->insertPolymer(polymer);
+        polymer->initiate(init->ID);
+        polymer->addUnitToEnd(mon->ID);
+        prod->insertPolymer(polymer);
     }
 
-    double calculateRate(double NAV) const
+    double calculateRate(double NAV) const override
     {
-        return rateConstant.value * unitReactants[0]->count * unitReactants[1]->count / NAV;
+        return rateConstant.value * species.r_unit<0>()->count * species.r_unit<1>()->count / NAV;
     }
-
-    const std::string &getType() const { return TYPE; }
 };
 
-/**
- * @brief Propagation reaction (e.g., P[A,A] + B ––> P[A,B] + B).
- * Adds a monomer unit to the terminal chain end.
- */
 class Propagation : public Reaction
 {
 public:
-    static inline const std::string &TYPE = ReactionType::PROPAGATION;
-    Propagation(RateConstant rateConstant, PolymerContainerPtr polyReactant, Unit *unitReactant, PolymerContainerPtr polyProduct)
-        : Reaction(rateConstant, 1, 1, 1, 0)
+    static inline const ReactionSchema &SCHEMA = {
+        ReactionType::PROPAGATION,
+        {SpeciesType::POLYMER, SpeciesType::UNIT},
+        {SpeciesType::POLYMER}};
+
+    Propagation(RateConstant rateConstant, const ReactionSpecies &species)
+        : Reaction(rateConstant, SCHEMA, species) {}
+
+    void react() override
     {
-        polyReactants[0] = polyReactant;
-        unitReactants[0] = unitReactant;
-        polyProducts[0] = polyProduct;
+        auto poly = species.r_poly<0>();
+        auto mon = species.r_unit<1>();
+        auto prod = species.p_poly<0>();
+
+        --mon->count;
+        Polymer *polymer = poly->removeRandomPolymer();
+        polymer->addUnitToEnd(mon->ID);
+        prod->insertPolymer(polymer);
     }
 
-    void react()
+    double calculateRate(double NAV) const override
     {
-        --unitReactants[0]->count;
-        Polymer *polymer = polyReactants[0]->removeRandomPolymer();
-        polymer->addUnitToEnd(unitReactants[0]->ID);
-        polyProducts[0]->insertPolymer(polymer);
+        return rateConstant.value * species.r_poly<0>()->count * species.r_unit<1>()->count / NAV;
     }
-
-    double calculateRate(double NAV) const
-    {
-        return rateConstant.value * polyReactants[0]->count * unitReactants[0]->count / NAV;
-    }
-
-    const std::string &getType() const { return TYPE; }
 };
 
 /**
@@ -271,32 +295,31 @@ public:
 class Depropagation : public Reaction
 {
 public:
-    static inline const std::string &TYPE = ReactionType::DEPROPAGATION;
-    Depropagation(RateConstant rateConstant, PolymerContainerPtr polyReactant, PolymerContainerPtr polyProduct, Unit *unitProduct)
-        : Reaction(rateConstant, 1, 0, 1, 1)
-    {
-        polyReactants[0] = polyReactant;
-        polyProducts[0] = polyProduct;
-        unitProducts[0] = unitProduct;
-    }
+    static inline const ReactionSchema &SCHEMA = {
+        ReactionType::DEPROPAGATION,
+        {SpeciesType::POLYMER},
+        {SpeciesType::POLYMER, SpeciesType::UNIT}};
 
-    void react()
+    Depropagation(RateConstant rateConstant, const ReactionSpecies &species)
+        : Reaction(rateConstant, SCHEMA, species) {}
+
+    void react() override
     {
-        ++unitProducts[0]->count;
-        Polymer *polymer = polyReactants[0]->removeRandomPolymer();
-        size_t dop_0 = polymer->getDegreeOfPolymerization();
+
+        auto r_poly = species.r_poly<0>();
+        auto p_poly = species.p_poly<0>();
+        auto p_unit = species.p_unit<0>();
+
+        Polymer *polymer = r_poly->removeRandomPolymer();
         polymer->removeUnitFromEnd();
-        size_t dop_1 = polymer->getDegreeOfPolymerization();
-        assert(dop_0 - dop_1 == 1);
-        polyProducts[0]->insertPolymer(polymer);
+        p_poly->insertPolymer(polymer);
+        ++p_unit->count;
     }
 
-    double calculateRate(double NAV) const
+    double calculateRate(double NAV) const override
     {
-        return rateConstant.value * polyReactants[0]->count;
+        return rateConstant.value * species.r_poly<0>()->count;
     }
-
-    const std::string &getType() const { return TYPE; }
 };
 
 /**
@@ -306,33 +329,31 @@ public:
 class TerminationDisproportionation : public Reaction
 {
 public:
-    static inline const std::string &TYPE = ReactionType::TERMINATION_D;
-    TerminationDisproportionation(RateConstant rateConstant, PolymerContainerPtr polyReactant1, PolymerContainerPtr polyReactant2,
-                                  PolymerContainerPtr polyProduct1, PolymerContainerPtr polyProduct2, uint8_t sameReactant_)
-        : Reaction(rateConstant, 2, 0, 2, 0), sameReactant(sameReactant_)
+    static inline const ReactionSchema &SCHEMA = {
+        ReactionType::TERMINATION_D,
+        {SpeciesType::POLYMER, SpeciesType::POLYMER},
+        {SpeciesType::POLYMER, SpeciesType::POLYMER}};
+
+    TerminationDisproportionation(RateConstant rateConstant, const ReactionSpecies &species)
+        : Reaction(rateConstant, SCHEMA, species)
     {
-        polyReactants[0] = polyReactant1;
-        polyReactants[1] = polyReactant2;
-        polyProducts[0] = polyProduct1;
-        polyProducts[1] = polyProduct2;
+        sameReactant = (species.r_poly<0>()->name == species.r_poly<1>()->name) ? 1 : 0;
     }
 
-    void react()
+    void react() override
     {
-        Polymer *polymer1 = polyReactants[0]->removeRandomPolymer();
-        Polymer *polymer2 = polyReactants[1]->removeRandomPolymer();
-        polymer1->terminateByDisproportionation();
-        polymer2->terminateByDisproportionation();
-        polyProducts[0]->insertPolymer(polymer1);
-        polyProducts[1]->insertPolymer(polymer2);
+        Polymer *poly1 = species.r_poly<0>()->removeRandomPolymer();
+        Polymer *poly2 = species.r_poly<1>()->removeRandomPolymer();
+        poly1->terminateByDisproportionation();
+        poly2->terminateByDisproportionation();
+        species.p_poly<0>()->insertPolymer(poly1);
+        species.p_poly<1>()->insertPolymer(poly2);
     }
 
-    double calculateRate(double NAV) const
+    double calculateRate(double NAV) const override
     {
-        return rateConstant.value * polyReactants[0]->count * (polyReactants[1]->count - sameReactant) / NAV;
+        return rateConstant.value * species.r_poly<0>()->count * (species.r_poly<1>()->count - sameReactant) / NAV;
     }
-
-    const std::string &getType() const { return TYPE; }
 
 private:
     uint8_t sameReactant; // True = 1, False = 0
@@ -345,30 +366,29 @@ private:
 class TerminationCombination : public Reaction
 {
 public:
-    static inline const std::string &TYPE = ReactionType::TERMINATION_C;
-    TerminationCombination(RateConstant rateConstant, PolymerContainerPtr polyReactant1, PolymerContainerPtr polyReactant2,
-                           PolymerContainerPtr polyProduct1, uint8_t sameReactant_)
-        : Reaction(rateConstant, 2, 0, 1, 0), sameReactant(sameReactant_)
+    static inline const ReactionSchema &SCHEMA = {
+        ReactionType::TERMINATION_C,
+        {SpeciesType::POLYMER, SpeciesType::POLYMER},
+        {SpeciesType::POLYMER}};
+
+    TerminationCombination(RateConstant rateConstant, const ReactionSpecies &species)
+        : Reaction(rateConstant, SCHEMA, species)
     {
-        polyReactants[0] = polyReactant1;
-        polyReactants[1] = polyReactant2;
-        polyProducts[0] = polyProduct1;
+        sameReactant = (species.r_poly<0>()->name == species.r_poly<1>()->name) ? 1 : 0;
     }
 
-    void react()
+    void react() override
     {
-        Polymer *polymer1 = polyReactants[0]->removeRandomPolymer();
-        Polymer *polymer2 = polyReactants[1]->removeRandomPolymer();
-        polymer1->terminateByCombination(polymer2);
-        polyProducts[0]->insertPolymer(polymer1);
+        Polymer *poly1 = species.r_poly<0>()->removeRandomPolymer();
+        Polymer *poly2 = species.r_poly<1>()->removeRandomPolymer();
+        poly1->terminateByCombination(poly2);
+        species.p_poly<0>()->insertPolymer(poly1);
     }
 
-    double calculateRate(double NAV) const
+    double calculateRate(double NAV) const override
     {
-        return rateConstant.value * polyReactants[0]->count * (polyReactants[1]->count - sameReactant) / NAV;
+        return rateConstant.value * species.r_poly<0>()->count * (species.r_poly<1>()->count - sameReactant) / NAV;
     }
-
-    const std::string &getType() const { return TYPE; }
 
 private:
     uint8_t sameReactant; // True = 1, False = 0
@@ -377,73 +397,66 @@ private:
 class ChainTransferToMonomer : public Reaction
 {
 public:
-    static inline const std::string &TYPE = ReactionType::CHAINTRANSFER_M;
-    ChainTransferToMonomer(RateConstant rateConstant, PolymerContainerPtr polyReactant, Unit *unitReactant, PolymerContainerPtr polyProduct1, PolymerContainerPtr polyProduct2)
-        : Reaction(rateConstant, 1, 1, 2, 0)
-    {
-        polyReactants[0] = polyReactant;
-        unitReactants[0] = unitReactant;
-        polyProducts[0] = polyProduct1;
-        polyProducts[1] = polyProduct2;
-    }
+    // P + M --> D + R
+    static inline const ReactionSchema &SCHEMA = {
+        ReactionType::CHAINTRANSFER_M,
+        {SpeciesType::POLYMER, SpeciesType::UNIT},
+        {SpeciesType::POLYMER, SpeciesType::POLYMER}};
 
-    void react()
+    ChainTransferToMonomer(RateConstant rateConstant, const ReactionSpecies &species)
+        : Reaction(rateConstant, SCHEMA, species) {}
+
+    void react() override
     {
-        Polymer *polymer = polyReactants[0]->removeRandomPolymer();
-        polymer->terminateByChainTransfer();
-        polyProducts[0]->insertPolymer(polymer);
-        --unitReactants[0]->count;
+        auto mon = species.r_unit<1>();
+
+        // Terminate a polymer
+        Polymer *poly = species.r_poly<0>()->removeRandomPolymer();
+        poly->terminateByChainTransfer();
+        species.p_poly<0>()->insertPolymer(poly);
+        --mon->count;
 
         // Create a new monomer radical
         Polymer *newRadical = new Polymer();
-        newRadical->addUnitToEnd((unitReactants[0])->ID);
-        polyProducts[1]->insertPolymer(newRadical);
+        newRadical->initiate(mon->ID);
+        newRadical->addUnitToEnd(mon->ID);
+        species.p_poly<1>()->insertPolymer(newRadical);
     }
 
-    double calculateRate(double NAV) const
+    double calculateRate(double NAV) const override
     {
-        return rateConstant.value * polyReactants[0]->count * unitReactants[0]->count / NAV;
+        return rateConstant.value * species.r_poly<0>()->count * species.r_unit<1>()->count / NAV;
     }
-
-    const std::string &getType() const { return TYPE; }
 };
 
 class ThermalInitiationMonomer : public Reaction
 {
 public:
-    static inline const std::string &TYPE = ReactionType::THERM_INIT_M;
-    ThermalInitiationMonomer(RateConstant rateConstant, Unit *unitReactant1, Unit *unitReactant2, Unit *unitReactant3, PolymerContainerPtr polyProduct1, PolymerContainerPtr polyProduct2)
-        : Reaction(rateConstant, 0, 3, 2, 0)
-    {
-        unitReactants[0] = unitReactant1;
-        unitReactants[1] = unitReactant2;
-        unitReactants[2] = unitReactant3;
-        polyProducts[0] = polyProduct1;
-        polyProducts[1] = polyProduct2;
-    }
+    // M + M + M --> P + P
+    static inline const ReactionSchema &SCHEMA = {
+        ReactionType::THERM_INIT_M,
+        {SpeciesType::UNIT, SpeciesType::UNIT, SpeciesType::UNIT},
+        {SpeciesType::POLYMER, SpeciesType::POLYMER}};
+    ThermalInitiationMonomer(RateConstant rateConstant, const ReactionSpecies &species)
+        : Reaction(rateConstant, SCHEMA, species) {}
 
-    void react()
+    void react() override
     {
-        --unitReactants[0]->count = unitReactants[0]->count;
-        --unitReactants[1]->count = unitReactants[1]->count;
-        --unitReactants[2]->count = unitReactants[2]->count;
+        --species.r_unit<0>()->count;
+        --species.r_unit<1>()->count;
+        --species.r_unit<2>()->count;
 
         Polymer *polymer1 = new Polymer();
-        polymer1->addUnitToEnd((unitReactants[0])->ID);
-        polyProducts[0]->insertPolymer(polymer1);
+        polymer1->addUnitToEnd((species.r_unit<0>())->ID);
+        species.p_poly<0>()->insertPolymer(polymer1);
 
         Polymer *polymer2 = new Polymer();
-        polymer2->addUnitToEnd((unitReactants[0])->ID);
-        polyProducts[1]->insertPolymer(polymer2);
+        polymer2->addUnitToEnd((species.r_unit<1>())->ID);
+        species.p_poly<1>()->insertPolymer(polymer2);
     }
 
-    double calculateRate(double NAV) const
+    double calculateRate(double NAV) const override
     {
-        return rateConstant.value * pow(unitReactants[0]->count, 3) / NAV;
+        return rateConstant.value * pow(species.r_unit<0>()->count, 3) / NAV;
     }
-
-    const std::string &getType() const { return TYPE; }
 };
-
-typedef std::unique_ptr<Reaction>
-    ReactionPtr;

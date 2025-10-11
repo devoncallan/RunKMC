@@ -33,7 +33,7 @@ namespace io::text
         species.name = args[1];
 
         if (!SpeciesType::isValidType(species.type))
-            console::input_error("Species type " + species.type + " is not valid.");
+            console::input_error("Species type " + std::string(species.type) + " is not valid.");
 
         return species;
     }
@@ -126,7 +126,7 @@ namespace io::text
             else if (species.type == SpeciesType::LABEL)
                 labelLines.push_back(line);
             else
-                console::input_error("Unknown species type: " + species.type);
+                console::input_error("Unknown species type: " + std::string(species.type));
         }
 
         // ===== PASS 2: Parse in order: Units, Polymers, Labels =====
@@ -221,6 +221,54 @@ namespace io::text
     // ===== Helper functions =====
 
     template <typename T>
+    static T convertValue(std::string_view s)
+    {
+        std::string str(s);
+        if constexpr (std::is_same<T, double>::value)
+        {
+            return std::stod(str);
+        }
+        else if constexpr (std::is_same<T, uint64_t>::value)
+        {
+            // Parse as double first to handle scientific notation (e.g., "1e9")
+            double d = std::stod(str);
+
+            // Validate it's a non-negative integer value
+            if (d < 0)
+                console::input_error("Expected non-negative integer, got negative value: " + str);
+
+            if (d != std::floor(d))
+                console::input_error("Expected integer value, got decimal: " + str);
+
+            // Check for overflow (uint64_t max is ~1.8e19)
+            if (d > static_cast<double>(std::numeric_limits<uint64_t>::max()))
+                console::input_error("Value too large for uint64_t: " + str);
+
+            return static_cast<uint64_t>(d);
+        }
+        else if constexpr (std::is_same<T, int>::value)
+        {
+            // Parse as double first to handle scientific notation
+            double d = std::stod(str);
+
+            // Validate it's an integer value
+            if (d != std::floor(d))
+                console::input_error("Expected integer value, got decimal: " + str);
+
+            // Validate it fits in int range
+            if (d < static_cast<double>(std::numeric_limits<int>::min()) ||
+                d > static_cast<double>(std::numeric_limits<int>::max()))
+                console::input_error("Integer value out of range: " + str);
+
+            return static_cast<int>(d);
+        }
+        else if constexpr (std::is_same<T, std::string>::value)
+            return str;
+        else
+            static_assert(sizeof(T) == 0, "Unsupported type for convertValue");
+    }
+
+    template <typename T>
     static void readVar(const std::vector<std::string> &vars, const std::string_view &key, T &value, bool required)
     {
         bool found = false;
@@ -249,7 +297,7 @@ namespace io::text
         str::trim(tokens[0]);
         str::trim(tokens[1]);
 
-        return types::Variable<T>{tokens[0], input::convertValue<T>(tokens[1])};
+        return types::Variable<T>{tokens[0], convertValue<T>(tokens[1])};
     }
 
     static bool canIgnoreLine(const std::string &line) { return line.empty() || str::startswith(line, "#") || str::startswith(line, "/"); }
