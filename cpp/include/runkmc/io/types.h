@@ -5,6 +5,10 @@
 namespace io::types
 {
 
+    // RunKMC program configuration options
+    // Set via command line arguments
+    // Instruct the program how to run
+    
     struct CommandLineConfig
     {
         std::string inputFilepath;

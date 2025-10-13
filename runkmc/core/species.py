@@ -35,7 +35,12 @@ class SpeciesRegistry:
             data, dict
         ), f"Species file {filepath} is empty or invalid YAML."
 
-        required_keys = [C.io.SPECIES_KEY, C.io.NAME_KEY, C.io.TYPE_KEY, C.io.ID_KEY]
+        required_keys = [
+            C.io.SPECIES_KEY,
+            C.io.UNITS_KEY,
+            C.io.MONOMERS_KEY,
+            C.io.POLYMERS_KEY,
+        ]
         missing_keys = [k for k in required_keys if k not in data]
         if missing_keys:
             raise ValueError(
