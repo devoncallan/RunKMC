@@ -44,6 +44,8 @@ def _execute_simulation(config: CommandLineConfig) -> None:
 
     cmd = config.to_command()
 
+    process = None
+
     try:
         process = subprocess.Popen(cmd, cwd=PATHS.PROJECT_ROOT, text=True)
         stdout, stderr = process.communicate()
@@ -57,11 +59,12 @@ def _execute_simulation(config: CommandLineConfig) -> None:
             raise RuntimeError(error_msg)
 
     except KeyboardInterrupt:
-        process.terminate()
-        try:
-            process.wait(timeout=3)
-        except subprocess.TimeoutExpired:
-            process.kill()
+        if process is not None:
+            process.terminate()
+            try:
+                process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                process.kill()
         raise KeyboardInterrupt("Process interrupted by user.")
 
     print(f"RunKMC executed successfully.")

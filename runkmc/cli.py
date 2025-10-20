@@ -8,12 +8,10 @@ This provides a direct command-line tool that users can run as:
 Instead of having to use the Python API.
 """
 
-import sys
 import argparse
 from pathlib import Path
-from typing import Optional
 
-from .kmc.execution import execute_simulation, CommandLineConfig
+from .kmc.execution import execute_simulation
 
 
 def create_parser() -> argparse.ArgumentParser:

@@ -175,10 +175,10 @@ class SimulationRegistry:
             rowid, timestamp, sim_id, run_index, 0, input_hash, self.base_dir
         )
 
-    def update_completion(self, row_id: int, completed: bool = True) -> None:
+    def update_completion(self, input_hash: str, completed: bool = True) -> None:
         """Mark a simulation as completed or not completed.
         Args:
-            row_id: Row ID of the simulation record to update
+            input_hash: SHA256 hash of the parsed input file
             completed: Completion status (default: True)
         """
         with self.write_op() as conn:
@@ -186,15 +186,15 @@ class SimulationRegistry:
                 """
                 UPDATE simulations
                 SET completed = ? 
-                WHERE id = ?
+                WHERE input_hash = ?
                 """,
-                (1 if completed else 0, row_id),
+                (1 if completed else 0, input_hash),
             )
 
-    def delete(self, row_id: int) -> bool:
+    def delete(self, input_hash: str) -> bool:
         """Remove a simulation from the registry.
         Args:
-            row_id: Row ID of the simulation record to delete
+            input_hash: SHA256 hash of the parsed input file
         Returns:
             True if a record was deleted, False if not found
         """
@@ -202,9 +202,9 @@ class SimulationRegistry:
             cur = conn.execute(
                 """
                 DELETE FROM simulations
-                WHERE id = ?
+                WHERE input_hash = ?
                 """,
-                (row_id,),
+                (input_hash,),
             )
             return cur.rowcount > 0
 

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from .paths import SimulationPaths
 from .state import StateData, SequenceData
 from ..core.species import SpeciesRegistry
-from .polymers import read_polymer_file, create_polymer_matrix, PolymerSequence
+from .polymers import read_polymer_file, PolymerSequence
 
 if TYPE_CHECKING:
     from .registry import SimulationRecord

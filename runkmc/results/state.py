@@ -1,12 +1,11 @@
 from __future__ import annotations
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, List
 from dataclasses import dataclass
 
 import numpy as np
 from numpy.typing import NDArray
 import pandas as pd
-import yaml
 
 from ..core import C
 from ..core.species import SpeciesRegistry
@@ -46,7 +45,7 @@ class StateData:
     @staticmethod
     def from_csv(filepath: Path | str, species: SpeciesRegistry) -> StateData:
 
-        df = pd.read_csv(filepath)
+        df = pd.read_csv(filepath)  # type: ignore
 
         unit_names = species.get_unit_names()
         monomer_names = species.get_monomer_names()
@@ -158,7 +157,7 @@ class SequenceData:
     def from_csv(filepath: Path | str, species: SpeciesRegistry) -> SequenceData:
 
         try:
-            df = pd.read_csv(filepath)
+            df = pd.read_csv(filepath)  # type: ignore
             return SequenceData._from_df(df, species.get_monomer_names())
         except Exception as e:
             raise ValueError(f"Error loading sequence data from {filepath}: {e}")
@@ -182,7 +181,7 @@ class SequenceData:
 
     @property
     def nAvgSL(self) -> Dict[str, NDArray[np.float64]]:
-        nAvgSL = {}
+        nAvgSL: Dict[str, NDArray[np.float64]] = {}
         for name in self._monomer_names:
             nAvgSL[name] = np.divide(
                 self.monomer_count[name],
@@ -193,7 +192,7 @@ class SequenceData:
 
     @property
     def wAvgSL(self) -> Dict[str, NDArray[np.float64]]:
-        wAvgSL = {}
+        wAvgSL: Dict[str, NDArray[np.float64]] = {}
         for name in self._monomer_names:
             wAvgSL[name] = np.divide(
                 self.sequence_length2[name],
