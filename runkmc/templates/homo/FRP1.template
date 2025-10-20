@@ -1,23 +1,23 @@
 parameters
-    num_units = {num_units};
-    termination_time = {termination_time};
-    analysis_time = {analysis_time};
+    num_units = {{num_units}};
+    termination_time = {{termination_time}};
+    analysis_time = {{analysis_time}};
 end
 
 species
-    I I     [C0]={I_c0}   FW={I_FW}   f={I_f}
-    M M     [C0]={M_c0}   FW={M_FW}
+    I I     [C0]={{I_c0}}   FW={{I_FW=1.0}}   f={{I_f=0.50}}
+    M M     [C0]={{M_c0}}   FW={{M_FW=100.0}}
     P R
     P D
 end
 
 rateconstants
-    kd	    = {kd}
-    kp      = {kp}
-    kpr     = {kpr}
-    ktc     = {ktc}
-    ktd     = {ktd}
-    kfm     = {kfm}
+    kd	    = {{kd}}
+    kp      = {{kp=0.0}}
+    kpr     = {{kpr=0.0}}
+    ktc     = {{ktc=0.0}}
+    ktd     = {{ktd=0.0}}
+    kfm     = {{kfm=0.0}}
 end
 
 reactions

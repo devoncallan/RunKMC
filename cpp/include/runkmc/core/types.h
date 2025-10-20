@@ -5,6 +5,7 @@
 
 static const size_t NUM_BUCKETS = 30;
 typedef uint8_t SpeciesID;
+#define INVALID_SPECIES_ID UINT8_MAX
 
 class ReactionType
 {

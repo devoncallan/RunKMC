@@ -15,6 +15,7 @@ namespace io::types
         std::string outputDir;
         bool reportPolymers = false;
         bool reportSequences = false;
+        bool reportChains = false;
         bool parseOnly = false;
         bool debug = false;
     };

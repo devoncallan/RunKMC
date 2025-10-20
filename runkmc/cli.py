@@ -25,6 +25,7 @@ def create_parser() -> argparse.ArgumentParser:
             runkmc input.txt output/
             runkmc input.txt output/ --report-polymers
             runkmc input.txt output/ --report-polymers --report-sequences
+            runkmc input.txt output/ --report-polymers --report-sequences --report-chains
             runkmc input.txt output/ --parse-only
         """,
     )
@@ -47,6 +48,12 @@ def create_parser() -> argparse.ArgumentParser:
         "--report-sequences",
         action="store_true",
         help="Generate sequence analysis reports",
+    )
+    
+    parser.add_argument(
+        "--report-chains",
+        action="store_true",
+        help="Generate chain state reports",
     )
 
     parser.add_argument(
@@ -86,6 +93,7 @@ def main() -> None:
         output_dir=args.output_dir,
         report_polymers=args.report_polymers,
         report_sequences=args.report_sequences,
+        report_chains=args.report_chains,
         parse_only=args.parse_only,
         debug=args.debug,
     )

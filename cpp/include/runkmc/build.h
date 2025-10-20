@@ -111,7 +111,7 @@ namespace build
 
                 // Find index of this polymer type
                 size_t index = str::findInVector(polyName, polymerTypes);
-                if (index == SIZE_T_MAX)
+                if (index == SIZE_MAX)
                     console::input_error("Polymer " + polyName + " for label " + label.name + " is not registered. Exiting.");
 
                 labelPolyIndices.push_back(index);
@@ -189,7 +189,7 @@ namespace build
         {
             // 1. Find rate constant
             size_t index = str::findInVector(reactionData.rateConstantName, rateConstants);
-            if (index == SIZE_T_MAX)
+            if (index == SIZE_MAX)
                 console::input_error("Rate constant " + reactionData.rateConstantName + " not found. Exiting.");
             RateConstant rateConstant = rateConstants[index];
 
@@ -223,91 +223,5 @@ namespace build
         ReactionSet reactionSet(reactions, rateConstants);
         reactionSet.printSummary();
         return reactionSet;
-
-        const std::vector<Unit> units = speciesSet.getUnits();
-        const std::vector<PolymerContainer> &polymerContainers = speciesSet.getPolymerContainers();
-
-        // for (const auto &reactionData : reactionsRead)
-        // {
-        //     std::vector<Unit *> unitReactants;
-        //     std::vector<Unit *> unitProducts;
-        //     std::vector<PolymerContainer *> polyReactants;
-        //     std::vector<PolymerContainer *> polyProducts;
-        //     unitReactants.reserve(3);
-        //     unitProducts.reserve(3);
-        //     polyReactants.reserve(3);
-        //     polyProducts.reserve(3);
-
-        //     // Find rate constant
-        //     size_t index = str::findInVector(reactionData.rateConstantName, rateConstants);
-        //     if (index == SIZE_T_MAX)
-        //         console::input_error("Rate constant " + reactionData.rateConstantName + " not found. Exiting.");
-
-        //     RateConstant rateConstant = rateConstants[index];
-
-        //     // Find reactants
-        //     for (const auto &reactantName : reactionData.reactantNames)
-        //     {
-        //         auto species = registry::getSpecies(reactantName);
-
-        //         if (SpeciesType::isUnitType(species.type))
-        //             unitReactants.push_back(&speciesSet.getUnits()[registry::getUnitIndex(species.ID)]);
-        //         else if (SpeciesType::isPolymerType(species.type))
-        //             polyReactants.push_back(&speciesSet.getPolymerContainers()[registry::getPolymerIndex(species.ID)]);
-        //         else
-        //             console::input_error("Species type " + species.type + " for species " + species.name + " not recognized. Exiting.");
-        //     }
-
-        //     for (const auto &productName : reactionData.productNames)
-        //     {
-        //         auto species = registry::getSpecies(productName);
-
-        //         if (SpeciesType::isUnitType(species.type))
-        //             unitProducts.push_back(&speciesSet.getUnits()[registry::getUnitIndex(species.ID)]);
-        //         else if (SpeciesType::isPolymerType(species.type))
-        //             polyProducts.push_back(&speciesSet.getPolymerContainers()[registry::getPolymerIndex(species.ID)]);
-        //         else
-        //             console::input_error("Species type " + species.type + " for species " + species.name + " not recognized. Exiting.");
-        //     }
-
-        //     uint8_t sameReactant = 0;
-
-        //     if (reactionData.type == Elementary::TYPE)
-        //         reactions.push_back(new Elementary(rateConstant, unitReactants, unitProducts));
-        //     else if (reactionData.type == InitiatorDecomposition::TYPE)
-        //         reactions.push_back(new InitiatorDecomposition(rateConstant, unitReactants[0], unitProducts[0], unitProducts[1], unitReactants[0]->efficiency));
-        //     else if (reactionData.type == InitiatorDecompositionPolymer::TYPE)
-        //         reactions.push_back(new InitiatorDecompositionPolymer(rateConstant, unitReactants[0], polyProducts[0], polyProducts[1], unitReactants[0]->efficiency));
-        //     else if (reactionData.type == Initiation::TYPE)
-        //         reactions.push_back(new Initiation(rateConstant, unitReactants[0], unitReactants[1], polyProducts[0]));
-        //     else if (reactionData.type == Propagation::TYPE)
-        //         reactions.push_back(new Propagation(rateConstant, polyReactants[0], unitReactants[0], polyProducts[0]));
-        //     else if (reactionData.type == Depropagation::TYPE)
-        //         reactions.push_back(new Depropagation(rateConstant, polyReactants[0], polyProducts[0], unitProducts[0]));
-        //     else if (reactionData.type == TerminationCombination::TYPE)
-        //     {
-        //         if (polyReactants[0]->name == polyReactants[1]->name)
-        //             sameReactant = 1;
-        //         reactions.push_back(new TerminationCombination(rateConstant, polyReactants[0], polyReactants[1], polyProducts[0], sameReactant));
-        //     }
-        //     else if (reactionData.type == TerminationDisproportionation::TYPE)
-        //     {
-        //         if (polyReactants[0]->name == polyReactants[1]->name)
-        //             sameReactant = 1;
-        //         reactions.push_back(new TerminationDisproportionation(rateConstant, polyReactants[0], polyReactants[1], polyProducts[0], polyProducts[1], sameReactant));
-        //     }
-        //     else if (reactionData.type == ChainTransferToMonomer::TYPE)
-        //         reactions.push_back(new ChainTransferToMonomer(rateConstant, polyReactants[0], unitReactants[0], polyProducts[0], polyProducts[1]));
-        //     else if (reactionData.type == ThermalInitiationMonomer::TYPE)
-        //         reactions.push_back(new ThermalInitiationMonomer(rateConstant, unitReactants[0], unitReactants[1], unitReactants[2], polyProducts[0], polyProducts[1]));
-        //     else
-        //         console::input_error(reactionData.type + " is not a valid reaction type.");
-        // }
-
-        // ReactionSet reactionSet(reactions, rateConstants);
-
-        // reactionSet.printSummary();
-
-        // return reactionSet;
     };
 };

@@ -157,7 +157,9 @@ public:
     void analyze(SystemState &systemState)
     {
         auto sequenceData = getRawSequenceData();
-        auto summary = analysis::calculateSequenceSummary(sequenceData);
+        ChainState chains = ChainState{systemState.kmc};
+        auto summary = analysis::calculateSequenceSummary(sequenceData, chains);
+        systemState.chains = chains;
 
         AnalysisState analysisState;
         analysis::analyzeChainLengthDist(summary.sequenceStatsMatrix, getMonomerFWs(), analysisState);
@@ -170,6 +172,7 @@ public:
         analysis::analyzeSequenceLengthDist(summary.sequenceStatsMatrix, analysisState);
         systemState.analysis = analysisState;
         systemState.sequence = sequenceState;
+        
     }
 
     void printSummary() const

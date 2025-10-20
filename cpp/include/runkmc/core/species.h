@@ -148,12 +148,12 @@ class RegistryBuilder
 {
 public:
     size_t findSpecies(const std::string &name) const { return str::findInVector(name, registered_species); }
-    bool isRegistered(const std::string &name) const { return findSpecies(name) != SIZE_T_MAX; }
+    bool isRegistered(const std::string &name) const { return findSpecies(name) != SIZE_MAX; }
 
     RegisteredSpecies getSpecies(const std::string &name) const
     {
         size_t index = findSpecies(name);
-        if (index != SIZE_T_MAX)
+        if (index != SIZE_MAX)
             return registered_species[index];
         console::input_error("Species with name " + name + " is not registered.");
     }

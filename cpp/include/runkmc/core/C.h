@@ -98,6 +98,7 @@ namespace C::paths
     inline constexpr std::string_view RESULTS_FILE = "results.csv";
     inline constexpr std::string_view SEQUENCES_FILE = "sequences.csv";
     inline constexpr std::string_view POLYMERS_FILE = "polymers.dat";
+    inline constexpr std::string_view CHAIN_STATS_FILE = "chain_stats.csv";
     inline constexpr std::string_view SPECIES_FILE = "species.yaml";
     inline constexpr std::string_view PARSED_INPUT_FILE = "parsed_input.yaml";
 };

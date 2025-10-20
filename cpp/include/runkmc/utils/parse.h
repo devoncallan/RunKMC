@@ -102,6 +102,6 @@ namespace str
             if (vec[i].name == name)
                 return i;
         }
-        return SIZE_T_MAX;
+        return SIZE_MAX;
     }
 };

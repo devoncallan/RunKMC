@@ -4,33 +4,22 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional
 import sqlite3
-import random
 import hashlib
+import json
 
 import pandas as pd
-import friendlywords as fw
 
 
 @dataclass
 class SimulationRecord:
-    """Record of a simulation in the registry database.
-
-    Attributes:
-        input_hash: SHA256 hash of the parsed input file
-        sim_id: Unique identifier for the simulation
-        timestamp: ISO format timestamp of when simulation was registered
-        completed: Whether the simulation completed successfully (1) or not (0)
-    """
 
     id: int
     timestamp: str
-
     sim_id: str
     run_index: int
     completed: int
     input_hash: str
-
-    _base_dir: Path  # not included in db
+    _base_dir: Path
 
     @staticmethod
     def sql_fields_list(no_id: bool = False) -> List[str]:
@@ -41,30 +30,12 @@ class SimulationRecord:
     def sql_fields_str(no_id: bool = False) -> str:
         return ", ".join(SimulationRecord.sql_fields_list(no_id=no_id))
 
-    def to_sql_row(self, no_id: bool = False) -> tuple:
-        return (
-            self.id,
-            self.timestamp,
-            self.sim_id,
-            self.run_index,
-            self.completed,
-            self.input_hash,
-        )
-
     @property
     def dir(self) -> Path:
         return self._base_dir / self.sim_id
 
 
 class SimulationRegistry:
-    """Registry for tracking simulations and enabling result caching.
-
-    Uses SQLite database to store mappings between input file hashes
-    and their corresponding output directories. This enables:
-    - Automatic detection of duplicate simulation requests
-    - Fast lookup of existing results
-    - Tracking of simulation completion status
-    """
 
     def __init__(self, base_dir: str | Path):
         self.base_dir = Path(base_dir)
@@ -75,7 +46,6 @@ class SimulationRegistry:
         self._init_db()
 
     def _init_db(self):
-        """Initialize the registry database with required schema."""
         with self.write_op() as conn:
             conn.execute(
                 """
@@ -101,7 +71,6 @@ class SimulationRegistry:
 
     @contextmanager
     def write_op(self):
-        """Context manager for writing operations with automatic CSV export."""
         conn = sqlite3.connect(self.db_path)
         try:
             yield conn
@@ -119,26 +88,20 @@ class SimulationRegistry:
             df["dir"] = df["sim_id"].apply(lambda sid: str(self.base_dir / sid))
             df.to_csv(self.csv_path, index=False)
 
-    # ------------ Helpers ------------
     @staticmethod
-    def hash_file(filepath: Path) -> str:
-        """Compute SHA256 hash of a file."""
-        return hashlib.sha256(filepath.read_bytes()).hexdigest()
+    def hash_input(input_file: Path, params: object | None = None) -> str:
+        content = input_file.read_bytes()
+        param_str = json.dumps(params, sort_keys=True) if params is not None else ""
+        combined = content + param_str.encode()
+        return hashlib.sha256(combined).hexdigest()
 
     @staticmethod
-    def generate_base_name(hash_str: str) -> str:
-        # Save and restore random state to avoid global side effects
-        rs = random.getstate()
-        random.seed(hash_str)
-        base = str(fw.generate("po", separator="_"))
-        random.setstate(rs)
-        return base
+    def make_sim_id(input_hash: str, run_index: int) -> str:
+        hash_short = input_hash[:8]
+        return f"sim_{hash_short}-r{run_index:03d}"
 
-    def _make_sim_id(self, input_hash: str, run_index: int) -> str:
-        base_name = self.generate_base_name(input_hash)
-        return f"{base_name}_{input_hash[:4]}-r{run_index:03d}"
-
-    def _next_run_index(self, conn: sqlite3.Connection, input_hash: str) -> int:
+    @staticmethod
+    def _next_run_index(conn: sqlite3.Connection, input_hash: str) -> int:
         (n,) = conn.execute(
             """
             SELECT COALESCE(MAX(run_index), -1) + 1 FROM simulations
@@ -148,20 +111,12 @@ class SimulationRegistry:
         ).fetchone()
         return int(n)
 
-    # ------------ API ------------
-
-    def insert(self, input_hash: str) -> SimulationRecord:
-        """Register a new simulation in the database.
-        Args:
-            input_hash: SHA256 hash of the parsed input file
-        Returns:
-            SimulationRecord of the newly inserted simulation
-        """
+    def new_record(self, input_hash: str) -> SimulationRecord:
 
         timestamp = datetime.now().isoformat()
         with self.write_op() as conn:
-            run_index = self._next_run_index(conn, input_hash)
-            sim_id = self._make_sim_id(input_hash, run_index)
+            run_index = SimulationRegistry._next_run_index(conn, input_hash)
+            sim_id = SimulationRegistry.make_sim_id(input_hash, run_index)
             conn.execute(
                 f"""
                 INSERT INTO simulations ({SimulationRecord.sql_fields_str(no_id=True)})
@@ -170,89 +125,71 @@ class SimulationRegistry:
                 (timestamp, sim_id, run_index, 0, input_hash),
             )
             rowid = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
-
         return SimulationRecord(
             rowid, timestamp, sim_id, run_index, 0, input_hash, self.base_dir
         )
 
-    def update_completion(self, input_hash: str, completed: bool = True) -> None:
-        """Mark a simulation as completed or not completed.
-        Args:
-            input_hash: SHA256 hash of the parsed input file
-            completed: Completion status (default: True)
-        """
+    def update_completion(
+        self, record: SimulationRecord, completed: bool = True
+    ) -> None:
         with self.write_op() as conn:
             conn.execute(
                 """
                 UPDATE simulations
-                SET completed = ? 
-                WHERE input_hash = ?
+                SET completed = ?
+                WHERE id = ?
                 """,
-                (1 if completed else 0, input_hash),
+                (1 if completed else 0, record.id),
             )
 
-    def delete(self, input_hash: str) -> bool:
-        """Remove a simulation from the registry.
-        Args:
-            input_hash: SHA256 hash of the parsed input file
-        Returns:
-            True if a record was deleted, False if not found
-        """
+    def _delete(self, row_id: int) -> bool:
         with self.write_op() as conn:
             cur = conn.execute(
                 """
                 DELETE FROM simulations
-                WHERE input_hash = ?
+                WHERE id = ?
                 """,
-                (input_hash,),
+                (row_id,),
+            )
+            return cur.rowcount > 0
+
+    def delete(self, record: SimulationRecord) -> bool:
+        with self.write_op() as conn:
+            cur = conn.execute(
+                """
+                DELETE FROM simulations
+                WHERE id = ?
+                """,
+                (record.id,),
             )
             return cur.rowcount > 0
 
     def latest_completed(self, input_hash: str) -> Optional[SimulationRecord]:
-        """Get the latest completed simulation for a given input hash.
-        Args:
-            input_hash: SHA256 hash of the parsed input file
-        Returns:
-            SimulationRecord if found, None otherwise
-        """
-
         with sqlite3.connect(self.db_path) as conn:
             row = conn.execute(
                 f"""
                 SELECT {SimulationRecord.sql_fields_str()} FROM simulations
                 WHERE input_hash = ? AND completed = 1
-                ORDER BY run_index DESC
+                ORDER BY timestamp DESC
                 LIMIT 1
                 """,
                 (input_hash,),
             ).fetchone()
-        return SimulationRecord(*row, self.base_dir) if row else None
+        return SimulationRecord(*row, _base_dir=self.base_dir) if row else None
 
     def find_all(self, input_hash: str) -> List[SimulationRecord]:
-        """Find all simulations for a given input hash.
-        Args:
-            input_hash: SHA256 hash of the parsed input file
-        Returns:
-            List of SimulationRecord objects
-        """
         with sqlite3.connect(self.db_path) as conn:
             rows = conn.execute(
                 f"""
                 SELECT {SimulationRecord.sql_fields_str()} FROM simulations
                 WHERE input_hash = ?
-                ORDER BY run_index DESC
+                ORDER BY timestamp DESC
                 """,
                 (input_hash,),
             ).fetchall()
-        return [SimulationRecord(*row, self.base_dir) for row in rows]
+        return [SimulationRecord(*row, _base_dir=self.base_dir) for row in rows]
 
     def get_all(self, completed_only: bool = False) -> List[SimulationRecord]:
-        """Get all registered simulations.
-        Args:
-            completed_only: If True, only return completed simulations
-        Returns:
-            List of SimulationRecord objects
-        """
         with sqlite3.connect(self.db_path) as conn:
             rows = conn.execute(
                 f"""
@@ -261,14 +198,9 @@ class SimulationRegistry:
                 ORDER BY timestamp DESC
                 """
             ).fetchall()
-        return [SimulationRecord(*row, self.base_dir) for row in rows]
+        return [SimulationRecord(*row, _base_dir=self.base_dir) for row in rows]
 
     def to_df(self) -> pd.DataFrame:
-        """Export the registry to a pandas DataFrame.
-        Returns:
-            DataFrame containing all simulation records
-        """
-
         return (
             pd.read_csv(self.csv_path)
             if self.csv_path.exists()

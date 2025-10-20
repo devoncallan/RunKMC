@@ -27,11 +27,15 @@ namespace io::cli
         for (int i = 3; i < argc; ++i)
         {
             std::string arg = argv[i];
+            str::trim(arg);
+            console::log("Parsing argument: " + arg);
 
             if (arg == "--report-polymers")
                 config.reportPolymers = true;
             else if (arg == "--report-sequences")
                 config.reportSequences = true;
+            else if (arg == "--report-chains")
+                config.reportChains = true;
             else if (arg == "--parse-only")
                 config.parseOnly = true;
             else if (arg == "--debug")

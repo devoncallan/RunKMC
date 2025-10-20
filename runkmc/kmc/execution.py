@@ -13,6 +13,7 @@ class CommandLineConfig:
     output_dir: Path
     report_polymers: bool = False
     report_sequences: bool = False
+    report_chains: bool = False
     parse_only: bool = False
     debug: bool = False
 
@@ -26,6 +27,8 @@ class CommandLineConfig:
             cmd.append("--report-polymers")
         if self.report_sequences:
             cmd.append("--report-sequences")
+        if self.report_chains:
+            cmd.append("--report-chains")
         if self.parse_only:
             cmd.append("--parse-only")
         if self.debug:
@@ -81,6 +84,7 @@ def parse_only(
         output_dir=Path(output_dir),
         report_polymers=False,
         report_sequences=False,
+        report_chains=False,
         parse_only=True,
         debug=debug,
     )
@@ -92,6 +96,7 @@ def execute_simulation(
     output_dir: Path | str,
     report_polymers: bool = False,
     report_sequences: bool = False,
+    report_chains: bool = False,
     parse_only: bool = False,
     debug: bool = False,
 ) -> None:
@@ -101,6 +106,7 @@ def execute_simulation(
         output_dir=Path(output_dir),
         report_polymers=report_polymers,
         report_sequences=report_sequences,
+        report_chains=report_chains,
         parse_only=parse_only,
         debug=debug,
     )

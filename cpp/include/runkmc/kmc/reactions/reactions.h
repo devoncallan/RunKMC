@@ -46,7 +46,7 @@ struct ReactionSchema
         return std::string(type) + ": " + str::join(reactantTypes, " + ") + " --> " + str::join(productTypes, " + ");
     }
 
-    constexpr void validateSchema() const
+    void validateSchema() const
     {
         for (const auto &type : reactantTypes)
             SpeciesType::checkValid(type);
@@ -367,7 +367,9 @@ public:
 
     double calculateRate(double NAV) const override
     {
-        return rateConstant.value * species.r_poly<0>()->count * (species.r_poly<1>()->count - sameReactant) / NAV;
+        if (sameReactant)
+            return rateConstant.value * species.r_poly<0>()->count * (species.r_poly<0>()->count - 1) / (2.0 * NAV);
+        return rateConstant.value * species.r_poly<0>()->count * (species.r_poly<1>()->count) / NAV;
     }
 
 private:
@@ -402,7 +404,9 @@ public:
 
     double calculateRate(double NAV) const override
     {
-        return rateConstant.value * species.r_poly<0>()->count * (species.r_poly<1>()->count - sameReactant) / NAV;
+        if (sameReactant)
+            return rateConstant.value * species.r_poly<0>()->count * (species.r_poly<0>()->count - 1) / (2.0 * NAV);
+        return rateConstant.value * species.r_poly<0>()->count * (species.r_poly<1>()->count) / NAV;
     }
 
 private:

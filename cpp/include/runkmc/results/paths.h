@@ -46,4 +46,5 @@ public:
     std::filesystem::path resultsFile() const { return _baseDir / C::paths::RESULTS_FILE; }
     std::filesystem::path polymerFile() const { return _baseDir / C::paths::POLYMERS_FILE; }
     std::filesystem::path sequencesFile() const { return _baseDir / C::paths::SEQUENCES_FILE; }
+    std::filesystem::path chainStatsFile() const { return _baseDir / C::paths::CHAIN_STATS_FILE; }
 };

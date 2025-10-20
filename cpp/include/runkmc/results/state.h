@@ -51,6 +51,26 @@ namespace output
         const SequenceState &sequenceState;
     };
 
+    class ChainWriter
+    {
+    public:
+        ChainWriter(const ChainState &chain) : chainState(chain) {}
+
+        static void writeHeader(std::ostream &out)
+        {
+            out << str::join(ChainState::getTitles(), ",") << std::endl;
+        }
+
+        void writeState(std::ostream &out) const
+        {
+            for (size_t i = 0; i < chainState.chainStats.size(); ++i)
+                out << str::join(chainState.getDataAsVector(i), ",") << std::endl;
+        }
+
+    private:
+        const ChainState &chainState;
+    };
+
     void writeStateHeaders(const SimulationPaths &paths, const io::types::CommandLineConfig &config)
     {
         console::debug("Writing results to " + paths.resultsFile().string());
@@ -58,6 +78,11 @@ namespace output
         auto resultsFile = std::ofstream(paths.resultsFile());
         ResultsWriter::writeHeader(resultsFile);
 
+        if (config.reportChains)
+        {
+            auto chainFile = std::ofstream(paths.chainStatsFile());
+            ChainWriter::writeHeader(chainFile);
+        }
         if (config.reportSequences)
         {
             auto sequenceFile = std::ofstream(paths.sequencesFile());
@@ -71,6 +96,12 @@ namespace output
         ResultsWriter writer(state.kmc, state.species, state.analysis);
         writer.writeState(resultsFile);
 
+        if (config.reportChains)
+        {
+            auto chainFile = std::ofstream(paths.chainStatsFile(), std::ios::app);
+            ChainWriter chainWriter(state.chains);
+            chainWriter.writeState(chainFile);
+        }
         if (config.reportSequences)
         {
             auto sequenceFile = std::ofstream(paths.sequencesFile(), std::ios::app);

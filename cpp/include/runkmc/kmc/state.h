@@ -266,10 +266,67 @@ struct SequenceState
     }
 };
 
+struct ChainState
+{
+    KMCState kmcState;
+    std::vector<analysis::SequenceStats> chainStats = {};
+
+    static std::vector<std::string> getTitles()
+    {
+        auto monomerNames = registry::getMonomerNames();
+
+        // If no monomer, return empty vector
+        if (monomerNames.size() == 0)
+            return {};
+
+        std::vector<std::string> names = {std::string(C::state::KMC_TIME_KEY)};
+
+        for (const auto &monomerName : monomerNames)
+            names.push_back(std::string(C::state::MONCOUNT_PREFIX) + monomerName);
+
+        // If only homopolymer, return here
+        if (registry::getNumMonomers() == 1)
+            return names;
+
+        // Sequence counts
+        for (const auto &monomerName : monomerNames)
+            names.push_back(std::string(C::state::SEQCOUNT_PREFIX) + monomerName);
+
+        // Sum of squared sequence lengths
+        for (const auto &monomerName : monomerNames)
+            names.push_back(std::string(C::state::SEQLEN2_PREFIX) + monomerName);
+
+        return names;
+    }
+
+    std::vector<std::string> getDataAsVector(size_t index) const
+    {
+        auto numMonomers = registry::getNumMonomers();
+
+        if (numMonomers == 0 || index >= chainStats.size())
+            return {};
+
+        std::vector<std::string> output = {std::to_string(kmcState.kmcTime)};
+
+        const auto &chainStat = chainStats[index];
+
+        for (size_t i = 0; i < numMonomers; ++i)
+            output.push_back(std::to_string(chainStat.monCounts[i]));
+
+        if (numMonomers == 1)
+            return output;
+
+        for (size_t i = 0; i < numMonomers; ++i)
+            output.push_back(std::to_string(chainStat.seqCounts[i]));
+        for (size_t i = 0; i < numMonomers; ++i)
+            output.push_back(std::to_string(chainStat.seqLengths2[i]));
+    }
+};
 struct SystemState
 {
     KMCState kmc;
     SpeciesState species;
     AnalysisState analysis;
     SequenceState sequence;
+    ChainState chains;
 };

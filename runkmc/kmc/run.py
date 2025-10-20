@@ -5,7 +5,7 @@ import tempfile
 
 from .execution import execute_simulation, parse_only
 from runkmc.results import SimulationResult, SimulationPaths
-from runkmc.models import create_input_file
+from runkmc.templates import create_input_file
 from runkmc.results.registry import SimulationRegistry
 
 
@@ -37,30 +37,34 @@ class RunKMC:
 
         self.registry = SimulationRegistry(self.base_dir)
 
-    # def run_from_config(
-    #     self, config: SimulationConfig, sim_id: Optional[str] = None
-    # ) -> SimulationResult:
+    def run_from_template(
+        self,
+        template_name: str,
+        template_params: Dict[str, Any],
+        use_existing: bool = True,
+        **kwargs,
+    ) -> SimulationResult:
 
-    #     if sim_id is None:
-    #         sim_id = f"sim_{uuid4()}"
+        temp_file = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+        input_path = Path(temp_file.name)
+        temp_file.close()
+        create_input_file(template_name, template_params, input_path)
 
-    #     output_dir = self.base_dir / sim_id
-    #     output_dir.mkdir(parents=True, exist_ok=True)
-
-    #     self.input_filepath = output_dir / "input.txt"
-    #     create_input_file(config.model_name, config.kmc_inputs, self.input_filepath)
-
-    #     return self.run_from_file(
-    #         self.input_filepath,
-    #         config.report_polymers,
-    #         config.report_sequences,
-    #         sim_id=sim_id,
-    #     )
+        try:
+            result = self.run_simulation(
+                input_filepath=input_path,
+                use_existing=use_existing,
+                **kwargs,
+            )
+            return result
+        finally:
+            if input_path.exists():
+                input_path.unlink()
 
     def run_simulation(
         self,
         input_filepath: Path | str,
-        overwrite: bool = False,
+        use_existing: bool = True,
         **kwargs,
     ) -> SimulationResult:
         """Run a simulation with automatic caching based on input hash.
@@ -75,6 +79,8 @@ class RunKMC:
             SimulationResult object containing the results
         """
         input_filepath = Path(input_filepath)
+        if not input_filepath.exists():
+            raise FileNotFoundError(f"Input file not found: {input_filepath}")
 
         # Pre-parse simulation inputs
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -93,33 +99,33 @@ class RunKMC:
                 )
 
             # Hash the parsed KMC input file
-            input_hash = SimulationRegistry.hash_file(parsed_input)
+            input_hash = SimulationRegistry.hash_input(parsed_input)
 
-        # Check registry for existing simulation
         record = self.registry.latest_completed(input_hash)
 
-        if record and not overwrite:
-            print(f"✓ Found cached simulation results (hash: {input_hash[:8]}...)")
+        if record and use_existing:
+            print(f"✓ Found existing simulation (hash: {input_hash[:8]}...)")
             print(f"  Loading from: {record.dir}")
-            return SimulationResult.from_record(record)
-        elif record and overwrite:
-            print(f"↻ Overwriting existing simulation (hash: {input_hash[:8]}...)")
-        else:  # Simulation does not exist
+            return SimulationResult.load(record.dir)
+        elif record and not use_existing:
+            print(
+                f"↻ Existing simulation found (hash: {input_hash[:8]}...) but use_existing is False."
+            )
+        else:
             print(f"➤ Running new simulation (hash: {input_hash[:8]}...)")
-            record = self.registry.insert(input_hash)
+            record = self.registry.new_record(input_hash)
+
+        output_dir = record.dir
+        output_dir.mkdir(parents=True, exist_ok=True)
 
         try:
             # Run the simulation
             execute_simulation(input_filepath, record.dir, **kwargs)
-
-            # Mark as completed
-            self.registry.update_completion(input_hash, completed=True)
-
-            # Load and return results
+            self.registry.update_completion(record, completed=True)
+            print(f"✓ Simulation completed: {output_dir}")
             return SimulationResult.load(record.dir)
 
         except Exception as e:
-            # If simulation fails, keep it marked as incomplete
             print(f"✗ Simulation failed: {e}")
-            self.registry.update_completion(input_hash, completed=False)
+            self.registry.update_completion(record, completed=False)
             raise
