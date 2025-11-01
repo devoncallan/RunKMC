@@ -9,7 +9,7 @@ species
     U R     [C0]={{R_c0=0}}   FW={{R_FW=1.0}}
     M A     [C0]={{A_c0}}   FW={{A_FW=1.0}}
     M B     [C0]={{B_c0}}   FW={{B_FW=1.0}}
-    
+
     P P[R.A]
     P P[R.B]
     P P[A.A]
@@ -18,18 +18,22 @@ species
     P P[B.B]
 
     # The polymers separated by | are a subgroup of P[-.A] and P[-.B]
-    P P[-.A] P[R.A]|P[A.A]|P[B.A]
-    P P[-.B] P[R.B]|P[A.B]|P[B.B]
+    LABEL P[-.A] P[R.A]|P[A.A]|P[B.A]
+    LABEL P[-.B] P[R.B]|P[A.B]|P[B.B]
     P D
 end
 
 rateconstants
     kd	    = {{kd}}
 
-    kpAA    = {{kpAA=0.0}}
-    kpAB    = {{kpAB=0.0}}
-    kpBA    = {{kpBA=0.0}}
-    kpBB    = {{kpBB=0.0}}
+    kpAAA   = {{kpAAA=0.0}}
+    kpBAA   = {{kpBAA=0.0}}
+    kpAAB   = {{kpAAB=0.0}}
+    kpBAB   = {{kpBAB=0.0}}
+    kpABA   = {{kpABA=0.0}}
+    kpBBA   = {{kpBBA=0.0}}
+    kpABB   = {{kpABB=0.0}}
+    kpBBB   = {{kpBBB=0.0}}
 
     kdAA    = {{kdAA=0.0}}
     kdAB    = {{kdAB=0.0}}
@@ -50,14 +54,23 @@ reactions
     ID I -kd-> R + R
     
 	# ---- Initiation ----
-    IN R + A -kpAA-> P[R.A]
-    IN R + B -kpBB-> P[R.B]
+    IN R + A -kpAAA-> P[R.A]
+    IN R + B -kpBBB-> P[R.B]
 
 	# ---- Propagation ----
-    PR P[-.A] + A -kpAA-> P[A.A]
-    PR P[-.A] + B -kpAB-> P[A.B]
-    PR P[-.B] + A -kpBA-> P[B.A]
-    PR P[-.B] + B -kpBB-> P[B.B]
+    PR P[R.A] + A -kpAAA-> P[A.A]
+    PR P[R.A] + B -kpAAB-> P[A.B]
+    PR P[R.B] + A -kpBBA-> P[B.A]
+    PR P[R.B] + B -kpBBB-> P[B.B]
+
+    PR P[A.A] + A -kpAAA-> P[A.A]
+    PR P[A.A] + B -kpAAB-> P[A.B]
+    PR P[A.B] + A -kpABA-> P[B.A]
+    PR P[A.B] + B -kpABB-> P[B.B]
+    PR P[B.A] + A -kpBAA-> P[A.A]
+    PR P[B.A] + B -kpBAB-> P[A.B]
+    PR P[B.B] + A -kpBBA-> P[B.A]
+    PR P[B.B] + B -kpBBB-> P[B.B]
 
     # ---- Depropagation ----
     DP P[A.A] -kdAA-> P[-.A] + A

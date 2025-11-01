@@ -8,6 +8,8 @@ TEMPLATES_DIR = Path(__file__).parent
 
 REGISTERED_TEMPLATES = {
     "FRP1": TEMPLATES_DIR / "homo/FRP1.template",
+    "BUP2": TEMPLATES_DIR / "binary/BUP2.template",
+    "BUP2_Rev": TEMPLATES_DIR / "binary/BUP2_Rev.template",
     "FRP2": TEMPLATES_DIR / "binary/FRP2.template",
     "CRP1": TEMPLATES_DIR / "binary/CRP1.template",
     "CRP3": TEMPLATES_DIR / "binary/CRP3.template",
@@ -113,7 +115,7 @@ class Template:
     @staticmethod
     def load(filepath_or_name: Path | str) -> Template:
         try:
-            return Template.load_registered(filepath_or_name)
+            return Template.load_registered(str(filepath_or_name))
         except ValueError:
             return Template.from_file(filepath_or_name)
         except Exception as e:

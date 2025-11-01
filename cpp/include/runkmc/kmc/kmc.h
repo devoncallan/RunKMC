@@ -4,6 +4,7 @@
 #include "kmc/reactions/reaction_set.h"
 #include "kmc/species/species_set.h"
 #include "kmc/analysis/analysis.h"
+#include "kmc/plugin.h"
 #include "results/state.h"
 #include "results/polymers.h"
 
@@ -33,6 +34,9 @@ public:
 
     void run()
     {
+        for (auto &plugin : plugins)
+            plugin->onSimulationStart(*this);
+
         if (reactionSet.cantProceed())
             console::error("No reactions can occur with the initial species set. Stopping simulation.");
 
@@ -67,6 +71,35 @@ public:
 
         if (config.reportPolymers)
             output::writePolymers(paths, speciesSet);
+
+        for (auto &plugin : plugins)
+            plugin->onSimulationEnd(*this);
+    }
+
+    double getNAV() const { return state.kmc.NAV; }
+
+    void setNAV(double newNAV)
+    {
+        if (newNAV <= 0)
+            console::error("Attempted to set NAV to non-positive value: " + std::to_string(newNAV) + ".");
+        state.kmc.NAV = newNAV;
+        reactionSet.setNAV(newNAV);
+    }
+
+    void scaleNAV(double factor)
+    {
+        if (factor <= 0)
+            console::error("Attempted to scale NAV by non-positive factor: " + std::to_string(factor) + ".");
+        setNAV(state.kmc.NAV * factor);
+    }
+
+    void registerPlugin(SimulationPluginPtr plugin)
+    {
+        if (!plugin)
+            return;
+
+        plugin->onRegistered(*this);
+        plugins.emplace_back(std::move(plugin));
     }
 
     const io::types::CommandLineConfig &getConfig() const { return config; };
@@ -101,6 +134,12 @@ private:
         reaction->react();
 
         speciesSet.updatePolymerContainers();
+
+        for (auto &plugin : plugins)
+            plugin->afterReaction(*this, *reaction, reactionIndex);
+
+        for (auto &plugin : plugins)
+            plugin->beforePropensityUpdate(*this, reactionSet);
 
         reactionSet.updateReactionProbabilities(state.kmc.NAV);
 
@@ -139,6 +178,8 @@ private:
     // Core simulation objects
     ReactionSet reactionSet;
     SpeciesSet speciesSet;
+
+    std::vector<SimulationPluginPtr> plugins;
 
     // Simulation start time
     std::chrono::steady_clock::time_point startTime;

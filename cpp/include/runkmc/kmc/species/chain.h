@@ -1,190 +1,231 @@
-/*
+// /*
 
-Brainstorming:
+// Brainstorming:
 
-`Polymer` class is a representation of a macromolecule made up of monomers.
+// `Polymer` class is a representation of a macromolecule made up of monomers.
 
-It can be linear, branched, crosslinked, etc.
+// It can be linear, branched, crosslinked, etc.
 
-`Segment` struct is a linear, contiguous block of identical monomers within a copolymer.
-`SegmentStats` struct accumulates statistics about segments in a copolymer.
+// `Segment` struct is a linear, contiguous block of identical monomers within a copolymer.
+// `SegmentStats` struct accumulates statistics about segments in a copolymer.
 
-`Fragment` struct represents a linear section of polymer
+// `Fragment` struct represents a linear section of polymer
 
-`Polymer` is templated from:
-- Different polymer architecture (linear, branched, ...)
-- Different segment storage strategies (full sequence, compressed, ...)
-- - Full sequence (vector of SpeciesID)
-- - Sequence Statistics (SegmentStats)
-- - Composition only (monomer counts)
-
+// `Polymer` is templated from:
+// - Different polymer architecture (linear, branched, ...)
+// - Different segment storage strategies (full sequence, compressed, ...)
+// - - Full sequence (vector of SpeciesID)
+// - - Sequence Statistics (SegmentStats)
 
 
-*/
 
-#pragma once
+// */
 
-#include "common.h"
+// #pragma once
 
-struct PolymerBase
-{
-    int output_flag = 0;
-    int length = 0;
-};
+// #include "common.h"
 
-struct Homopolymer : public PolymerBase
-{
-    PolymerBase to_data() const { return {output_flag, length}; }
-};
+// struct PolymerBase
+// {
+//     int output_flag = 0;
+//     int length = 0;
+// };
 
-struct Segment
-{
-    SpeciesID monomer;
-    size_t length;
-};
+// struct Homopolymer : public PolymerBase
+// {
+//     PolymerBase to_data() const { return {output_flag, length}; }
+// };
 
-struct SegmentStats
-{
-    size_t count = 0;
-    size_t segments = 0;
-    size_t segment_lengths_squared = 0;
+// template <int _NUM_MONOMERS>
+// struct CopolymerBase : public PolymerBase
+// {
+//     std::vector<uint32_t> monomer_counts;
+// };
 
-    void add_segment(Segment segment)
-    {
-        count += segment.length;
-        ++segments;
-        segment_lengths_squared += segment.length * segment.length;
-    }
+// template <int _NUM_MONOMERS>
+// struct SequenceCopolymer : CopolymerBase<_NUM_MONOMERS>
+// {
+//     std::vector<uint32_t> segments;
+//     std::vector<uint32_t> segment_lengths_squared;
+// };
 
-    void remove_segment(Segment segment)
-    {
-        count -= segment.length;
-        --segments;
-        segment_lengths_squared -= segment.length * segment.length;
-    }
-};
+// template <int _NUM_MONOMERS>
+// struct Polymer
+// {
+//     using ChainType = void;
+// };
 
-template <int _NUM_MONOMERS>
-struct CopolymerData
-{
-    int output_flag = 0;
-    int length = 0;
-    int counts[_NUM_MONOMERS];
-    int segments[_NUM_MONOMERS];
-    int segment_lengths_squared[_NUM_MONOMERS];
-};
+// template <>
+// struct Polymer<1>
+// {
+//     using ChainType = Homopolymer;
+// };
 
-enum class ConnectType
-{
-    SCB,
-    LCB,
-};
+// template <>
+// struct Polymer<2>
+// {
+//     using ChainType = SequenceCopolymer<2>;
+// };
 
-template <int _NUM_MONOMERS>
-struct Connect
-{
-    Polymer<_NUM_MONOMERS>* chain1;
-    Polymer<_NUM_MONOMERS>* chain2;
-    ConnectType type;
-};
+// struct Segment
+// {
+//     SpeciesID monomer;
+//     uint32_t length;
+// };
 
-template <int _NUM_MONOMERS>
-class Polymer
-{
-    using chain = void;
 
-};
+// struct SegmentStats
+// {
+//     size_t count = 0;
+//     size_t segments = 0;
+//     size_t segment_lengths_squared = 0;
 
-template <>
-class Polymer<1>
-{
-    Homopolymer chain;
+//     void add_segment(Segment segment)
+//     {
+//         count += segment.length;
+//         ++segments;
+//         segment_lengths_squared += segment.length * segment.length;
+//     }
 
-    void add_monomer() { chain.length++; }
-    void remove_monomer()
-    {
-        if (chain.length > 0)
-            chain.length--;
-    }
-};
+//     void remove_segment(Segment segment)
+//     {
+//         count -= segment.length;
+//         --segments;
+//         segment_lengths_squared -= segment.length * segment.length;
+//     }
+// };
 
-template <>
-class Polymer<2>
-{
-};
+// template <int _NUM_MONOMERS>
+// struct CopolymerData
+// {
+//     int output_flag = 0;
+//     int length = 0;
+//     int counts[_NUM_MONOMERS];
+//     int segments[_NUM_MONOMERS];
+//     int segment_lengths_squared[_NUM_MONOMERS];
+// };
 
-template <int SIZE>
-struct SegmentBuffer
-{
-    Segment segments[SIZE];
-    int count = 0;
+// enum class ConnectType
+// {
+//     SCB,
+//     LCB,
+// };
 
-    void push(const Segment &segment)
-    {
-        if (count >= SIZE)
-            console::error("SegmentBuffer overflow.");
-        segments[count++] = segment;
-    }
+// template <int _NUM_MONOMERS>
+// struct Connect
+// {
+//     Polymer<_NUM_MONOMERS> *chain1;
+//     Polymer<_NUM_MONOMERS> *chain2;
+//     ConnectType type;
+// };
 
-    Segment pop()
-    {
-        if (count <= 0)
-            return {INVALID_SPECIES_ID, 0};
-        return segments[--count];
-    }
+// template <int _NUM_MONOMERS>
+// class Fragment
+// {
+//     using chain = void;
+// };
 
-    bool empty() const { return count == 0; }
-};
+// template <>
+// class Fragment<1>
+// {
+//     Homopolymer chain;
 
-class CopolymerBase : public PolymerBase
-{
-    Segment current_segment;
-    SegmentBuffer<10> buffer;
+//     void add_monomer(SpeciesID monomer) { chain.length++; }
+//     void remove_monomer()
+//     {
+//         if (chain.length > 0)
+//             chain.length--;
+//     }
+// };
 
-    void add_monomer(SpeciesID monomer)
-    {
-        if (monomer == INVALID_SPECIES_ID)
-            return;
+// template <>
+// class Fragment<2>
+// {
+//     CopolymerBase chain;
 
-        this->length++;
-        if (current_segment.monomer == monomer)
-            current_segment.length++;
-        else
-        {
-            if (current_segment.length > 0)
-                buffer.push(current_segment);
-            current_segment = {monomer, 1};
-        }
-    }
+//     void add_monomer(SpeciesID monomer) { chain.add_monomer(monomer); }
+//     void remove_monomer() { chain.remove_monomer(); }
+// };
 
-    SpeciesID remove_monomer()
-    {
-        if (length == 0)
-            return INVALID_SPECIES_ID;
+// template <int SIZE>
+// struct SegmentBuffer
+// {
+//     Segment segments[SIZE];
+//     int count = 0;
 
-        this->length--;
+//     void push(const Segment &segment)
+//     {
+//         if (count >= SIZE)
+//             console::error("SegmentBuffer overflow.");
+//         segments[count++] = segment;
+//     }
 
-        if (current_segment.length > 1)
-            current_segment.length--;
-        else
-            current_segment = buffer.pop();
+//     Segment pop()
+//     {
+//         if (count <= 0)
+//             return {INVALID_SPECIES_ID, 0};
+//         return segments[--count];
+//     }
 
-        return current_segment.monomer;
-    }
-};
+//     bool empty() const { return count == 0; }
+// };
 
-template <int NUM_MONOMERS>
-struct PolymerSpecies
-{
-    using Polymer = void;
-};
+// class CopolymerBase : public PolymerBase
+// {
+//     Segment current_segment;
+//     SegmentBuffer<10> buffer;
 
-template <>
-struct PolymerSpecies<1>
-{
-    using ChainType = Homopolymer;
-    struct Polymer
-    {
-        ChainType chain;
-    };
-};
+// public:
+//     void add_monomer(SpeciesID monomer)
+//     {
+//         if (monomer == INVALID_SPECIES_ID)
+//             return;
+
+//         this->length++;
+//         if (current_segment.monomer == monomer)
+//             current_segment.length++;
+//         else
+//         {
+//             if (current_segment.length > 0)
+//                 buffer.push(current_segment);
+//             current_segment = {monomer, 1};
+//         }
+//     }
+
+//     SpeciesID remove_monomer()
+//     {
+//         if (length == 0)
+//             return INVALID_SPECIES_ID;
+
+//         this->length--;
+
+//         if (current_segment.length > 1)
+//             current_segment.length--;
+//         else
+//             current_segment = buffer.pop();
+
+//         return current_segment.monomer;
+//     }
+// };
+
+// template <int NUM_MONOMERS>
+// struct PolymerSpecies
+// {
+//     using Polymer = void;
+// };
+
+// template <>
+// struct PolymerSpecies<1>
+// {
+//     using ChainType = Homopolymer;
+//     struct Polymer
+//     {
+//         ChainType chain;
+//     };
+// };
+
+// struct ChainView
+// {
+//     uint32_t length() const;
+//     std::vector<const Segment> segments() const;
+// };

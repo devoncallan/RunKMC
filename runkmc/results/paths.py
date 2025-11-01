@@ -28,3 +28,7 @@ class SimulationPaths:
     @property
     def sequence_filepath(self) -> Path:
         return self.base_dir / C.paths.SEQUENCES_FILE
+
+    @property
+    def chain_stats_filepath(self) -> Path:
+        return self.base_dir / C.paths.CHAIN_STATS_FILE

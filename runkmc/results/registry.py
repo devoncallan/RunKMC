@@ -162,14 +162,14 @@ class SimulationRegistry:
                 """,
                 (record.id,),
             )
+            
             return cur.rowcount > 0
-
-    def latest_completed(self, input_hash: str) -> Optional[SimulationRecord]:
+    
+    def get_latest(self, input_hash: str, completed: bool | None = None) -> SimulationRecord | None:
         with sqlite3.connect(self.db_path) as conn:
-            row = conn.execute(
-                f"""
+            row = conn.execute(f"""
                 SELECT {SimulationRecord.sql_fields_str()} FROM simulations
-                WHERE input_hash = ? AND completed = 1
+                WHERE input_hash = ? {f"AND completed = {1 if completed else 0}" if completed is not None else ""}
                 ORDER BY timestamp DESC
                 LIMIT 1
                 """,
@@ -206,3 +206,15 @@ class SimulationRegistry:
             if self.csv_path.exists()
             else pd.DataFrame(columns=SimulationRecord.sql_fields_list())
         )
+
+    def get_latest_records(self, n: int = 10) -> List[SimulationRecord]:
+        with sqlite3.connect(self.db_path) as conn:
+            rows = conn.execute(
+                f"""
+                SELECT {SimulationRecord.sql_fields_str()} FROM simulations
+                ORDER BY timestamp DESC, id DESC
+                LIMIT ?
+                """,
+                (n,),
+            ).fetchall()
+        return [SimulationRecord(*row, _base_dir=self.base_dir) for row in rows]

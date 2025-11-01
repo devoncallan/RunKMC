@@ -109,6 +109,10 @@ public:
     virtual double calculateRate(double NAV) const = 0;
     virtual std::string_view getType() const { return schema.type; }
 
+    const ReactionSchema &getSchema() const { return schema; }
+    const ReactionSpecies &getSpecies() const { return species; }
+    const RateConstant &getRateConstant() const { return rateConstant; }
+
     std::string toString() const
     {
         std::string output = "";

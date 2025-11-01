@@ -1,6 +1,7 @@
 #pragma once
 #include "common.h"
 #include "kmc/reactions/reactions.h"
+#include <algorithm>
 
 namespace reactions
 {
@@ -21,6 +22,7 @@ public:
         reactionRates.resize(numReactions);
         reactionProbabilities.resize(numReactions);
         reactionCumulativeProbabilities.resize(numReactions);
+        rateMultipliers.assign(numReactions, 1.0);
     };
 
     ReactionSet() {};
@@ -34,6 +36,13 @@ public:
     {
         NAV = NAV_;
         updateReactionRates();
+
+        if (totalReactionRate <= 0)
+        {
+            std::fill(reactionProbabilities.begin(), reactionProbabilities.end(), 0.0);
+            std::fill(reactionCumulativeProbabilities.begin(), reactionCumulativeProbabilities.end(), 0.0);
+            return;
+        }
 
         reactionProbabilities[0] = reactionRates[0] / totalReactionRate;
         reactionCumulativeProbabilities[0] = reactionProbabilities[0];
@@ -70,6 +79,26 @@ public:
     bool cantProceed() const { return totalReactionRate == 0; }
     void setNAV(double NAV) { this->NAV = NAV; }
     double getNAV() const { return NAV; }
+    const std::vector<double> &getRateMultipliers() const { return rateMultipliers; }
+
+    void setRateMultiplier(size_t reactionIndex, double value)
+    {
+        if (reactionIndex >= numReactions)
+            console::error("Rate multiplier index out of bounds: " + std::to_string(reactionIndex) + ".");
+        rateMultipliers[reactionIndex] = value;
+    }
+
+    void scaleRateMultiplier(size_t reactionIndex, double factor)
+    {
+        if (reactionIndex >= numReactions)
+            console::error("Rate multiplier index out of bounds: " + std::to_string(reactionIndex) + ".");
+        rateMultipliers[reactionIndex] *= factor;
+    }
+
+    void resetRateMultipliers()
+    {
+        std::fill(rateMultipliers.begin(), rateMultipliers.end(), 1.0);
+    }
 
 private:
     size_t numReactions = 0;
@@ -80,6 +109,7 @@ private:
     std::vector<double> reactionRates;
     std::vector<double> reactionProbabilities;
     std::vector<double> reactionCumulativeProbabilities;
+    std::vector<double> rateMultipliers;
 
     double NAV;
 
@@ -92,7 +122,7 @@ private:
         totalReactionRate = 0;
         for (size_t i = 0; i < numReactions; ++i)
         {
-            reactionRates[i] = reactions[i]->calculateRate(NAV);
+            reactionRates[i] = reactions[i]->calculateRate(NAV) * rateMultipliers[i];
             totalReactionRate += reactionRates[i];
         }
     }

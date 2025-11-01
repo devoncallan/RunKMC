@@ -200,3 +200,70 @@ class SequenceData:
                 where=self.sequence_count[name] != 0,
             )
         return wAvgSL
+
+
+@dataclass
+class ChainDistributionData:
+
+    kmc_time: NDArray[np.float64]
+    monomer_count: Dict[str, NDArray[np.uint64]]
+    sequence_count: Dict[str, NDArray[np.uint64]] | None
+    sequence_length2: Dict[str, NDArray[np.float64]] | None
+
+    _raw_data: pd.DataFrame
+    _monomer_names: List[str]
+
+    @staticmethod
+    def _from_df(
+        df: pd.DataFrame, monomer_names: List[str] | None = None
+    ) -> ChainDistributionData:
+        if monomer_names is None or len(monomer_names) == 0:
+            monomer_names = []
+            for col in df.columns:
+                if col.startswith(C.state.MONCOUNT_PREFIX):
+                    monomer_names.append(col.replace(C.state.MONCOUNT_PREFIX, ""))
+
+        monomer_names = list(set(monomer_names))
+
+        if len(monomer_names) == 1:
+            return ChainDistributionData(
+                kmc_time=df[C.state.KMC_TIME_KEY].to_numpy(np.float64),
+                monomer_count={
+                    name: df[C.state.MONCOUNT_PREFIX + name].to_numpy(np.uint64)
+                    for name in monomer_names
+                },
+                sequence_count=None,
+                sequence_length2=None,
+                _raw_data=df,
+                _monomer_names=monomer_names,
+            )
+
+        return ChainDistributionData(
+            kmc_time=df[C.state.KMC_TIME_KEY].to_numpy(np.float64),
+            monomer_count={
+                name: df[C.state.MONCOUNT_PREFIX + name].to_numpy(np.uint64)
+                for name in monomer_names
+            },
+            sequence_count={
+                name: df[C.state.SEQCOUNT_PREFIX + name].to_numpy(np.uint64)
+                for name in monomer_names
+            },
+            sequence_length2={
+                name: df[C.state.SEQLEN2_PREFIX + name].to_numpy(np.float64)
+                for name in monomer_names
+            },
+            _raw_data=df,
+            _monomer_names=monomer_names,
+        )
+
+    @staticmethod
+    def from_csv(
+        filepath: Path | str, species: SpeciesRegistry
+    ) -> ChainDistributionData:
+        try:
+            df = pd.read_csv(filepath)  # type: ignore
+            return ChainDistributionData._from_df(df, species.get_monomer_names())
+        except Exception as e:
+            raise ValueError(
+                f"Error loading chain distribution data from {filepath}: {e}"
+            )

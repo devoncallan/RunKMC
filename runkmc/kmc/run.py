@@ -42,6 +42,7 @@ class RunKMC:
         template_name: str,
         template_params: Dict[str, Any],
         use_existing: bool = True,
+        overwrite: bool = False,
         **kwargs,
     ) -> SimulationResult:
 
@@ -54,6 +55,7 @@ class RunKMC:
             result = self.run_simulation(
                 input_filepath=input_path,
                 use_existing=use_existing,
+                overwrite=overwrite,
                 **kwargs,
             )
             return result
@@ -65,6 +67,7 @@ class RunKMC:
         self,
         input_filepath: Path | str,
         use_existing: bool = True,
+        overwrite: bool = False,
         **kwargs,
     ) -> SimulationResult:
         """Run a simulation with automatic caching based on input hash.
@@ -101,18 +104,21 @@ class RunKMC:
             # Hash the parsed KMC input file
             input_hash = SimulationRegistry.hash_input(parsed_input)
 
-        record = self.registry.latest_completed(input_hash)
+        record = self.registry.get_latest(input_hash, completed=True)
 
-        if record and use_existing:
-            print(f"✓ Found existing simulation (hash: {input_hash[:8]}...)")
-            print(f"  Loading from: {record.dir}")
-            return SimulationResult.load(record.dir)
-        elif record and not use_existing:
-            print(
-                f"↻ Existing simulation found (hash: {input_hash[:8]}...) but use_existing is False."
-            )
-        else:
-            print(f"➤ Running new simulation (hash: {input_hash[:8]}...)")
+        if record:
+            print(f"✓ Found existing simulation (hash: {record.input_hash[:8]}...)")
+
+            if not overwrite and use_existing:
+                print(f"  Loading from: {record.dir}")
+                return SimulationResult.load(record.dir)
+            elif overwrite:
+                print(f"  Overwriting existing simulation.")
+            elif not use_existing:
+                print(f"  Running new simulation despite existing record.")
+                record = None
+
+        if not record:
             record = self.registry.new_record(input_hash)
 
         output_dir = record.dir
@@ -120,12 +126,14 @@ class RunKMC:
 
         try:
             # Run the simulation
+            print(f"➤ Running new simulation (hash: {input_hash[:8]}...)")
             execute_simulation(input_filepath, record.dir, **kwargs)
             self.registry.update_completion(record, completed=True)
             print(f"✓ Simulation completed: {output_dir}")
-            return SimulationResult.load(record.dir)
 
         except Exception as e:
             print(f"✗ Simulation failed: {e}")
             self.registry.update_completion(record, completed=False)
             raise
+        
+        return SimulationResult.load(record.dir)

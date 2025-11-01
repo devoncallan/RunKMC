@@ -95,6 +95,7 @@ class paths:
     INPUT_FILE = "input.txt"
     RESULTS_FILE = "results.csv"
     SEQUENCES_FILE = "sequences.csv"
+    CHAIN_STATS_FILE = "chain_stats.csv"
     POLYMERS_FILE = "polymers.dat"
     SPECIES_FILE = "species.yaml"
     PARSED_INPUT_FILE = "parsed_input.yaml"
