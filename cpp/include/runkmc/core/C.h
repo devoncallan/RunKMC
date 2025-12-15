@@ -90,6 +90,11 @@ namespace C::state
     inline constexpr std::string_view MONCOUNT_PREFIX = "MonCount_";
     inline constexpr std::string_view SEQCOUNT_PREFIX = "SeqCount_";
     inline constexpr std::string_view SEQLEN2_PREFIX = "SeqLen2_";
+    inline constexpr std::string_view BIN_MONCOUNT_PREFIX = "BinMonCount_";
+    inline constexpr std::string_view CHAINCOUNT_KEY = "ChainCount";
+    inline constexpr std::string_view TOTALSEQCOUNT_PREFIX = "TotalSeqCount_";
+    inline constexpr std::string_view TOTALSEQLEN2_PREFIX = "TotalSeqLen2_";
+    inline constexpr std::string_view BINS_KEY = "Bins";
 }
 
 namespace C::paths

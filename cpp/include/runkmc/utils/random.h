@@ -1,5 +1,6 @@
 #pragma once
 #include <random>
+#include <cstdint>
 
 namespace rng
 {
@@ -31,4 +32,8 @@ namespace rng
         std::discrete_distribution<size_t> discrete_dis(weights.begin(), weights.end());
         return discrete_dis(core::generator);
     }
+
+    static inline void setSeed(uint64_t seed) { core::generator.seed(seed); }
+
+    static inline void setRandomSeed() { setSeed(core::rd()); }
 }

@@ -3,6 +3,7 @@
 #include "kmc/state.h"
 #include "kmc/species/polymer_type.h"
 #include "kmc/analysis/analysis.h"
+#include "kmc/analysis/histogram.h"
 
 namespace species
 {
@@ -156,9 +157,17 @@ public:
 
     void analyze(SystemState &systemState)
     {
+        if (registry::getNumMonomers() <= 1)
+        {
+            analyzeHomopolymer(systemState);
+            return;
+        }
+
         auto sequenceData = getRawSequenceData();
-        ChainState chains = ChainState{systemState.kmc};
+        ChainState chains;
+        chains.kmcState = systemState.kmc;
         auto summary = analysis::calculateSequenceSummary(sequenceData, chains);
+        chains.histogram = analysis::buildHistogramFromSequenceStats(summary.sequenceStatsMatrix, registry::getNumMonomers());
         systemState.chains = chains;
 
         AnalysisState analysisState;
@@ -207,6 +216,67 @@ public:
     double getNAV() const { return NAV; }
 
 private:
+    void analyzeHomopolymer(SystemState &systemState) const
+    {
+        const auto polymers = getPolymers();
+
+        const auto monomerIDs = registry::getMonomerIDs();
+        const bool hasMonomer = !monomerIDs.empty();
+        ChainState chains;
+        chains.kmcState = systemState.kmc;
+
+        double sumLengths = 0.0;
+        double sumLengthSquares = 0.0;
+
+        std::vector<uint64_t> chainLengths;
+        chainLengths.reserve(polymers.size());
+
+        for (const Polymer *polymer : polymers)
+        {
+            const size_t length = polymer->getDegreeOfPolymerization();
+            chainLengths.push_back(static_cast<uint64_t>(length));
+
+            sumLengths += static_cast<double>(length);
+            sumLengthSquares += static_cast<double>(length) * static_cast<double>(length);
+        }
+
+        chains.histogram = analysis::buildHistogramFromChainLengths(chainLengths, hasMonomer ? monomerIDs.front() : INVALID_SPECIES_ID);
+
+        systemState.chains = chains;
+
+        AnalysisState analysisState;
+        const double chainCount = static_cast<double>(polymers.size());
+        if (chainCount > 0.0)
+        {
+            analysisState.nAvgCL = sumLengths / chainCount;
+            if (sumLengths > 0.0)
+            {
+                analysisState.wAvgCL = sumLengthSquares / sumLengths;
+                analysisState.dispCL = analysisState.wAvgCL / analysisState.nAvgCL;
+            }
+        }
+
+        const auto monomerFWs = getMonomerFWs();
+        if (!monomerFWs.empty())
+        {
+            const double fw = monomerFWs.front();
+            analysisState.nAvgMW = analysisState.nAvgCL * fw;
+            analysisState.wAvgMW = analysisState.wAvgCL * fw;
+            if (analysisState.nAvgMW != 0.0)
+                analysisState.dispMW = analysisState.wAvgMW / analysisState.nAvgMW;
+            else
+                analysisState.dispMW = 0.0;
+        }
+        else
+        {
+            analysisState.nAvgMW = analysisState.nAvgCL;
+            analysisState.wAvgMW = analysisState.wAvgCL;
+            analysisState.dispMW = analysisState.dispCL;
+        }
+
+        systemState.analysis = analysisState;
+    }
+
     std::vector<PolymerType> polymerTypes;
     std::vector<PolymerContainer> polymerContainers;
     std::vector<PolymerContainer *> polymerContainerPtrs;

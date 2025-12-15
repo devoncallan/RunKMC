@@ -2,6 +2,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from pathlib import Path
+import tempfile
 from typing import Dict, Any, Optional
 
 TEMPLATES_DIR = Path(__file__).parent
@@ -124,21 +125,28 @@ class Template:
 
 def create_input_file(
     template_name: str | Path,
-    parameters: Dict[str, Any],
-    filepath: Path | str,
+    params: Dict[str, Any],
+    filepath: Path | str | None = None,
     validate: bool = True,
-) -> None:
+) -> Path:
 
     template = Template.load(template_name)
 
     if validate:
-        content = template.render(parameters)
+        content = template.render(params)
     else:
         content = template.content
-        for key, value in parameters.items():
+        for key, value in params.items():
             content = content.replace(f"{{{{{key}}}}}", str(value))
+
+    if filepath is None:
+        temp_file = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+        filepath = temp_file.name
+        temp_file.close()
 
     filepath = Path(filepath)
     filepath.parent.mkdir(parents=True, exist_ok=True)
     with open(filepath, "w") as f:
         f.write(content)
+
+    return filepath

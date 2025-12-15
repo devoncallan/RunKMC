@@ -95,7 +95,8 @@ namespace build
             }
 
             SpeciesID id = registry::builder.registerNewSpecies(polyType.name, polyType.type);
-            polymerTypes.push_back(PolymerType(id, polyType.name, endGroupIDs));
+            PolymerType type(id, polyType.name, endGroupIDs);
+            polymerTypes.push_back(type);
             polymerContainerMap.push_back(PolymerContainerMap(id, polyType.name, {polymerTypes.size() - 1}));
         }
 
@@ -123,6 +124,12 @@ namespace build
 
         // Finalize registry
         registry::initialize();
+
+        auto chainType = ChainType::Sequence;
+        if (registry::getNumMonomers() == 1)
+            chainType = ChainType::Homopolymer;
+        for (auto &polyType : polymerTypes)
+            polyType.setChainType(chainType);
 
         // Create species set
         SpeciesSet speciesSet(std::move(units), std::move(polymerTypes), std::move(polymerContainerMap), config.numParticles);

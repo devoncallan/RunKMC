@@ -88,6 +88,14 @@ class state:
     MONCOUNT_PREFIX = "MonCount_"
     SEQCOUNT_PREFIX = "SeqCount_"
     SEQLEN2_PREFIX = "SeqLen2_"
+    
+    
+    # Chain histogram stats
+    BINS_KEY = "Bins"
+    BIN_MONCOUNT_PREFIX = "BinMonCount_"
+    CHAINCOUNT_KEY = "ChainCount"
+    TOTAL_SEQCOUNT_PREFIX = "TotalSeqCount_"
+    TOTAL_SEQLEN2_PREFIX = "TotalSeqLen2_"
 
 
 class paths:

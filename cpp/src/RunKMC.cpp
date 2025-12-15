@@ -3,6 +3,7 @@
 
 int main(int argc, char **argv)
 {
+    rng::setRandomSeed();
     auto config = build::parseArguments(argc, argv);
     auto input = build::parseModelFile(config.inputFilepath);
 

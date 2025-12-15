@@ -1,7 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
 from typing import Optional, Dict, List, Any, Tuple
-import io
 from dataclasses import dataclass
 
 import numpy as np
@@ -132,7 +131,7 @@ class SequenceData:
                 if col.startswith(C.state.MONCOUNT_PREFIX):
                     monomer_names.append(col.replace(C.state.MONCOUNT_PREFIX, ""))
 
-        monomer_names = list(set(monomer_names))
+        monomer_names = list(dict.fromkeys(monomer_names))
 
         return SequenceData(
             iteration=df[C.state.ITERATION_KEY].to_numpy(np.uint64),
@@ -206,44 +205,188 @@ class SequenceData:
 @dataclass
 class ChainHistogramData:
 
-    kmc_time: NDArray[np.float64]
-    chain_count: NDArray[np.uint64]
-    bin_monomer_count: Dict[str, NDArray[np.uint64]]
-    total_seq_count: Dict[str, NDArray[np.uint64]] | None
-    total_seq_len2: Dict[str, NDArray[np.float64]] | None
+    @dataclass
+    class ChainHistogram:
+        iteration: int
+        kmc_time: float
+        data: pd.DataFrame
+        monomer_names: List[str]
+        has_sequence_stats: bool
 
-    _raw_data: pd.DataFrame
-    _monomer_names: List[str]
+        @property
+        def chain_count(self) -> pd.Series:
+            return self.data[C.state.CHAINCOUNT_KEY]
+
+        def bin_counts(self, monomer: str) -> pd.Series:
+            column = f"{C.state.BIN_MONCOUNT_PREFIX}{monomer}"
+            if column not in self.data.columns:
+                raise KeyError(f"Bin counts for monomer '{monomer}' not found.")
+            return self.data[column]
+
+        def total_sequence_counts(self, monomer: str) -> Optional[pd.Series]:
+            if not self.has_sequence_stats:
+                return None
+            column = f"{C.state.TOTAL_SEQCOUNT_PREFIX}{monomer}"
+            return self.data[column] if column in self.data.columns else None
+
+        def total_sequence_lengths2(self, monomer: str) -> Optional[pd.Series]:
+            if not self.has_sequence_stats:
+                return None
+            column = f"{C.state.TOTAL_SEQLEN2_PREFIX}{monomer}"
+            return self.data[column] if column in self.data.columns else None
+
+    blocks: List[ChainHistogram]
+    monomer_names: List[str]
+    has_sequence_stats: bool
+
+    @property
+    def iterations(self) -> NDArray[np.uint64]:
+        return np.asarray([block.iteration for block in self.blocks], dtype=np.uint64)
+
+    @property
+    def times(self) -> NDArray[np.float64]:
+        return np.asarray([block.kmc_time for block in self.blocks], dtype=np.float64)
+
+    def latest(self) -> ChainHistogram:
+        if not self.blocks:
+            raise ValueError("No histogram blocks available.")
+        return self.blocks[-1]
+
+    def cumulative_until(self, index: int) -> ChainHistogram:
+        if index < 0:
+            index += len(self.blocks)
+        if index < 0 or index >= len(self.blocks):
+            raise IndexError("Histogram block index out of range.")
+        return self.blocks[index]
+
+    def concat(self) -> pd.DataFrame:
+        if not self.blocks:
+            return pd.DataFrame()
+        frames: List[pd.DataFrame] = []
+        for block in self.blocks:
+            frame = block.data.copy()
+            frame[C.state.ITERATION_KEY] = block.iteration
+            frame[C.state.KMC_TIME_KEY] = block.kmc_time
+            frames.append(frame)
+        return pd.concat(frames, ignore_index=True)
+
+    def chain_lengths(self, *, block: int = -1) -> np.ndarray:
+        if not self.blocks:
+            return np.asarray([], dtype=float)
+        block = len(self.blocks) + block if block < 0 else block
+        if block < 0 or block >= len(self.blocks):
+            raise IndexError("Histogram block index out of range.")
+
+        columns = [
+            f"{C.state.BIN_MONCOUNT_PREFIX}{name}"
+            for name in self.monomer_names
+            if f"{C.state.BIN_MONCOUNT_PREFIX}{name}" in self.blocks[block].data.columns
+        ]
+        if not columns:
+            return np.asarray([], dtype=float)
+
+        lengths = self.blocks[block].data[columns].sum(axis=1).to_numpy(dtype=float)
+        return lengths
+
+    def chain_counts(self, *, block: int = -1) -> np.ndarray:
+        if not self.blocks:
+            return np.asarray([], dtype=float)
+        block = len(self.blocks) + block if block < 0 else block
+        if block < 0 or block >= len(self.blocks):
+            raise IndexError("Histogram block index out of range.")
+
+        counts = self.blocks[block].chain_count.to_numpy(dtype=float)
+        return counts
+
+    @staticmethod
+    def load(filepath: Path | str, species: SpeciesRegistry) -> Optional["ChainHistogramData"]:
+        records = read_histogram_data(filepath)
+        if not records:
+            return None
+
+        blocks: List[ChainHistogramData.ChainHistogram] = []
+        monomer_names: List[str] = []
+        has_sequence_stats = False
+
+        for header, df in records:
+            iteration = int(header[C.state.ITERATION_KEY])
+            kmc_time = float(header[C.state.KMC_TIME_KEY])
+            frame = df.reset_index(drop=True)
+
+            if not monomer_names:
+                monomer_names = [
+                    column.replace(C.state.BIN_MONCOUNT_PREFIX, "")
+                    for column in frame.columns
+                    if column.startswith(C.state.BIN_MONCOUNT_PREFIX)
+                ]
+                if not monomer_names:
+                    monomer_names = species.get_monomer_names()
+
+                has_sequence_stats = (
+                    len(monomer_names) > 1
+                    and all(
+                        f"{C.state.TOTAL_SEQCOUNT_PREFIX}{name}" in frame.columns
+                        and f"{C.state.TOTAL_SEQLEN2_PREFIX}{name}" in frame.columns
+                        for name in monomer_names
+                    )
+                )
+
+            blocks.append(
+                ChainHistogramData.ChainHistogram(
+                    iteration=iteration,
+                    kmc_time=kmc_time,
+                    data=frame,
+                    monomer_names=monomer_names,
+                    has_sequence_stats=has_sequence_stats,
+                )
+            )
+
+        return ChainHistogramData(
+            blocks=blocks,
+            monomer_names=monomer_names,
+            has_sequence_stats=has_sequence_stats,
+        )
 
 
 def parse_block_header(line: str) -> Dict[str, Any]:
-    parts = dict(kv.split("=", 1) for kv in line[1:].split(",") if "=" in kv)
-    header: Dict[str, Any] = {}
-    header["iteration"] = int(parts.get("Iteration", "0"))
-    header["kmc_time"] = float(parts.get("KmcTime", "0.0"))
-    header["bins"] = int(parts.get("Bins", "0"))
-    return header
+
+    parts: Dict[str, str] = dict(kv.split("=", 1) for kv in line[1:].split(",") if "=" in kv)
+    try:
+        iteration = int(parts[C.state.ITERATION_KEY])
+        kmc_time = float(parts[C.state.KMC_TIME_KEY])
+        bins = int(parts[C.state.BINS_KEY])
+    except KeyError as exc:
+        raise ValueError(f"Missing histogram header field: {exc}") from exc
+    return {
+        C.state.ITERATION_KEY: iteration,
+        C.state.KMC_TIME_KEY: kmc_time,
+        C.state.BINS_KEY: bins,
+    }
 
 
-def scan_histogram_metadata(
+def read_histogram_data(
     path: Path | str,
-) -> Tuple[List[Dict[str, Any]], List[int], List[str]]:
+) -> List[Tuple[Dict[str, Any], pd.DataFrame]]:
 
-    blocks, skiprows, columns = [], [], []
+    data = []
+    expected_columns: List[str] = []
     with Path(path).open("r", encoding="utf-8") as fh:
-        header_line = None
-        for idx, line in enumerate(fh):
+        for line in fh:
             stripped = line.strip()
-            if not stripped:
-                continue
             if stripped.startswith("#"):
-                skiprows.append(idx)
-            if stripped.startswith("# Iteration="):
-                blocks.append(parse_block_header(stripped))
-                header_line = idx + 1
+                header = parse_block_header(stripped)
 
-            elif header_line == idx and not columns:
-                columns = [c.strip() for c in stripped.split(",")]
-                skiprows.append(idx)
-                
-    return blocks, skiprows, columns
+                df = pd.read_csv(fh, nrows=int(header[C.state.BINS_KEY]), header=0)
+                current_columns = list(df.columns)
+                if expected_columns:
+                    if current_columns != expected_columns:
+                        raise ValueError("Inconsistent chain histogram columns.")
+                else:
+                    expected_columns = current_columns
+
+                assert len(df) == int(
+                    header[C.state.BINS_KEY]
+                ), "Histogram bin count mismatch."
+                data.append((header, df))
+
+    return data

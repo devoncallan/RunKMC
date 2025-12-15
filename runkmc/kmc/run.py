@@ -1,6 +1,6 @@
 from pathlib import Path
 from dataclasses import dataclass
-from typing import Dict, Any
+from typing import Dict, Any, List
 import tempfile
 
 from .execution import execute_simulation, parse_only
@@ -46,10 +46,7 @@ class RunKMC:
         **kwargs,
     ) -> SimulationResult:
 
-        temp_file = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
-        input_path = Path(temp_file.name)
-        temp_file.close()
-        create_input_file(template_name, template_params, input_path)
+        input_path = create_input_file(template_name, template_params)
 
         try:
             result = self.run_simulation(
@@ -63,11 +60,85 @@ class RunKMC:
             if input_path.exists():
                 input_path.unlink()
 
+    def run_ensemble_from_template(
+        self,
+        n_ensembles: int,
+        template_name: str,
+        template_params: Dict[str, Any],
+        use_existing: bool = True,
+        overwrite: bool = False,
+        **kwargs,
+    ) -> List[SimulationResult]:
+
+        input_path = create_input_file(template_name, template_params)
+
+        try:
+            input_hash = self._compute_input_hash(input_path)
+
+            # Find existing completed runs
+            existing = [r for r in self.registry.find_all(input_hash) if r.completed]
+            results = []
+
+            # Load existing if requested
+            if use_existing and existing:
+                n_load = min(len(existing), n_ensembles)
+                print(f"Loading {n_load} existing simulation(s)...")
+                for record in existing[:n_load]:
+                    results.append(SimulationResult.load(record.dir))
+
+            # Run additional if needed
+            n_needed = n_ensembles - len(results)
+            if n_needed > 0:
+                print(f"Running {n_needed} new simulation(s)...")
+                for _ in range(n_needed):
+                    result = self.run_simulation(
+                        input_filepath=input_path,
+                        use_existing=False,
+                        overwrite=overwrite,
+                        input_hash=input_hash,
+                        **kwargs,
+                    )
+                    results.append(result)
+
+            return results
+        finally:
+            if input_path.exists():
+                input_path.unlink()
+
+    def _compute_input_hash(self, input_filepath: Path | str) -> str:
+
+        input_filepath = Path(input_filepath)
+        if not input_filepath.exists():
+            raise FileNotFoundError(f"Input file not found: {input_filepath}")
+
+        # Pre-parse simulation inputs
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                temp_dir_path = Path(temp_dir)
+
+                # Generate and load parsed KMC input
+                parse_only(input_filepath, temp_dir_path)
+
+                paths = SimulationPaths(temp_dir_path)
+                parsed_input = paths.parsed_input_filepath
+
+                if not parsed_input.exists():
+                    raise FileNotFoundError(
+                        f"Parsed input file not found: {parsed_input}. "
+                        "The C++ parser may not have generated the expected output."
+                    )
+
+                # Hash the parsed KMC input file
+                return SimulationRegistry.hash_input(parsed_input)
+        except Exception as e:
+            raise RuntimeError(f"Failed to compute input hash: {e}") from e
+
     def run_simulation(
         self,
         input_filepath: Path | str,
         use_existing: bool = True,
         overwrite: bool = False,
+        input_hash: str | None = None,
         **kwargs,
     ) -> SimulationResult:
         """Run a simulation with automatic caching based on input hash.
@@ -82,28 +153,8 @@ class RunKMC:
             SimulationResult object containing the results
         """
         input_filepath = Path(input_filepath)
-        if not input_filepath.exists():
-            raise FileNotFoundError(f"Input file not found: {input_filepath}")
-
-        # Pre-parse simulation inputs
-        with tempfile.TemporaryDirectory() as temp_dir:
-            temp_dir_path = Path(temp_dir)
-
-            # Generate and load parsed KMC input
-            parse_only(input_filepath, temp_dir_path)
-
-            paths = SimulationPaths(temp_dir_path)
-            parsed_input = paths.parsed_input_filepath
-
-            if not parsed_input.exists():
-                raise FileNotFoundError(
-                    f"Parsed input file not found: {parsed_input}. "
-                    "The C++ parser may not have generated the expected output."
-                )
-
-            # Hash the parsed KMC input file
-            input_hash = SimulationRegistry.hash_input(parsed_input)
-
+        if input_hash is None:
+            input_hash = self._compute_input_hash(input_filepath)
         record = self.registry.get_latest(input_hash, completed=True)
 
         if record:
@@ -135,5 +186,5 @@ class RunKMC:
             print(f"✗ Simulation failed: {e}")
             self.registry.update_completion(record, completed=False)
             raise
-        
+
         return SimulationResult.load(record.dir)

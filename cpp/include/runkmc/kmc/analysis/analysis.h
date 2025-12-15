@@ -18,20 +18,17 @@ namespace analysis
         // Calculate positional average stats (buckets x (monomers*fields)) -> Summed across all polymers
         Eigen::MatrixXd sequenceStatsMatrix = Eigen::MatrixXd::Zero(sequenceData.length, SequenceStats::SIZE());
         std::vector<SequenceStats> positionalStats(NUM_BUCKETS);
-        chains.chainStats.resize(sequenceData.length);
 
         utils::forEachStats(
             sequenceData,
             NUM_BUCKETS,
             [&](size_t index, const std::vector<SequenceStats> &allStats)
             {
-                // chains.chainStats.push_back()
                 for (size_t bucket = 0; bucket < NUM_BUCKETS; ++bucket)
                 {
                     const auto &stats = allStats[bucket];
                     sequenceStatsMatrix.row(index) += stats.toEigen();
                     positionalStats[bucket] += stats;
-                    chains.chainStats[index] += stats;
                 }
             });
 

@@ -269,7 +269,7 @@ struct SequenceState
 struct ChainState
 {
     KMCState kmcState;
-    std::vector<analysis::SequenceStats> chainStats = {};
+    analysis::ChainHistogram histogram;
 
     static std::vector<std::string> getTitles()
     {
@@ -279,47 +279,48 @@ struct ChainState
         if (monomerNames.size() == 0)
             return {};
 
-        std::vector<std::string> names = {std::string(C::state::KMC_TIME_KEY)};
+        std::vector<std::string> names;
 
         for (const auto &monomerName : monomerNames)
-            names.push_back(std::string(C::state::MONCOUNT_PREFIX) + monomerName);
+            names.push_back(std::string(C::state::BIN_MONCOUNT_PREFIX) + monomerName);
 
-        // If only homopolymer, return here
-        if (registry::getNumMonomers() == 1)
-            return names;
+        names.push_back(std::string(C::state::CHAINCOUNT_KEY));
+        if (monomerNames.size() > 1)
+        {
+            for (const auto &monomerName : monomerNames)
+                names.push_back(std::string(C::state::TOTALSEQCOUNT_PREFIX) + monomerName);
 
-        // Sequence counts
-        for (const auto &monomerName : monomerNames)
-            names.push_back(std::string(C::state::SEQCOUNT_PREFIX) + monomerName);
-
-        // Sum of squared sequence lengths
-        for (const auto &monomerName : monomerNames)
-            names.push_back(std::string(C::state::SEQLEN2_PREFIX) + monomerName);
+            for (const auto &monomerName : monomerNames)
+                names.push_back(std::string(C::state::TOTALSEQLEN2_PREFIX) + monomerName);
+        }
 
         return names;
     }
 
-    std::vector<std::string> getDataAsVector(size_t index) const
+    std::vector<std::string> buildRow(const analysis::MonomerCountKey &key, const analysis::ChainHistogramBin &bin) const
     {
-        auto numMonomers = registry::getNumMonomers();
-
-        if (numMonomers == 0 || index >= chainStats.size())
-            return {};
-
-        std::vector<std::string> output = {std::to_string(kmcState.kmcTime)};
-
-        const auto &chainStat = chainStats[index];
+        const auto numMonomers = registry::getNumMonomers();
+        std::vector<std::string> output;
+        const bool isCopolymer = numMonomers > 1;
+        output.reserve(1 + numMonomers + (isCopolymer ? 2 * numMonomers : 0));
 
         for (size_t i = 0; i < numMonomers; ++i)
-            output.push_back(std::to_string(chainStat.monCounts[i]));
+        {
+            const uint64_t value = (i < key.counts.size()) ? key.counts[i] : 0;
+            output.push_back(std::to_string(value));
+        }
 
-        if (numMonomers == 1)
-            return output;
+        output.push_back(std::to_string(bin.chainCount));
 
-        for (size_t i = 0; i < numMonomers; ++i)
-            output.push_back(std::to_string(chainStat.seqCounts[i]));
-        for (size_t i = 0; i < numMonomers; ++i)
-            output.push_back(std::to_string(chainStat.seqLengths2[i]));
+        if (isCopolymer)
+        {
+            for (size_t i = 0; i < numMonomers; ++i)
+                output.push_back(std::to_string(bin.aggregatedStats.seqCounts[i]));
+            for (size_t i = 0; i < numMonomers; ++i)
+                output.push_back(std::to_string(bin.aggregatedStats.seqLengths2[i]));
+        }
+
+        return output;
     }
 };
 struct SystemState

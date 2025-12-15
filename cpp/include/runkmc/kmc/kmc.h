@@ -43,6 +43,7 @@ public:
         startTime = std::chrono::steady_clock::now();
 
         // Print initial state
+
         output::writeState(state, paths, config);
 
         // Main simulation loop
@@ -68,6 +69,9 @@ public:
 
             output::writeState(state, paths, config);
         }
+
+        if (config.reportChains)
+            output::writeChainStats(state, paths, config);
 
         if (config.reportPolymers)
             output::writePolymers(paths, speciesSet);

@@ -1,5 +1,8 @@
 #pragma once
 #include <Eigen/Core>
+#include <functional>
+#include <unordered_map>
+#include <vector>
 
 #include "common.h"
 
@@ -76,6 +79,66 @@ namespace analysis
             sequences.reserve(n);
             precomputedStats.reserve(n);
             length = n;
+        }
+    };
+
+    struct MonomerCountKey
+    {
+        std::vector<uint64_t> counts;
+
+        MonomerCountKey() = default;
+        explicit MonomerCountKey(std::vector<uint64_t> values) : counts(std::move(values)) {}
+
+        bool operator==(const MonomerCountKey &other) const noexcept
+        {
+            return counts == other.counts;
+        }
+    };
+
+    struct MonomerCountKeyHasher
+    {
+        std::size_t operator()(const MonomerCountKey &key) const noexcept
+        {
+            std::size_t seed = key.counts.size();
+            for (auto value : key.counts)
+            {
+                seed ^= std::hash<uint64_t>{}(value) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            }
+            return seed;
+        }
+    };
+
+    struct ChainHistogramBin
+    {
+        uint64_t chainCount = 0;
+        SequenceStats aggregatedStats;
+    };
+
+    using ChainHistogramMap = std::unordered_map<MonomerCountKey, ChainHistogramBin, MonomerCountKeyHasher>;
+
+    struct ChainHistogram
+    {
+        ChainHistogramMap bins;
+
+        void clear() { bins.clear(); }
+
+        void addChain(const std::vector<uint64_t> &counts, const SequenceStats &stats)
+        {
+            MonomerCountKey key{counts};
+            auto &bin = bins[key];
+            if (bin.chainCount == 0)
+            {
+                bin.aggregatedStats = SequenceStats();
+            }
+
+            ++bin.chainCount;
+            auto &aggregated = bin.aggregatedStats;
+            const auto numMonomers = registry::getNumMonomers();
+            for (size_t i = 0; i < numMonomers; ++i)
+            {
+                aggregated.seqCounts[i] += stats.seqCounts[i];
+                aggregated.seqLengths2[i] += stats.seqLengths2[i];
+            }
         }
     };
 }

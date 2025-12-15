@@ -4,7 +4,7 @@ from typing import List, Optional, TYPE_CHECKING
 from dataclasses import dataclass
 
 from .paths import SimulationPaths
-from .state import StateData, SequenceData, ChainDistributionData
+from .state import StateData, SequenceData, ChainHistogramData
 from ..core.species import SpeciesRegistry
 from .polymers import read_polymer_file, PolymerSequence
 
@@ -18,7 +18,7 @@ class SimulationResult:
     paths: SimulationPaths
     species: SpeciesRegistry
     results: StateData
-    chain_data: Optional[ChainDistributionData] = None
+    chain_data: Optional[ChainHistogramData] = None
     sequence_data: Optional[SequenceData] = None
     polymer_data: Optional[List[PolymerSequence]] = None
 
@@ -47,7 +47,7 @@ class SimulationResult:
             
         chain_data = None
         if paths.chain_stats_filepath.exists():
-            chain_data = ChainDistributionData.from_csv(paths.chain_stats_filepath, species)
+            chain_data = ChainHistogramData.load(paths.chain_stats_filepath, species)
 
         # Load polymer data if it exists
         polymer_data = None

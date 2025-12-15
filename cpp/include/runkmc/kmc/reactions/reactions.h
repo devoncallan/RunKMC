@@ -224,13 +224,13 @@ public:
 
         if (rng::rand() <= init->efficiency)
         {
-            Polymer *polymer = new Polymer();
+            Polymer *polymer = species.p_poly<0>()->createPolymer();
             polymer->initiate(init->ID);
             species.p_poly<0>()->insertPolymer(polymer);
         }
         if (rng::rand() <= init->efficiency)
         {
-            Polymer *polymer = new Polymer();
+            Polymer *polymer = species.p_poly<1>()->createPolymer();
             polymer->initiate(init->ID);
             species.p_poly<1>()->insertPolymer(polymer);
         }
@@ -266,7 +266,7 @@ public:
         --init->count;
         --mon->count;
 
-        Polymer *polymer = new Polymer();
+        Polymer *polymer = prod->createPolymer();
         polymer->initiate(init->ID);
         polymer->addUnitToEnd(mon->ID);
         prod->insertPolymer(polymer);
@@ -440,7 +440,7 @@ public:
         --mon->count;
 
         // Create a new monomer radical
-        Polymer *newRadical = new Polymer();
+        Polymer *newRadical = species.p_poly<1>()->createPolymer();
         newRadical->initiate(mon->ID);
         newRadical->addUnitToEnd(mon->ID);
         species.p_poly<1>()->insertPolymer(newRadical);
@@ -469,11 +469,11 @@ public:
         --species.r_unit<1>()->count;
         --species.r_unit<2>()->count;
 
-        Polymer *polymer1 = new Polymer();
+        Polymer *polymer1 = species.p_poly<0>()->createPolymer();
         polymer1->addUnitToEnd((species.r_unit<0>())->ID);
         species.p_poly<0>()->insertPolymer(polymer1);
 
-        Polymer *polymer2 = new Polymer();
+        Polymer *polymer2 = species.p_poly<1>()->createPolymer();
         polymer2->addUnitToEnd((species.r_unit<1>())->ID);
         species.p_poly<1>()->insertPolymer(polymer2);
     }
