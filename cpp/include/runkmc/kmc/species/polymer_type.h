@@ -10,9 +10,15 @@
 class PolymerType : public Species
 {
 public:
-    PolymerType(const SpeciesID &ID_, const std::string &name_, const std::vector<SpeciesID> &endGroup_) : Species(ID_, name_, SpeciesType::POLYMER), endGroup(endGroup_) {};
+    PolymerType(const SpeciesID &ID_, const std::string &name_, const std::vector<SpeciesID> &endGroup_, ChainType chainType_ = ChainType::Sequence)
+        : Species(ID_, name_, SpeciesType::POLYMER), endGroup(endGroup_), chainType(chainType_) {};
 
     ~PolymerType() {};
+
+    Polymer *createPolymer(uint32_t maxDOP = 1000) const
+    {
+        return new Polymer(chainType, maxDOP);
+    }
 
     void insertPolymer(Polymer *polymer)
     {
@@ -34,9 +40,13 @@ public:
 
     const std::vector<SpeciesID> &getEndGroup() const { return endGroup; }
 
+    ChainType getChainType() const { return chainType; }
+    void setChainType(ChainType kind) { chainType = kind; }
+
 private:
     std::vector<Polymer *> polymers;
     std::vector<SpeciesID> endGroup; // endGroup to identify the terminal units on the chain end.
+    ChainType chainType = ChainType::Sequence;
 };
 
 // typedef PolymerType *PolymerTypePtr;
@@ -55,6 +65,15 @@ public:
     };
 
     ~PolymerContainer() {}
+
+    Polymer *createPolymer(uint32_t maxDOP = 1000) const
+    {
+        // if (polymerTypePtrs.empty())
+        //     console::error("PolymerContainer has no polymer types available for creation.");
+
+        // If multiple polymer types share the container, default to the first.
+        return polymerTypePtrs.front()->createPolymer(maxDOP);
+    }
 
     Polymer *removeRandomPolymer()
     {

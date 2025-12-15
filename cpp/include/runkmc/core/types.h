@@ -3,7 +3,7 @@
 #include "utils/console.h"
 #include "C.h"
 
-static const size_t NUM_BUCKETS = 30;
+static const size_t NUM_BUCKETS = 1;
 typedef uint8_t SpeciesID;
 #define INVALID_SPECIES_ID UINT8_MAX
 

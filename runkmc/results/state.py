@@ -1,6 +1,7 @@
 from __future__ import annotations
 from pathlib import Path
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Any, Tuple
+import io
 from dataclasses import dataclass
 
 import numpy as np
@@ -203,67 +204,46 @@ class SequenceData:
 
 
 @dataclass
-class ChainDistributionData:
+class ChainHistogramData:
 
     kmc_time: NDArray[np.float64]
-    monomer_count: Dict[str, NDArray[np.uint64]]
-    sequence_count: Dict[str, NDArray[np.uint64]] | None
-    sequence_length2: Dict[str, NDArray[np.float64]] | None
+    chain_count: NDArray[np.uint64]
+    bin_monomer_count: Dict[str, NDArray[np.uint64]]
+    total_seq_count: Dict[str, NDArray[np.uint64]] | None
+    total_seq_len2: Dict[str, NDArray[np.float64]] | None
 
     _raw_data: pd.DataFrame
     _monomer_names: List[str]
 
-    @staticmethod
-    def _from_df(
-        df: pd.DataFrame, monomer_names: List[str] | None = None
-    ) -> ChainDistributionData:
-        if monomer_names is None or len(monomer_names) == 0:
-            monomer_names = []
-            for col in df.columns:
-                if col.startswith(C.state.MONCOUNT_PREFIX):
-                    monomer_names.append(col.replace(C.state.MONCOUNT_PREFIX, ""))
 
-        monomer_names = list(set(monomer_names))
+def parse_block_header(line: str) -> Dict[str, Any]:
+    parts = dict(kv.split("=", 1) for kv in line[1:].split(",") if "=" in kv)
+    header: Dict[str, Any] = {}
+    header["iteration"] = int(parts.get("Iteration", "0"))
+    header["kmc_time"] = float(parts.get("KmcTime", "0.0"))
+    header["bins"] = int(parts.get("Bins", "0"))
+    return header
 
-        if len(monomer_names) == 1:
-            return ChainDistributionData(
-                kmc_time=df[C.state.KMC_TIME_KEY].to_numpy(np.float64),
-                monomer_count={
-                    name: df[C.state.MONCOUNT_PREFIX + name].to_numpy(np.uint64)
-                    for name in monomer_names
-                },
-                sequence_count=None,
-                sequence_length2=None,
-                _raw_data=df,
-                _monomer_names=monomer_names,
-            )
 
-        return ChainDistributionData(
-            kmc_time=df[C.state.KMC_TIME_KEY].to_numpy(np.float64),
-            monomer_count={
-                name: df[C.state.MONCOUNT_PREFIX + name].to_numpy(np.uint64)
-                for name in monomer_names
-            },
-            sequence_count={
-                name: df[C.state.SEQCOUNT_PREFIX + name].to_numpy(np.uint64)
-                for name in monomer_names
-            },
-            sequence_length2={
-                name: df[C.state.SEQLEN2_PREFIX + name].to_numpy(np.float64)
-                for name in monomer_names
-            },
-            _raw_data=df,
-            _monomer_names=monomer_names,
-        )
+def scan_histogram_metadata(
+    path: Path | str,
+) -> Tuple[List[Dict[str, Any]], List[int], List[str]]:
 
-    @staticmethod
-    def from_csv(
-        filepath: Path | str, species: SpeciesRegistry
-    ) -> ChainDistributionData:
-        try:
-            df = pd.read_csv(filepath)  # type: ignore
-            return ChainDistributionData._from_df(df, species.get_monomer_names())
-        except Exception as e:
-            raise ValueError(
-                f"Error loading chain distribution data from {filepath}: {e}"
-            )
+    blocks, skiprows, columns = [], [], []
+    with Path(path).open("r", encoding="utf-8") as fh:
+        header_line = None
+        for idx, line in enumerate(fh):
+            stripped = line.strip()
+            if not stripped:
+                continue
+            if stripped.startswith("#"):
+                skiprows.append(idx)
+            if stripped.startswith("# Iteration="):
+                blocks.append(parse_block_header(stripped))
+                header_line = idx + 1
+
+            elif header_line == idx and not columns:
+                columns = [c.strip() for c in stripped.split(",")]
+                skiprows.append(idx)
+                
+    return blocks, skiprows, columns
