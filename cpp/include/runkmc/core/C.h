@@ -94,6 +94,8 @@ namespace C::state
     inline constexpr std::string_view CHAINCOUNT_KEY = "ChainCount";
     inline constexpr std::string_view TOTALSEQCOUNT_PREFIX = "TotalSeqCount_";
     inline constexpr std::string_view TOTALSEQLEN2_PREFIX = "TotalSeqLen2_";
+    inline constexpr std::string_view SEGMENT_COUNT_PREFIX = "SegmentCount_";
+    inline constexpr std::string_view SEGMENT_LENGTH_KEY = "SegmentLength";
     inline constexpr std::string_view BINS_KEY = "Bins";
 }
 
@@ -104,6 +106,7 @@ namespace C::paths
     inline constexpr std::string_view SEQUENCES_FILE = "sequences.csv";
     inline constexpr std::string_view POLYMERS_FILE = "polymers.dat";
     inline constexpr std::string_view CHAIN_STATS_FILE = "chain_stats.csv";
+    inline constexpr std::string_view SEGMENT_HIST_FILE = "segment_hist.csv";
     inline constexpr std::string_view SPECIES_FILE = "species.yaml";
     inline constexpr std::string_view PARSED_INPUT_FILE = "parsed_input.yaml";
 };

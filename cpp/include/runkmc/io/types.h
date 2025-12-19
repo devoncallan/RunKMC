@@ -16,6 +16,7 @@ namespace io::types
         bool reportPolymers = false;
         bool reportSequences = false;
         bool reportChains = false;
+        bool reportSegmentHistogram = false;
         bool parseOnly = false;
         bool debug = false;
     };

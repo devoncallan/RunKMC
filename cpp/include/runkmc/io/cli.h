@@ -36,6 +36,8 @@ namespace io::cli
                 config.reportSequences = true;
             else if (arg == "--report-chains")
                 config.reportChains = true;
+            else if (arg == "--report-segment-hist")
+                config.reportSegmentHistogram = true;
             else if (arg == "--parse-only")
                 config.parseOnly = true;
             else if (arg == "--debug")

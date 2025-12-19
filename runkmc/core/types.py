@@ -8,6 +8,8 @@ class CommandLineConfig:
     output_dir: str
     report_polymers: bool = False
     report_sequences: bool = False
+    report_chains: bool = False
+    report_segment_hist: bool = False
     parse_only: bool = False
     debug: bool = False
 

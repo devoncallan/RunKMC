@@ -1,6 +1,7 @@
 #pragma once
 #include <Eigen/Core>
 #include <functional>
+#include <map>
 #include <unordered_map>
 #include <vector>
 
@@ -13,6 +14,7 @@ namespace analysis
         std::vector<uint64_t> monCounts;
         std::vector<uint64_t> seqCounts;
         std::vector<uint64_t> seqLengths2;
+        std::vector<std::map<uint32_t, uint64_t>> segmentHist;
 
         const static size_t NUM_METRICS = 3;
 
@@ -21,6 +23,7 @@ namespace analysis
             monCounts.resize(registry::getNumMonomers(), 0);
             seqCounts.resize(registry::getNumMonomers(), 0);
             seqLengths2.resize(registry::getNumMonomers(), 0);
+            segmentHist.resize(registry::getNumMonomers());
         }
 
         static size_t SIZE() { return registry::getNumMonomers() * NUM_METRICS; }
@@ -32,6 +35,10 @@ namespace analysis
                 monCounts[i] += other.monCounts[i];
                 seqCounts[i] += other.seqCounts[i];
                 seqLengths2[i] += other.seqLengths2[i];
+                auto &destHist = segmentHist[i];
+                const auto &srcHist = other.segmentHist[i];
+                for (const auto &[length, count] : srcHist)
+                    destHist[length] += count;
             }
             return *this;
         }
@@ -59,6 +66,7 @@ namespace analysis
             monCounts[monIdx] += length;
             seqCounts[monIdx] += 1;
             seqLengths2[monIdx] += length * length;
+            segmentHist[monIdx][static_cast<uint32_t>(length)] += 1;
         }
     };
 
@@ -112,6 +120,7 @@ namespace analysis
     {
         uint64_t chainCount = 0;
         SequenceStats aggregatedStats;
+        std::vector<std::map<uint32_t, uint64_t>> segmentHist;
     };
 
     using ChainHistogramMap = std::unordered_map<MonomerCountKey, ChainHistogramBin, MonomerCountKeyHasher>;
@@ -129,6 +138,7 @@ namespace analysis
             if (bin.chainCount == 0)
             {
                 bin.aggregatedStats = SequenceStats();
+                bin.segmentHist.resize(registry::getNumMonomers());
             }
 
             ++bin.chainCount;
@@ -138,6 +148,10 @@ namespace analysis
             {
                 aggregated.seqCounts[i] += stats.seqCounts[i];
                 aggregated.seqLengths2[i] += stats.seqLengths2[i];
+                auto &dest = bin.segmentHist[i];
+                const auto &src = stats.segmentHist[i];
+                for (const auto &[length, count] : src)
+                    dest[length] += count;
             }
         }
     };

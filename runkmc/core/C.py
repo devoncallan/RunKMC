@@ -96,6 +96,8 @@ class state:
     CHAINCOUNT_KEY = "ChainCount"
     TOTAL_SEQCOUNT_PREFIX = "TotalSeqCount_"
     TOTAL_SEQLEN2_PREFIX = "TotalSeqLen2_"
+    SEGMENT_COUNT_PREFIX = "SegmentCount_"
+    SEGMENT_LENGTH_KEY = "SegmentLength"
 
 
 class paths:
@@ -104,6 +106,7 @@ class paths:
     RESULTS_FILE = "results.csv"
     SEQUENCES_FILE = "sequences.csv"
     CHAIN_STATS_FILE = "chain_stats.csv"
+    SEGMENT_HIST_FILE = "segment_hist.csv"
     POLYMERS_FILE = "polymers.dat"
     SPECIES_FILE = "species.yaml"
     PARSED_INPUT_FILE = "parsed_input.yaml"

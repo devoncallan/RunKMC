@@ -348,6 +348,90 @@ class ChainHistogramData:
         )
 
 
+@dataclass
+class SegmentHistogramBlock:
+    iteration: int
+    kmc_time: float
+    data: pd.DataFrame
+    monomer_names: List[str]
+
+    def histogram(self, monomer_id: str) -> Tuple[NDArray[np.float64], NDArray[np.float64]]:
+        column = C.state.SEGMENT_COUNT_PREFIX + monomer_id
+        if column not in self.data.columns:
+            raise KeyError(f"Segment histogram for monomer '{monomer_id}' not found.")
+        lengths = self.data[C.state.SEGMENT_LENGTH_KEY].to_numpy(dtype=np.float64)
+        counts = self.data[column].to_numpy(dtype=np.float64)
+        return lengths, counts
+
+
+@dataclass
+class SegmentHistogramData:
+    blocks: List[SegmentHistogramBlock]
+    monomer_names: List[str]
+
+    @property
+    def iterations(self) -> NDArray[np.uint64]:
+        return np.asarray([block.iteration for block in self.blocks], dtype=np.uint64)
+
+    @property
+    def times(self) -> NDArray[np.float64]:
+        return np.asarray([block.kmc_time for block in self.blocks], dtype=np.float64)
+
+    def latest(self) -> SegmentHistogramBlock:
+        if not self.blocks:
+            raise ValueError("No segment histogram blocks available.")
+        return self.blocks[-1]
+
+    def get_histogram(
+        self, monomer_id: str, block: int = -1
+    ) -> Tuple[NDArray[np.float64], NDArray[np.float64]]:
+        if not self.blocks:
+            return np.asarray([], dtype=np.float64), np.asarray([], dtype=np.float64)
+        if monomer_id not in self.monomer_names:
+            raise ValueError(f"Monomer '{monomer_id}' not available in segment histogram.")
+        block_idx = len(self.blocks) + block if block < 0 else block
+        if block_idx < 0 or block_idx >= len(self.blocks):
+            raise IndexError("Segment histogram block index out of range.")
+        return self.blocks[block_idx].histogram(monomer_id)
+
+    @staticmethod
+    def load(
+        filepath: Path | str, species: SpeciesRegistry
+    ) -> Optional["SegmentHistogramData"]:
+        records = read_histogram_data(filepath)
+        if not records:
+            return None
+
+        blocks: List[SegmentHistogramBlock] = []
+        monomer_names: List[str] = []
+
+        for header, df in records:
+            if df.empty or C.state.SEGMENT_LENGTH_KEY not in df.columns:
+                continue
+            if not monomer_names:
+                monomer_names = [
+                    col.replace(C.state.SEGMENT_COUNT_PREFIX, "")
+                    for col in df.columns
+                    if col.startswith(C.state.SEGMENT_COUNT_PREFIX)
+                ]
+                if not monomer_names:
+                    monomer_names = species.get_monomer_names()
+
+            blocks.append(
+                SegmentHistogramBlock(
+                    iteration=int(header[C.state.ITERATION_KEY]),
+                    kmc_time=float(header[C.state.KMC_TIME_KEY]),
+                    data=df.reset_index(drop=True),
+                    monomer_names=monomer_names,
+                )
+            )
+
+        if not blocks:
+            return None
+
+        return SegmentHistogramData(blocks=blocks, monomer_names=monomer_names)
+
+
 def parse_block_header(line: str) -> Dict[str, Any]:
 
     parts: Dict[str, str] = dict(kv.split("=", 1) for kv in line[1:].split(",") if "=" in kv)

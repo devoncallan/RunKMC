@@ -57,6 +57,13 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
+        "--report-segment-hist",
+        action="store_true",
+        help="Generate segment length histogram reports",
+    )
+
+
+    parser.add_argument(
         "--parse-only",
         action="store_true",
         help="Only parse the input file and generate input files without running the simulation",
@@ -94,6 +101,7 @@ def main() -> None:
         report_polymers=args.report_polymers,
         report_sequences=args.report_sequences,
         report_chains=args.report_chains,
+        report_segment_hist=args.report_segment_hist,
         parse_only=args.parse_only,
         debug=args.debug,
     )

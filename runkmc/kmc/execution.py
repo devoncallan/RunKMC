@@ -14,6 +14,7 @@ class CommandLineConfig:
     report_polymers: bool = False
     report_sequences: bool = False
     report_chains: bool = False
+    report_segment_hist: bool = False
     parse_only: bool = False
     debug: bool = False
 
@@ -27,8 +28,8 @@ class CommandLineConfig:
             cmd.append("--report-polymers")
         if self.report_sequences:
             cmd.append("--report-sequences")
-        if self.report_chains:
-            cmd.append("--report-chains")
+        if self.report_segment_hist:
+            cmd.append("--report-segment-hist")
         if self.parse_only:
             cmd.append("--parse-only")
         if self.debug:
@@ -97,6 +98,7 @@ def execute_simulation(
     report_polymers: bool = False,
     report_sequences: bool = False,
     report_chains: bool = False,
+    report_segment_hist: bool = False,
     parse_only: bool = False,
     debug: bool = False,
 ) -> None:
@@ -107,6 +109,7 @@ def execute_simulation(
         report_polymers=report_polymers,
         report_sequences=report_sequences,
         report_chains=report_chains,
+        report_segment_hist=report_segment_hist,
         parse_only=parse_only,
         debug=debug,
     )

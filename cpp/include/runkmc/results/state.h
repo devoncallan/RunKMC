@@ -1,5 +1,6 @@
 #pragma once
 #include <algorithm>
+#include <map>
 
 #include "common.h"
 #include "kmc/state.h"
@@ -107,6 +108,79 @@ namespace output
         const ChainState &chainState;
     };
 
+    class SegmentHistogramWriter
+    {
+    public:
+        SegmentHistogramWriter(const ChainState &chain) : chainState(chain) {}
+
+        void writeState(std::ostream &out) const
+        {
+            const auto monomerNames = registry::getMonomerNames();
+            if (monomerNames.empty())
+                return;
+
+            std::map<uint32_t, std::vector<uint64_t>> histogram;
+            const auto numMonomers = monomerNames.size();
+
+            for (const auto &entry : chainState.histogram.bins)
+            {
+                const auto &segmentHist = entry.second.segmentHist;
+                if (segmentHist.empty())
+                    continue;
+
+                for (size_t idx = 0; idx < numMonomers && idx < segmentHist.size(); ++idx)
+                {
+                    for (const auto &[length, count] : segmentHist[idx])
+                    {
+                        auto &row = histogram[length];
+                        if (row.size() < numMonomers)
+                            row.resize(numMonomers, 0);
+                        row[idx] += count;
+                    }
+                }
+            }
+
+            if (histogram.empty())
+                return;
+
+            out << '#' << std::string(C::state::ITERATION_KEY) << '='
+                << std::to_string(chainState.kmcState.iteration)
+                << ','
+                << std::string(C::state::KMC_TIME_KEY)
+                << '='
+                << std::to_string(chainState.kmcState.kmcTime)
+                << ','
+                << std::string(C::state::BINS_KEY)
+                << '='
+                << std::to_string(static_cast<uint64_t>(histogram.size()))
+                << std::endl;
+
+            std::vector<std::string> titles;
+            titles.emplace_back(std::string(C::state::SEGMENT_LENGTH_KEY));
+            for (const auto &name : monomerNames)
+                titles.emplace_back(std::string(C::state::SEGMENT_COUNT_PREFIX) + name);
+            out << str::join(titles, ",") << std::endl;
+
+            for (const auto &[length, counts] : histogram)
+            {
+                std::vector<std::string> row;
+                row.reserve(numMonomers + 1);
+                row.push_back(std::to_string(length));
+                for (size_t idx = 0; idx < numMonomers; ++idx)
+                {
+                    uint64_t value = (idx < counts.size()) ? counts[idx] : 0;
+                    row.push_back(std::to_string(value));
+                }
+                out << str::join(row, ",") << std::endl;
+            }
+
+            out << std::endl;
+        }
+
+    private:
+        const ChainState &chainState;
+    };
+
     void writeStateHeaders(const SimulationPaths &paths, const io::types::CommandLineConfig &config)
     {
         console::debug("Writing results to " + paths.resultsFile().string());
@@ -119,6 +193,12 @@ namespace output
             console::debug("Writing chain stats to " + paths.chainStatsFile().string());
             auto chainFile = std::ofstream(paths.chainStatsFile());
             ChainWriter::writeHeader(chainFile);
+        }
+        if (config.reportSegmentHistogram)
+        {
+            console::debug("Writing segment histograms to " + paths.segmentHistFile().string());
+            auto segFile = std::ofstream(paths.segmentHistFile());
+            (void)segFile;
         }
         if (config.reportSequences)
         {
@@ -151,11 +231,20 @@ namespace output
         chainWriter.writeState(chainFile);
     }
 
+    void writeSegmentHistogram(const SystemState &state, const SimulationPaths &paths, const io::types::CommandLineConfig &config)
+    {
+        auto segFile = std::ofstream(paths.segmentHistFile(), std::ios::app);
+        SegmentHistogramWriter writer(state.chains);
+        writer.writeState(segFile);
+    }
+
     void writeState(const SystemState &state, const SimulationPaths &paths, const io::types::CommandLineConfig &config)
     {
         writeResults(state, paths, config);
         if (config.reportChains)
             writeChainStats(state, paths, config);
+        if (config.reportSegmentHistogram)
+            writeSegmentHistogram(state, paths, config);
         if (config.reportSequences)
             writeSequences(state, paths, config);
     }

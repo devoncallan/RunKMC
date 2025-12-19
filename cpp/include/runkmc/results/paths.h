@@ -28,6 +28,8 @@ public:
 
         if (config.reportSequences && !std::filesystem::exists(sequencesFile()))
             std::filesystem::create_directories(sequencesFile().parent_path());
+        if (config.reportSegmentHistogram && !std::filesystem::exists(segmentHistFile()))
+            std::filesystem::create_directories(segmentHistFile().parent_path());
 
         // Copy input file to output directory for record-keeping
         if (!std::filesystem::exists(sourceInputFile()))
@@ -47,4 +49,5 @@ public:
     std::filesystem::path polymerFile() const { return _baseDir / C::paths::POLYMERS_FILE; }
     std::filesystem::path sequencesFile() const { return _baseDir / C::paths::SEQUENCES_FILE; }
     std::filesystem::path chainStatsFile() const { return _baseDir / C::paths::CHAIN_STATS_FILE; }
+    std::filesystem::path segmentHistFile() const { return _baseDir / C::paths::SEGMENT_HIST_FILE; }
 };
