@@ -9,6 +9,7 @@ namespace analysis
 {
 ChainHistogram buildHistogramFromSequenceStats(const Eigen::MatrixXd &sequenceStatsMatrix, std::size_t numMonomers);
 ChainHistogram buildHistogramFromChainLengths(const std::vector<uint64_t> &chainLengths, SpeciesID monomerID = INVALID_SPECIES_ID);
+ChainHistogram buildHistogramFromSequenceStats(const std::vector<std::vector<SequenceStats>> &statsPerPolymer);
 
 } // namespace analysis
 
@@ -68,6 +69,26 @@ inline ChainHistogram buildHistogramFromChainLengths(const std::vector<uint64_t>
         {
             histogram.addChain({length}, SequenceStats());
         }
+    }
+
+    return histogram;
+}
+
+inline ChainHistogram buildHistogramFromSequenceStats(const std::vector<std::vector<SequenceStats>> &statsPerPolymer)
+{
+    ChainHistogram histogram;
+
+    for (const auto &polymerStats : statsPerPolymer)
+    {
+        SequenceStats aggregated;
+        for (const auto &stat : polymerStats)
+            aggregated += stat;
+
+        std::vector<uint64_t> counts(registry::getNumMonomers(), 0);
+        for (size_t i = 0; i < counts.size(); ++i)
+            counts[i] = aggregated.monCounts[i];
+
+        histogram.addChain(counts, aggregated);
     }
 
     return histogram;

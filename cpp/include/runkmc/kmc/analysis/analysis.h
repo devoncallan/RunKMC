@@ -12,7 +12,7 @@ namespace analysis
         void forEachStats(const RawSequenceData &sequenceData, size_t numBuckets, Func callback);
     }
 
-    SequenceSummary calculateSequenceSummary(const analysis::RawSequenceData &sequenceData, ChainState &chains)
+    SequenceSummary calculateSequenceSummary(const analysis::RawSequenceData &sequenceData)
     {
         // Calculate sequence stats matrix (polymers x (monomers*fields)) -> Summed across all buckets
         // Calculate positional average stats (buckets x (monomers*fields)) -> Summed across all polymers

@@ -28,6 +28,8 @@ class CommandLineConfig:
             cmd.append("--report-polymers")
         if self.report_sequences:
             cmd.append("--report-sequences")
+        if self.report_chains:
+            cmd.append("--report-chains")
         if self.report_segment_hist:
             cmd.append("--report-segment-hist")
         if self.parse_only:

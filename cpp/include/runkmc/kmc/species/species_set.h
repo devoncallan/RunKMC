@@ -166,8 +166,8 @@ public:
         auto sequenceData = getRawSequenceData();
         ChainState chains;
         chains.kmcState = systemState.kmc;
-        auto summary = analysis::calculateSequenceSummary(sequenceData, chains);
-        chains.histogram = analysis::buildHistogramFromSequenceStats(summary.sequenceStatsMatrix, registry::getNumMonomers());
+        auto summary = analysis::calculateSequenceSummary(sequenceData);
+        chains.histogram = analysis::buildHistogramFromSequenceStats(sequenceData.precomputedStats);
         systemState.chains = chains;
 
         AnalysisState analysisState;

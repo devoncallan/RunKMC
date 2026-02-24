@@ -1,4 +1,5 @@
 from __future__ import annotations
+import io
 from pathlib import Path
 from typing import Optional, Dict, List, Any, Tuple
 from dataclasses import dataclass
@@ -299,7 +300,9 @@ class ChainHistogramData:
         return counts
 
     @staticmethod
-    def load(filepath: Path | str, species: SpeciesRegistry) -> Optional["ChainHistogramData"]:
+    def load(
+        filepath: Path | str, species: SpeciesRegistry
+    ) -> Optional["ChainHistogramData"]:
         records = read_histogram_data(filepath)
         if not records:
             return None
@@ -322,13 +325,10 @@ class ChainHistogramData:
                 if not monomer_names:
                     monomer_names = species.get_monomer_names()
 
-                has_sequence_stats = (
-                    len(monomer_names) > 1
-                    and all(
-                        f"{C.state.TOTAL_SEQCOUNT_PREFIX}{name}" in frame.columns
-                        and f"{C.state.TOTAL_SEQLEN2_PREFIX}{name}" in frame.columns
-                        for name in monomer_names
-                    )
+                has_sequence_stats = len(monomer_names) > 1 and all(
+                    f"{C.state.TOTAL_SEQCOUNT_PREFIX}{name}" in frame.columns
+                    and f"{C.state.TOTAL_SEQLEN2_PREFIX}{name}" in frame.columns
+                    for name in monomer_names
                 )
 
             blocks.append(
@@ -355,7 +355,9 @@ class SegmentHistogramBlock:
     data: pd.DataFrame
     monomer_names: List[str]
 
-    def histogram(self, monomer_id: str) -> Tuple[NDArray[np.float64], NDArray[np.float64]]:
+    def histogram(
+        self, monomer_id: str
+    ) -> Tuple[NDArray[np.float64], NDArray[np.float64]]:
         column = C.state.SEGMENT_COUNT_PREFIX + monomer_id
         if column not in self.data.columns:
             raise KeyError(f"Segment histogram for monomer '{monomer_id}' not found.")
@@ -388,7 +390,9 @@ class SegmentHistogramData:
         if not self.blocks:
             return np.asarray([], dtype=np.float64), np.asarray([], dtype=np.float64)
         if monomer_id not in self.monomer_names:
-            raise ValueError(f"Monomer '{monomer_id}' not available in segment histogram.")
+            raise ValueError(
+                f"Monomer '{monomer_id}' not available in segment histogram."
+            )
         block_idx = len(self.blocks) + block if block < 0 else block
         if block_idx < 0 or block_idx >= len(self.blocks):
             raise IndexError("Segment histogram block index out of range.")
@@ -434,7 +438,9 @@ class SegmentHistogramData:
 
 def parse_block_header(line: str) -> Dict[str, Any]:
 
-    parts: Dict[str, str] = dict(kv.split("=", 1) for kv in line[1:].split(",") if "=" in kv)
+    parts: Dict[str, str] = dict(
+        kv.split("=", 1) for kv in line[1:].split(",") if "=" in kv
+    )
     try:
         iteration = int(parts[C.state.ITERATION_KEY])
         kmc_time = float(parts[C.state.KMC_TIME_KEY])
@@ -453,24 +459,46 @@ def read_histogram_data(
 ) -> List[Tuple[Dict[str, Any], pd.DataFrame]]:
 
     data = []
-    expected_columns: List[str] = []
+    expected_cols: List[str] | None = None
     with Path(path).open("r", encoding="utf-8") as fh:
-        for line in fh:
-            stripped = line.strip()
-            if stripped.startswith("#"):
-                header = parse_block_header(stripped)
 
-                df = pd.read_csv(fh, nrows=int(header[C.state.BINS_KEY]), header=0)
-                current_columns = list(df.columns)
-                if expected_columns:
-                    if current_columns != expected_columns:
-                        raise ValueError("Inconsistent chain histogram columns.")
-                else:
-                    expected_columns = current_columns
+        while True:
+            line = fh.readline()
+            if not line:
+                break
+            if not line.startswith("#"):
+                continue
 
-                assert len(df) == int(
-                    header[C.state.BINS_KEY]
-                ), "Histogram bin count mismatch."
-                data.append((header, df))
+            header = parse_block_header(line.strip())
+            bins = int(header[C.state.BINS_KEY])
 
+            col_line = fh.readline()
+            if not col_line:
+                raise ValueError("Missing histogram column header line.")
+
+            rows = []
+            for _ in range(bins):
+                row = fh.readline()
+                if not row:
+                    raise ValueError(
+                        f"EOF while reading Iteration={header[C.state.ITERATION_KEY]} histogram data."
+                    )
+                rows.append(row)
+
+            df = pd.read_csv(io.StringIO(col_line + "".join(rows)))
+
+            if len(df) != bins:
+                raise ValueError(
+                    f"Expected {bins} rows for Iteration={header[C.state.ITERATION_KEY]} histogram, got {len(df)}."
+                )
+
+            cols = list(df.columns)
+            if expected_cols is None:
+                expected_cols = cols
+            elif cols != expected_cols:
+                raise ValueError(
+                    f"Inconsistent histogram columns. Expected {expected_cols}, got {cols}."
+                )
+
+            data.append((header, df))
     return data
