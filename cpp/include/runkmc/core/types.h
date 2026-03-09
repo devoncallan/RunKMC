@@ -36,6 +36,7 @@ public:
     static constexpr std::string_view POLYMER = "P";
     static constexpr std::string_view UNDEFINED = "?";
     static constexpr std::string_view LABEL = "LABEL";
+    static constexpr std::string_view DEAD_POLYMER = "DEAD_P";
 
     static bool isUnitType(std::string_view type)
     {
@@ -45,6 +46,11 @@ public:
     static bool isPolymerType(std::string_view type)
     {
         return type == POLYMER || type == LABEL;
+    }
+
+    static bool isDeadPolymerType(std::string_view type)
+    {
+        return type == DEAD_POLYMER;
     }
 
     static bool isValidType(std::string_view type)
@@ -74,7 +80,7 @@ public:
 private:
     SpeciesType() = delete;
     ~SpeciesType() = delete;
-    static inline const std::vector<std::string_view> _validTypes = {UNIT, MONOMER, INITIATOR, POLYMER, UNDEFINED, LABEL};
+    static inline const std::vector<std::string_view> _validTypes = {UNIT, MONOMER, INITIATOR, POLYMER, UNDEFINED, LABEL, DEAD_POLYMER};
 };
 
 enum PolymerState

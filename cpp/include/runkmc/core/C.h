@@ -40,6 +40,7 @@ namespace C::io
     inline constexpr std::string_view UNITS_KEY = "units";
     inline constexpr std::string_view MONOMERS_KEY = "monomers";
     inline constexpr std::string_view POLYMERS_KEY = "polymers";
+    inline constexpr std::string_view DEAD_POLYMERS_KEY = "dead_polymers";
 
     // Species
     inline constexpr std::string_view FW_KEY = "FW";
@@ -70,6 +71,7 @@ namespace C::state
     inline constexpr std::string_view CONV_PREFIX = "Conv_";
     inline constexpr std::string_view COUNT_PREFIX = "Count_";
     inline constexpr std::string_view MONOMER = "Monomer";
+    inline constexpr std::string_view TERMINATED_CHAIN_COUNT_KEY = "TerminatedChainCount";
 
     // Chain and molecular weight stats
     inline constexpr std::string_view NAVGCL_KEY = "nAvgCL";

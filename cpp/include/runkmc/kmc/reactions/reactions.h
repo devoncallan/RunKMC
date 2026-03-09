@@ -351,7 +351,7 @@ public:
     static inline const ReactionSchema &SCHEMA = {
         ReactionType::TERMINATION_D,
         {SpeciesType::POLYMER, SpeciesType::POLYMER},
-        {SpeciesType::POLYMER, SpeciesType::POLYMER}};
+        {SpeciesType::DEAD_POLYMER, SpeciesType::DEAD_POLYMER}};
 
     TerminationDisproportionation(RateConstant rateConstant, const ReactionSpecies &species)
         : Reaction(rateConstant, SCHEMA, species)
@@ -390,7 +390,7 @@ public:
     static inline const ReactionSchema &SCHEMA = {
         ReactionType::TERMINATION_C,
         {SpeciesType::POLYMER, SpeciesType::POLYMER},
-        {SpeciesType::POLYMER}};
+        {SpeciesType::DEAD_POLYMER}};
 
     TerminationCombination(RateConstant rateConstant, const ReactionSpecies &species)
         : Reaction(rateConstant, SCHEMA, species)
@@ -404,6 +404,7 @@ public:
         Polymer *poly2 = species.r_poly<1>()->removeRandomPolymer();
         poly1->terminateByCombination(poly2);
         species.p_poly<0>()->insertPolymer(poly1);
+        delete poly2;  // Free merged polymer - fixes memory leak
     }
 
     double calculateRate(double NAV) const override
@@ -424,7 +425,7 @@ public:
     static inline const ReactionSchema &SCHEMA = {
         ReactionType::CHAINTRANSFER_M,
         {SpeciesType::POLYMER, SpeciesType::UNIT},
-        {SpeciesType::POLYMER, SpeciesType::POLYMER}};
+        {SpeciesType::DEAD_POLYMER, SpeciesType::POLYMER}};
 
     ChainTransferToMonomer(RateConstant rateConstant, const ReactionSpecies &species)
         : Reaction(rateConstant, SCHEMA, species) {}
@@ -436,14 +437,14 @@ public:
         // Terminate a polymer
         Polymer *poly = species.r_poly<0>()->removeRandomPolymer();
         poly->terminateByChainTransfer();
-        species.p_poly<0>()->insertPolymer(poly);
+        species.p_poly<0>()->insertPolymer(poly);  // Goes to dead container
         --mon->count;
 
         // Create a new monomer radical
         Polymer *newRadical = species.p_poly<1>()->createPolymer();
         newRadical->initiate(mon->ID);
         newRadical->addUnitToEnd(mon->ID);
-        species.p_poly<1>()->insertPolymer(newRadical);
+        species.p_poly<1>()->insertPolymer(newRadical);  // Goes to alive container
     }
 
     double calculateRate(double NAV) const override

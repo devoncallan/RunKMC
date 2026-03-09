@@ -68,6 +68,7 @@ class state:
     CONV_PREFIX = "Conv_"
     COUNT_PREFIX = "Count_"
     MONOMER = "Monomer"
+    TERMINATED_CHAIN_COUNT_KEY = "TerminatedChainCount"
 
     # Chain and molecular weight stats
     NAVGCL_KEY = "nAvgCL"

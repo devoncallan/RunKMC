@@ -32,7 +32,7 @@ species
     P P[-.B.A] P[R.B.A]|P[A.B.A]|P[B.B.A]
     P P[-.B.B] P[R.B.B]|P[A.B.B]|P[B.B.B]
 
-    P D
+    DEAD_P D
 end
 
 rateconstants

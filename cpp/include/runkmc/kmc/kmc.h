@@ -68,10 +68,10 @@ public:
             updateSystemState();
 
             output::writeState(state, paths, config);
+            output::writeDeadPolymers(speciesSet, state.kmc, paths, config);
         }
 
-        if (config.reportChains)
-            output::writeChainStats(state, paths, config);
+        output::writeDeadPolymers(speciesSet, state.kmc, paths, config);
 
         if (config.reportPolymers)
             output::writePolymers(paths, speciesSet);

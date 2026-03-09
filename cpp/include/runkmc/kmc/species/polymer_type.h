@@ -140,6 +140,46 @@ private:
     std::vector<uint64_t> polymerTypeCounts;
 };
 
+// Container for dead polymers (terminated chains awaiting output)
+class DeadPolymerContainer : public Species
+{
+public:
+    DeadPolymerContainer()
+        : Species(0, "", SpeciesType::DEAD_POLYMER) {}
+
+    DeadPolymerContainer(const SpeciesID &ID_, const std::string &name_)
+        : Species(ID_, name_, SpeciesType::DEAD_POLYMER) {}
+
+    ~DeadPolymerContainer()
+    {
+        // Clean up on destruction
+        for (auto *p : deadPolymers)
+            delete p;
+    }
+
+    void insertPolymer(Polymer *polymer)
+    {
+        deadPolymers.push_back(polymer);
+        ++count;
+    }
+
+    const std::vector<Polymer *> &getPolymers() const
+    {
+        return deadPolymers;
+    }
+
+    void clearPolymers()
+    {
+        for (auto *p : deadPolymers)
+            delete p;
+        deadPolymers.clear();
+        count = 0;
+    }
+
+private:
+    std::vector<Polymer *> deadPolymers;
+};
+
 struct PolymerContainerMap
 {
     SpeciesID ID;

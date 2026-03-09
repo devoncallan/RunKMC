@@ -67,6 +67,12 @@ public:
             polymerContainerPtrs.push_back(&polymerContainers.back());
         }
 
+        // Initialize dead polymer container from registry (if any DEAD_P species defined)
+        const auto &deadIDs = registry::getAllDeadPolymerIDs();
+        const auto &deadNames = registry::getAllDeadPolymerNames();
+        if (!deadIDs.empty())
+            deadPolymerContainer = DeadPolymerContainer(deadIDs[0], deadNames[0]);
+
         printSummary();
     }
 
@@ -95,6 +101,9 @@ public:
         // Polymer counts
         for (const auto &container : polymerContainers)
             data.polymerCounts.push_back(container.count);
+
+        // Terminated chain count
+        data.terminatedChainCount = deadPolymerContainer.count;
 
         return data;
     }
@@ -164,11 +173,7 @@ public:
         }
 
         auto sequenceData = getRawSequenceData();
-        ChainState chains;
-        chains.kmcState = systemState.kmc;
         auto summary = analysis::calculateSequenceSummary(sequenceData);
-        chains.histogram = analysis::buildHistogramFromSequenceStats(sequenceData.precomputedStats);
-        systemState.chains = chains;
 
         AnalysisState analysisState;
         analysis::analyzeChainLengthDist(summary.sequenceStatsMatrix, getMonomerFWs(), analysisState);
@@ -181,7 +186,6 @@ public:
         analysis::analyzeSequenceLengthDist(summary.sequenceStatsMatrix, analysisState);
         systemState.analysis = analysisState;
         systemState.sequence = sequenceState;
-        
     }
 
     void printSummary() const
@@ -212,6 +216,8 @@ public:
     std::vector<PolymerContainer> &getPolymerContainers() { return polymerContainers; }
     const std::vector<PolymerContainer> &getPolymerContainers() const { return polymerContainers; }
     const std::vector<PolymerContainer *> &getPolymerContainerPtrs() const { return polymerContainerPtrs; }
+    DeadPolymerContainer &getDeadPolymerContainer() { return deadPolymerContainer; }
+    const DeadPolymerContainer &getDeadPolymerContainer() const { return deadPolymerContainer; }
 
     double getNAV() const { return NAV; }
 
@@ -220,29 +226,15 @@ private:
     {
         const auto polymers = getPolymers();
 
-        const auto monomerIDs = registry::getMonomerIDs();
-        const bool hasMonomer = !monomerIDs.empty();
-        ChainState chains;
-        chains.kmcState = systemState.kmc;
-
         double sumLengths = 0.0;
         double sumLengthSquares = 0.0;
-
-        std::vector<uint64_t> chainLengths;
-        chainLengths.reserve(polymers.size());
 
         for (const Polymer *polymer : polymers)
         {
             const size_t length = polymer->getDegreeOfPolymerization();
-            chainLengths.push_back(static_cast<uint64_t>(length));
-
             sumLengths += static_cast<double>(length);
             sumLengthSquares += static_cast<double>(length) * static_cast<double>(length);
         }
-
-        chains.histogram = analysis::buildHistogramFromChainLengths(chainLengths, hasMonomer ? monomerIDs.front() : INVALID_SPECIES_ID);
-
-        systemState.chains = chains;
 
         AnalysisState analysisState;
         const double chainCount = static_cast<double>(polymers.size());
@@ -280,6 +272,7 @@ private:
     std::vector<PolymerType> polymerTypes;
     std::vector<PolymerContainer> polymerContainers;
     std::vector<PolymerContainer *> polymerContainerPtrs;
+    DeadPolymerContainer deadPolymerContainer;
 
     std::vector<Unit> units;
     size_t numParticles;

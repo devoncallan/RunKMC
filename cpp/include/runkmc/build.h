@@ -122,6 +122,10 @@ namespace build
             polymerContainerMap.push_back(PolymerContainerMap(id, label.name, labelPolyIndices));
         }
 
+        // Register dead polymer species names
+        for (const auto &deadSpec : data.deadPolymerSpecs)
+            registry::builder.registerNewSpecies(deadSpec.name, deadSpec.type);
+
         // Finalize registry
         registry::initialize();
 
@@ -179,6 +183,8 @@ namespace build
                 species.products.push_back(&speciesSet.getUnits()[registry::getUnitIndex(speciesInfo.ID)]);
             else if (SpeciesType::isPolymerType(speciesInfo.type))
                 species.products.push_back(&speciesSet.getPolymerContainers()[registry::getPolymerIndex(speciesInfo.ID)]);
+            else if (SpeciesType::isDeadPolymerType(speciesInfo.type))
+                species.products.push_back(&speciesSet.getDeadPolymerContainer());
             else
                 console::input_error("Species type " + std::string(speciesInfo.type) + " for species " + speciesInfo.name + " not recognized. Exiting.");
         }

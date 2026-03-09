@@ -79,6 +79,10 @@ public:
     const std::vector<std::string> getPolymerNames() const { return _polymerContainerNames; }
     size_t getPolymerIndex(SpeciesID id) const { return _polymerContainerIDtoIndices.at(id); }
 
+    // Dead polymer helper functions
+    const std::vector<SpeciesID> &getAllDeadPolymerIDs() const { return _deadPolymerIDs; }
+    const std::vector<std::string> &getAllDeadPolymerNames() const { return _deadPolymerNames; }
+
 private:
     friend class RegistryBuilder;
 
@@ -114,6 +118,11 @@ private:
                 _polymerContainerNames.push_back(s.name);
                 _polymerContainerIDtoIndices[s.ID] = _polymerContainerNames.size() - 1;
             }
+            if (SpeciesType::isDeadPolymerType(s.type))
+            {
+                _deadPolymerIDs.push_back(s.ID);
+                _deadPolymerNames.push_back(s.name);
+            }
         }
         _numMonomers = _monomerIDs.size();
     };
@@ -142,6 +151,10 @@ private:
 
     std::vector<std::string> _polymerContainerNames;
     std::unordered_map<SpeciesID, size_t> _polymerContainerIDtoIndices;
+
+    // Dead polymer data
+    std::vector<SpeciesID> _deadPolymerIDs;
+    std::vector<std::string> _deadPolymerNames;
 };
 
 class RegistryBuilder
@@ -216,4 +229,8 @@ namespace registry
     // Polymer helpers
     static inline std::vector<std::string> getPolymerNames() { return _instance.getPolymerNames(); }
     static inline size_t getPolymerIndex(const SpeciesID &id) { return _instance.getPolymerIndex(id); }
+
+    // Dead polymer helpers
+    static inline const std::vector<SpeciesID> &getAllDeadPolymerIDs() { return _instance.getAllDeadPolymerIDs(); }
+    static inline const std::vector<std::string> &getAllDeadPolymerNames() { return _instance.getAllDeadPolymerNames(); }
 }

@@ -112,6 +112,7 @@ namespace io::text
         std::vector<std::string> unitLines;
         std::vector<std::string> polymerLines;
         std::vector<std::string> labelLines;
+        std::vector<std::string> deadPolymerLines;
 
         for (const auto &line : lines)
         {
@@ -126,17 +127,21 @@ namespace io::text
                 polymerLines.push_back(line);
             else if (species.type == SpeciesType::LABEL)
                 labelLines.push_back(line);
+            else if (SpeciesType::isDeadPolymerType(species.type))
+                deadPolymerLines.push_back(line);
             else
                 console::input_error("Unknown species type: " + std::string(species.type));
         }
 
-        // ===== PASS 2: Parse in order: Units, Polymers, Labels =====
+        // ===== PASS 2: Parse in order: Units, Polymers, Labels, Dead Polymers =====
         std::vector<types::UnitRead> units;
         std::vector<types::PolymerTypeRead> polymerTypes;
         std::vector<types::PolymerLabelsRead> labels;
+        std::vector<types::SpeciesRead> deadPolymerSpecs;
         units.reserve(unitLines.size());
         polymerTypes.reserve(polymerLines.size());
         labels.reserve(labelLines.size());
+        deadPolymerSpecs.reserve(deadPolymerLines.size());
 
         for (const auto &line : unitLines)
             units.push_back(parseUnit(str::splitByWhitespace(line)));
@@ -147,10 +152,14 @@ namespace io::text
         for (const auto &line : labelLines)
             labels.push_back(parsePolymerLabels(str::splitByWhitespace(line)));
 
+        for (const auto &line : deadPolymerLines)
+            deadPolymerSpecs.push_back(parseBaseSpecies(str::splitByWhitespace(line)));
+
         types::SpeciesSetRead speciesSet;
         speciesSet.units = std::move(units);
         speciesSet.polymerTypes = std::move(polymerTypes);
         speciesSet.polymerLabels = std::move(labels);
+        speciesSet.deadPolymerSpecs = std::move(deadPolymerSpecs);
 
         return speciesSet;
     }

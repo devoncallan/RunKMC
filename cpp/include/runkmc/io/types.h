@@ -68,6 +68,7 @@ namespace io::types
         std::vector<UnitRead> units;
         std::vector<PolymerTypeRead> polymerTypes;
         std::vector<PolymerLabelsRead> polymerLabels;
+        std::vector<SpeciesRead> deadPolymerSpecs;
     };
 
     struct RateConstantRead
