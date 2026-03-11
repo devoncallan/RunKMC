@@ -84,6 +84,14 @@ namespace output
         void writeRecords(std::ostream &out) const
         {
             const auto numMonomers = registry::getNumMonomers();
+
+            if (numMonomers == 1)
+            {
+                for (const auto *polymer : polymers)
+                    out << polymer->getDegreeOfPolymerization() << "\n";
+                return;
+            }
+
             for (const auto *polymer : polymers)
             {
                 std::vector<std::string> row;
@@ -100,17 +108,14 @@ namespace output
                     row.push_back(std::to_string(count));
 
                 // Sequence stats (copolymer only)
-                if (numMonomers > 1)
-                {
-                    analysis::SequenceStats aggregated;
-                    for (const auto &stats : posStats)
-                        aggregated += stats;
+                analysis::SequenceStats aggregated;
+                for (const auto &stats : posStats)
+                    aggregated += stats;
 
-                    for (size_t i = 0; i < numMonomers; ++i)
-                        row.push_back(std::to_string(aggregated.seqCounts[i]));
-                    for (size_t i = 0; i < numMonomers; ++i)
-                        row.push_back(std::to_string(aggregated.seqLengths2[i]));
-                }
+                for (size_t i = 0; i < numMonomers; ++i)
+                    row.push_back(std::to_string(aggregated.seqCounts[i]));
+                for (size_t i = 0; i < numMonomers; ++i)
+                    row.push_back(std::to_string(aggregated.seqLengths2[i]));
 
                 out << str::join(row, ",") << std::endl;
             }
@@ -123,7 +128,7 @@ namespace output
     class SegmentHistogramWriter
     {
     public:
-        SegmentHistogramWriter(const DeadPolymerContainer &container, const KMCState &kmcState)
+        SegmentHistogramWriter(const PolymerContainer &container, const KMCState &kmcState)
             : container(container), kmcState(kmcState) {}
 
         void writeState(std::ostream &out) const
@@ -190,7 +195,7 @@ namespace output
         }
 
     private:
-        const DeadPolymerContainer &container;
+        const PolymerContainer &container;
         const KMCState &kmcState;
     };
 
@@ -237,7 +242,7 @@ namespace output
         seqWriter.writeState(sequenceFile);
     }
 
-    void writeChainStats(const DeadPolymerContainer &container, const SimulationPaths &paths)
+    void writeChainStats(const PolymerContainer &container, const SimulationPaths &paths)
     {
         auto file = paths.chainStatsFile();
         bool fileExists = std::filesystem::exists(file);
@@ -250,7 +255,7 @@ namespace output
         writer.writeRecords(out);
     }
 
-    void writeSegmentHistogram(const DeadPolymerContainer &container, const KMCState &kmc, const SimulationPaths &paths)
+    void writeSegmentHistogram(const PolymerContainer &container, const KMCState &kmc, const SimulationPaths &paths)
     {
         auto segFile = std::ofstream(paths.segmentHistFile(), std::ios::app);
         SegmentHistogramWriter writer(container, kmc);

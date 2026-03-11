@@ -122,9 +122,13 @@ namespace build
             polymerContainerMap.push_back(PolymerContainerMap(id, label.name, labelPolyIndices));
         }
 
-        // Register dead polymer species names
+        // Register dead polymer species
         for (const auto &deadSpec : data.deadPolymerSpecs)
-            registry::builder.registerNewSpecies(deadSpec.name, deadSpec.type);
+        {
+            SpeciesID id = registry::builder.registerNewSpecies(deadSpec.name, deadSpec.type);
+            polymerTypes.push_back(PolymerType(id, deadSpec.name, {}));
+            polymerContainerMap.push_back(PolymerContainerMap(id, deadSpec.name, {polymerTypes.size() - 1}));
+        }
 
         // Finalize registry
         registry::initialize();

@@ -67,11 +67,16 @@ public:
             polymerContainerPtrs.push_back(&polymerContainers.back());
         }
 
-        // Initialize dead polymer container from registry (if any DEAD_P species defined)
+        // Find the dead polymer container (if any DEAD_P species defined)
         const auto &deadIDs = registry::getAllDeadPolymerIDs();
-        const auto &deadNames = registry::getAllDeadPolymerNames();
-        if (!deadIDs.empty())
-            deadPolymerContainer = DeadPolymerContainer(deadIDs[0], deadNames[0]);
+        for (auto &container : polymerContainers)
+        {
+            if (std::find(deadIDs.begin(), deadIDs.end(), container.ID) != deadIDs.end())
+            {
+                deadPolymerContainerPtr = &container;
+                break;
+            }
+        }
 
         printSummary();
     }
@@ -101,9 +106,6 @@ public:
         // Polymer counts
         for (const auto &container : polymerContainers)
             data.polymerCounts.push_back(container.count);
-
-        // Terminated chain count
-        data.terminatedChainCount = deadPolymerContainer.count;
 
         return data;
     }
@@ -216,8 +218,8 @@ public:
     std::vector<PolymerContainer> &getPolymerContainers() { return polymerContainers; }
     const std::vector<PolymerContainer> &getPolymerContainers() const { return polymerContainers; }
     const std::vector<PolymerContainer *> &getPolymerContainerPtrs() const { return polymerContainerPtrs; }
-    DeadPolymerContainer &getDeadPolymerContainer() { return deadPolymerContainer; }
-    const DeadPolymerContainer &getDeadPolymerContainer() const { return deadPolymerContainer; }
+    PolymerContainer &getDeadPolymerContainer() { return *deadPolymerContainerPtr; }
+    const PolymerContainer &getDeadPolymerContainer() const { return *deadPolymerContainerPtr; }
 
     double getNAV() const { return NAV; }
 
@@ -272,7 +274,7 @@ private:
     std::vector<PolymerType> polymerTypes;
     std::vector<PolymerContainer> polymerContainers;
     std::vector<PolymerContainer *> polymerContainerPtrs;
-    DeadPolymerContainer deadPolymerContainer;
+    PolymerContainer *deadPolymerContainerPtr = nullptr;
 
     std::vector<Unit> units;
     size_t numParticles;

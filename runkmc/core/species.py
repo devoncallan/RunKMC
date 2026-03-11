@@ -23,6 +23,7 @@ class SpeciesRegistry:
     units: Dict[str, RegisteredSpecies]
     monomers: Dict[str, RegisteredSpecies]
     polymers: Dict[str, RegisteredSpecies]
+    dead_polymers: Dict[str, RegisteredSpecies]
 
     @staticmethod
     def from_yaml(filepath: Path | str) -> SpeciesRegistry:
@@ -57,9 +58,12 @@ class SpeciesRegistry:
         units = {s.name: s for s in species if s.name in data[C.io.UNITS_KEY]}
         monomers = {s.name: s for s in species if s.name in data[C.io.MONOMERS_KEY]}
         polymers = {s.name: s for s in species if s.name in data[C.io.POLYMERS_KEY]}
+        dead_polymer_names = data.get(C.io.DEAD_POLYMERS_KEY, [])
+        dead_polymers = {s.name: s for s in species if s.name in dead_polymer_names}
 
         return SpeciesRegistry(
-            species=species, units=units, monomers=monomers, polymers=polymers
+            species=species, units=units, monomers=monomers, polymers=polymers,
+            dead_polymers=dead_polymers,
         )
 
     def get_monomer_names(self) -> List[str]:
@@ -70,3 +74,6 @@ class SpeciesRegistry:
 
     def get_polymer_names(self) -> List[str]:
         return list(self.polymers.keys())
+
+    def get_dead_polymer_names(self) -> List[str]:
+        return list(self.dead_polymers.keys())

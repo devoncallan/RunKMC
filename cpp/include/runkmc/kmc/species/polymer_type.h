@@ -26,6 +26,14 @@ public:
         polymers.push_back(polymer);
     }
 
+    void clearPolymers()
+    {
+        for (auto *p : polymers)
+            delete p;
+        polymers.clear();
+        count = 0;
+    }
+
     Polymer *removeRandomPolymer()
     {
         --count;
@@ -128,6 +136,19 @@ public:
         count = totalCount;
     }
 
+    void clearPolymers()
+    {
+        for (auto *polyType : polymerTypePtrs)
+            polyType->clearPolymers();
+        std::fill(polymerTypeCounts.begin(), polymerTypeCounts.end(), 0);
+        count = 0;
+    }
+
+    const std::vector<Polymer *> &getPolymers() const
+    {
+        return polymerTypePtrs.front()->getPolymers();
+    }
+
     const std::string toString() const
     {
         return name + ": " + std::to_string(count);
@@ -138,46 +159,6 @@ public:
 private:
     std::vector<PolymerType *> polymerTypePtrs;
     std::vector<uint64_t> polymerTypeCounts;
-};
-
-// Container for dead polymers (terminated chains awaiting output)
-class DeadPolymerContainer : public Species
-{
-public:
-    DeadPolymerContainer()
-        : Species(0, "", SpeciesType::DEAD_POLYMER) {}
-
-    DeadPolymerContainer(const SpeciesID &ID_, const std::string &name_)
-        : Species(ID_, name_, SpeciesType::DEAD_POLYMER) {}
-
-    ~DeadPolymerContainer()
-    {
-        // Clean up on destruction
-        for (auto *p : deadPolymers)
-            delete p;
-    }
-
-    void insertPolymer(Polymer *polymer)
-    {
-        deadPolymers.push_back(polymer);
-        ++count;
-    }
-
-    const std::vector<Polymer *> &getPolymers() const
-    {
-        return deadPolymers;
-    }
-
-    void clearPolymers()
-    {
-        for (auto *p : deadPolymers)
-            delete p;
-        deadPolymers.clear();
-        count = 0;
-    }
-
-private:
-    std::vector<Polymer *> deadPolymers;
 };
 
 struct PolymerContainerMap

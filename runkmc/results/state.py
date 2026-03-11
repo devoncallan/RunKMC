@@ -77,7 +77,10 @@ class StateData:
                 name: df[C.state.COUNT_PREFIX + name].to_numpy(np.uint64)
                 for name in polymer_names
             },
-            terminated_chain_count=df[C.state.TERMINATED_CHAIN_COUNT_KEY].to_numpy(np.uint64),
+            terminated_chain_count=sum(
+                df[C.state.COUNT_PREFIX + name].to_numpy(np.uint64)
+                for name in species.get_dead_polymer_names()
+            ) if species.get_dead_polymer_names() else np.zeros(len(df), dtype=np.uint64),
             nAvgCL=df[C.state.NAVGCL_KEY].to_numpy(np.float64),
             wAvgCL=df[C.state.WAVGCL_KEY].to_numpy(np.float64),
             dispCL=df[C.state.DISPCL_KEY].to_numpy(np.float64),
@@ -248,6 +251,7 @@ class ChainRecordData:
     def chain_lengths(self) -> NDArray[np.uint64]:
         cols = [C.state.MONCOUNT_PREFIX + m for m in self.monomer_names]
         return self.data[cols].sum(axis=1).to_numpy(dtype=np.uint64)
+    
 
     def monomer_counts(self, monomer: str) -> NDArray[np.uint64]:
         col = C.state.MONCOUNT_PREFIX + monomer
@@ -384,6 +388,7 @@ class SegmentHistogramData:
     def get_histogram(
         self, monomer_id: str, block: int = -1
     ) -> Tuple[NDArray[np.float64], NDArray[np.float64]]:
+        """Return cumulative histogram up to and including the given block index."""
         if not self.blocks:
             return np.asarray([], dtype=np.float64), np.asarray([], dtype=np.float64)
         if monomer_id not in self.monomer_names:
@@ -393,7 +398,21 @@ class SegmentHistogramData:
         block_idx = len(self.blocks) + block if block < 0 else block
         if block_idx < 0 or block_idx >= len(self.blocks):
             raise IndexError("Segment histogram block index out of range.")
-        return self.blocks[block_idx].histogram(monomer_id)
+
+        # Accumulate counts across all blocks up to block_idx
+        col = C.state.SEGMENT_COUNT_PREFIX + monomer_id
+        combined: dict = {}
+        for b in self.blocks[: block_idx + 1]:
+            lengths, counts = b.histogram(monomer_id)
+            for length, count in zip(lengths, counts):
+                combined[length] = combined.get(length, 0.0) + count
+
+        if not combined:
+            return np.asarray([], dtype=np.float64), np.asarray([], dtype=np.float64)
+
+        lengths_out = np.asarray(sorted(combined.keys()), dtype=np.float64)
+        counts_out = np.asarray([combined[l] for l in lengths_out], dtype=np.float64)
+        return lengths_out, counts_out
 
     @staticmethod
     def load(

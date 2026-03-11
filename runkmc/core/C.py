@@ -38,6 +38,7 @@ class io:
     UNITS_KEY = "units"
     MONOMERS_KEY = "monomers"
     POLYMERS_KEY = "polymers"
+    DEAD_POLYMERS_KEY = "dead_polymers"
 
     # Species
     FW_KEY = "FW"

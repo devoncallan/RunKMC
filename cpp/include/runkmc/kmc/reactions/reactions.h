@@ -91,6 +91,8 @@ private:
             return true;
         if (expected == SpeciesType::POLYMER && SpeciesType::isPolymerType(actual))
             return true;
+        if (expected == SpeciesType::DEAD_POLYMER && SpeciesType::isPolymerType(actual))
+            return true;
         return false;
     }
 };

@@ -44,7 +44,6 @@ struct SpeciesState
     std::vector<uint64_t> unitCounts;
     std::vector<uint64_t> polymerCounts;
     double monomerConversion = 0;
-    uint64_t terminatedChainCount = 0;
 
     static std::vector<std::string> getTitles()
     {
@@ -65,9 +64,6 @@ struct SpeciesState
         // Polymer counts
         for (const auto &name : polymerGroupNames)
             names.push_back(std::string(C::state::COUNT_PREFIX) + name);
-
-        // Terminated chain count
-        names.push_back(std::string(C::state::TERMINATED_CHAIN_COUNT_KEY));
 
         return names;
     }
@@ -93,9 +89,6 @@ struct SpeciesState
         // Polymer counts
         for (const auto &count : polymerCounts)
             output.push_back(std::to_string(count));
-
-        // Terminated chain count
-        output.push_back(std::to_string(terminatedChainCount));
 
         return output;
     }

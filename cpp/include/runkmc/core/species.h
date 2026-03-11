@@ -113,7 +113,7 @@ private:
                 _polymerTypeNames.push_back(s.name);
                 _polymerTypeIDtoIndices[s.ID] = _polymerTypeNames.size() - 1;
             }
-            if (s.type == SpeciesType::POLYMER || s.type == SpeciesType::LABEL)
+            if (SpeciesType::isPolymerType(s.type) || SpeciesType::isDeadPolymerType(s.type))
             {
                 _polymerContainerNames.push_back(s.name);
                 _polymerContainerIDtoIndices[s.ID] = _polymerContainerNames.size() - 1;
