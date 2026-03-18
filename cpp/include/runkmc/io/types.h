@@ -53,6 +53,12 @@ namespace io::types
         double efficiency = 1.0;
     };
 
+    struct MonomerRead: UnitRead
+    {
+        double monomerDensity = 0.0; // g/cm^3
+        double polymerDensity = 0.0; // g/cm^3
+    };
+
     struct PolymerTypeRead : SpeciesRead
     {
         std::vector<std::string> endGroupUnitNames;

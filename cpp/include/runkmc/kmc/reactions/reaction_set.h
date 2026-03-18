@@ -67,9 +67,9 @@ public:
 
     void printSummary() const
     {
-        reactions::logger.info("Reaction Set (" + std::to_string(numReactions) + " reactions):");
+        reactions::logger.debug("Reaction Set (" + std::to_string(numReactions) + " reactions):");
         for (size_t i = 0; i < numReactions; ++i)
-            reactions::logger.info("\t" + std::to_string(i + 1) + ": " + reactions[i]->toString());
+            reactions::logger.debug("\t" + std::to_string(i + 1) + ": " + reactions[i]->toString());
     }
 
     Reaction *getReaction(size_t reactionIndex) const { return reactions[reactionIndex]; }

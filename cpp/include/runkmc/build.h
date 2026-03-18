@@ -213,6 +213,7 @@ namespace build
             // 2. Build ReactionSpecies
             ReactionSpecies species = buildReactionSpecies(reactionData, speciesSet);
 
+            // 3. Create new Reaction based on type
             if (reactionData.type == ReactionType::ELEMENTARY)
                 reactions.push_back(new Elementary(rateConstant, species));
             else if (reactionData.type == ReactionType::INITIATOR_DECOMPOSITION)

@@ -9,6 +9,62 @@
 
 namespace analysis
 {
+
+    double safeDivide(double num, double denom)
+    {
+        if (denom == 0)
+            return 0;
+        return num / denom;
+    };
+
+    struct MomentAccumulator
+    {
+        double count = 0;
+        double sum = 0;
+        double sumSq = 0;
+
+        void add(double value)
+        {
+            count += 1;
+            sum += value;
+            sumSq += value * value;
+        }
+
+        MomentAccumulator &operator+=(const MomentAccumulator &other)
+        {
+            count += other.count;
+            sum += other.sum;
+            sumSq += other.sumSq;
+            return *this;
+        }
+
+        double nAvg() const { return safeDivide(sum, count); }
+
+        double wAvg() const { return safeDivide(sumSq, sum); }
+
+        double disp() const { return safeDivide(wAvg(), nAvg()); }
+    };
+
+    struct SequenceStats_
+    {
+        std::vector<MomentAccumulator> sequences;
+
+        SequenceStats_() { sequences.resize(registry::getNumMonomers()); }
+
+        SequenceStats_ &operator+=(const SequenceStats_ &other)
+        {
+            for (size_t i = 0; i < registry::getNumMonomers(); ++i)
+                sequences[i] += other.sequences[i];
+            return *this;
+        }
+
+        void addSequence(SpeciesID id, size_t length)
+        {
+            size_t monIdx = registry::getMonomerIndex(id);
+            sequences[monIdx].add(length);
+        }
+    };
+
     struct SequenceStats
     {
         std::vector<uint64_t> monCounts;
@@ -87,72 +143,6 @@ namespace analysis
             sequences.reserve(n);
             precomputedStats.reserve(n);
             length = n;
-        }
-    };
-
-    struct MonomerCountKey
-    {
-        std::vector<uint64_t> counts;
-
-        MonomerCountKey() = default;
-        explicit MonomerCountKey(std::vector<uint64_t> values) : counts(std::move(values)) {}
-
-        bool operator==(const MonomerCountKey &other) const noexcept
-        {
-            return counts == other.counts;
-        }
-    };
-
-    struct MonomerCountKeyHasher
-    {
-        std::size_t operator()(const MonomerCountKey &key) const noexcept
-        {
-            std::size_t seed = key.counts.size();
-            for (auto value : key.counts)
-            {
-                seed ^= std::hash<uint64_t>{}(value) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-            }
-            return seed;
-        }
-    };
-
-    struct ChainHistogramBin
-    {
-        uint64_t chainCount = 0;
-        SequenceStats aggregatedStats;
-        std::vector<std::map<uint32_t, uint64_t>> segmentHist;
-    };
-
-    using ChainHistogramMap = std::unordered_map<MonomerCountKey, ChainHistogramBin, MonomerCountKeyHasher>;
-
-    struct ChainHistogram
-    {
-        ChainHistogramMap bins;
-
-        void clear() { bins.clear(); }
-
-        void addChain(const std::vector<uint64_t> &counts, const SequenceStats &stats)
-        {
-            MonomerCountKey key{counts};
-            auto &bin = bins[key];
-            if (bin.chainCount == 0)
-            {
-                bin.aggregatedStats = SequenceStats();
-                bin.segmentHist.resize(registry::getNumMonomers());
-            }
-
-            ++bin.chainCount;
-            auto &aggregated = bin.aggregatedStats;
-            const auto numMonomers = registry::getNumMonomers();
-            for (size_t i = 0; i < numMonomers; ++i)
-            {
-                aggregated.seqCounts[i] += stats.seqCounts[i];
-                aggregated.seqLengths2[i] += stats.seqLengths2[i];
-                auto &dest = bin.segmentHist[i];
-                const auto &src = stats.segmentHist[i];
-                for (const auto &[length, count] : src)
-                    dest[length] += count;
-            }
         }
     };
 }

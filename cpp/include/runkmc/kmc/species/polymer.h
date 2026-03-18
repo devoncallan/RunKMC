@@ -39,13 +39,9 @@ struct HomopolymerBuffer
     void push(SpeciesID unit)
     {
         if (monomer == INVALID_SPECIES_ID)
-        {
             monomer = unit;
-        }
         else if (monomer != unit)
-        {
             console::error("Homopolymer buffer received mismatched monomer ID; mixed compositions are unsupported.");
-        }
         ++length;
     }
 

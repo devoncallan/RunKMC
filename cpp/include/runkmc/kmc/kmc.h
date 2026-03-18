@@ -43,7 +43,6 @@ public:
         startTime = std::chrono::steady_clock::now();
 
         // Print initial state
-
         output::writeState(state, paths, config);
 
         // Main simulation loop

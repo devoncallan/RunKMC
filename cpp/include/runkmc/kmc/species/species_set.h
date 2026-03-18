@@ -3,7 +3,6 @@
 #include "kmc/state.h"
 #include "kmc/species/polymer_type.h"
 #include "kmc/analysis/analysis.h"
-#include "kmc/analysis/histogram.h"
 
 namespace species
 {
@@ -181,9 +180,6 @@ public:
         analysis::analyzeChainLengthDist(summary.sequenceStatsMatrix, getMonomerFWs(), analysisState);
         systemState.analysis = analysisState;
 
-        if (registry::getNumMonomers() <= 1)
-            return;
-
         SequenceState sequenceState = SequenceState{systemState.kmc, summary.positionalStats};
         analysis::analyzeSequenceLengthDist(summary.sequenceStatsMatrix, analysisState);
         systemState.analysis = analysisState;
@@ -192,13 +188,13 @@ public:
 
     void printSummary() const
     {
-        species::logger.info("Units:");
+        species::logger.debug("Units:");
         for (const auto &unit : units)
-            species::logger.info("\t" + unit.printSummary());
+            species::logger.debug("\t" + unit.toSummaryString());
 
-        species::logger.info("Polymer Containers:");
+        species::logger.debug("Polymer Containers:");
         for (const auto &container : polymerContainers)
-            species::logger.info("\t" + container.printSummary());
+            species::logger.debug("\t" + container.toSummaryString());
     }
 
     std::vector<double> getMonomerFWs() const

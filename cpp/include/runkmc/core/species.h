@@ -41,7 +41,7 @@ public:
         return name + " (" + std::to_string(count) + ")";
     }
 
-    std::string printSummary() const
+    std::string toSummaryString() const
     {
         return name + " (" + std::to_string(ID) + "): " + std::to_string(count) + " / " + std::to_string(getInitCount());
     }
