@@ -6,13 +6,25 @@
 
 namespace analysis
 {
-
-    double safeDivide(double num, double denom)
+    namespace utils
     {
-        if (denom == 0)
-            return 0;
-        return num / denom;
-    };
+        double safeDivide(double num, double denom)
+        {
+            if (denom == 0)
+                return 0;
+            return num / denom;
+        };
+
+        static size_t getBucketIndex(size_t position, size_t chainLength, size_t numBuckets)
+        {
+            if (chainLength <= 1)
+                return 0;
+
+            double normalizedPos = static_cast<double>(position) / (chainLength);
+            size_t bucket = static_cast<size_t>(normalizedPos * numBuckets);
+            return (bucket == numBuckets) ? numBuckets - 1 : bucket;
+        };
+    }
 
     struct MomentAccumulator
     {
@@ -35,74 +47,53 @@ namespace analysis
             return *this;
         }
 
-        double nAvg() const { return safeDivide(sum, count); }
+        double nAvg() const { return utils::safeDivide(sum, count); }
 
-        double wAvg() const { return safeDivide(sumSq, sum); }
+        double wAvg() const { return utils::safeDivide(sumSq, sum); }
 
-        double disp() const { return safeDivide(wAvg(), nAvg()); }
+        double disp() const { return utils::safeDivide(wAvg(), nAvg()); }
     };
 
-    struct SequenceStats_
+    struct SequenceStats
     {
-        std::vector<MomentAccumulator> sequences;
+        std::vector<MomentAccumulator> sequences; // one per monomer
 
-        SequenceStats_() { sequences.resize(registry::getNumMonomers()); }
+        SequenceStats() { sequences.resize(registry::getNumMonomers()); }
 
-        SequenceStats_ &operator+=(const SequenceStats_ &other)
+        SequenceStats &operator+=(const SequenceStats &other)
         {
-            for (size_t i = 0; i < registry::getNumMonomers(); ++i)
+            for (size_t i = 0; i < sequences.size(); ++i)
                 sequences[i] += other.sequences[i];
             return *this;
         }
 
         void addSequence(SpeciesID id, size_t length)
         {
-            size_t monIdx = registry::getMonomerIndex(id);
-            sequences[monIdx].add(length);
+            sequences[registry::getMonomerIndex(id)].add(static_cast<double>(length));
         }
     };
 
-    struct SequenceStats
+    // Segment length histogram: maps segment length → per-monomer counts.
+    struct SegmentHistogram
     {
-        std::vector<uint64_t> monCounts;
-        std::vector<uint64_t> seqCounts;
-        std::vector<uint64_t> seqLengths2;
-        std::vector<std::map<uint32_t, uint64_t>> segmentHist;
+        std::map<uint32_t, std::vector<uint64_t>> data;
 
-        const static size_t NUM_METRICS = 3;
+        bool empty() const { return data.empty(); }
+        size_t size() const { return data.size(); }
+        auto begin() const { return data.begin(); }
+        auto end() const { return data.end(); }
 
-        SequenceStats()
+        SegmentHistogram &operator+=(const SegmentHistogram &other)
         {
-            monCounts.resize(registry::getNumMonomers(), 0);
-            seqCounts.resize(registry::getNumMonomers(), 0);
-            seqLengths2.resize(registry::getNumMonomers(), 0);
-            segmentHist.resize(registry::getNumMonomers());
-        }
-
-        static size_t SIZE() { return registry::getNumMonomers() * NUM_METRICS; }
-
-        SequenceStats &operator+=(const SequenceStats &other)
-        {
-            for (size_t i = 0; i < registry::getNumMonomers(); ++i)
+            for (const auto &[length, counts] : other.data)
             {
-                monCounts[i] += other.monCounts[i];
-                seqCounts[i] += other.seqCounts[i];
-                seqLengths2[i] += other.seqLengths2[i];
-                auto &destHist = segmentHist[i];
-                const auto &srcHist = other.segmentHist[i];
-                for (const auto &[length, count] : srcHist)
-                    destHist[length] += count;
+                auto &dest = data[length];
+                if (dest.size() < counts.size())
+                    dest.resize(counts.size(), 0);
+                for (size_t i = 0; i < counts.size(); ++i)
+                    dest[i] += counts[i];
             }
             return *this;
-        }
-
-        void addSequence(SpeciesID id, size_t length)
-        {
-            size_t monIdx = registry::getMonomerIndex(id);
-            monCounts[monIdx] += length;
-            seqCounts[monIdx] += 1;
-            seqLengths2[monIdx] += length * length;
-            segmentHist[monIdx][static_cast<uint32_t>(length)] += 1;
         }
     };
 
@@ -114,6 +105,14 @@ namespace analysis
         std::vector<MomentAccumulator> sequenceLengths; // one per monomer: run-length moments
 
         ChainStats() { sequenceLengths.resize(registry::getNumMonomers()); }
+
+        double totalMonomerSum() const {
+            double total = 0;
+            for (const auto &s : sequenceLengths)
+                total += s.sum;
+            return total;
+        }
+        double nAvgComp(size_t monomerIdx) const { return utils::safeDivide(sequenceLengths[monomerIdx].sum, totalMonomerSum()); }
 
         ChainStats &operator+=(const ChainStats &other)
         {
@@ -139,16 +138,13 @@ namespace analysis
                 else
                     for (const auto &stats : posStats)
                         for (size_t i = 0; i < FWs.size(); ++i)
-                            mw += static_cast<double>(stats.monCounts[i]) * FWs[i];
+                            mw += stats.sequences[i].sum * FWs[i];
                 chainMW.add(mw);
             }
 
             for (const auto &stats : posStats)
                 for (size_t i = 0; i < sequenceLengths.size(); ++i)
-                    sequenceLengths[i] += MomentAccumulator{
-                        static_cast<double>(stats.seqCounts[i]),
-                        static_cast<double>(stats.monCounts[i]),
-                        static_cast<double>(stats.seqLengths2[i])};
+                    sequenceLengths[i] += stats.sequences[i];
         }
     };
 
@@ -171,17 +167,13 @@ namespace analysis
         }
 
         // Accumulate posStats[b] into buckets[b] for each bucket b.
-        // posStats is indexed by bucket, each element has seqCounts, monCounts, seqLengths2 per monomer.
         void add(const std::vector<SequenceStats> &posStats)
         {
             for (size_t b = 0; b < posStats.size() && b < buckets.size(); ++b)
             {
                 const auto &s = posStats[b];
                 for (size_t m = 0; m < buckets[b].sequenceLengths.size(); ++m)
-                    buckets[b].sequenceLengths[m] += MomentAccumulator{
-                        static_cast<double>(s.seqCounts[m]),
-                        static_cast<double>(s.monCounts[m]),
-                        static_cast<double>(s.seqLengths2[m])};
+                    buckets[b].sequenceLengths[m] += s.sequences[m];
                 // chainLength tracks number of chains contributing to this bucket
                 buckets[b].chainLength.add(1.0);
             }

@@ -139,7 +139,7 @@ namespace build
         // Finalize registry
         registry::initialize();
 
-        auto chainType = ChainType::Sequence;
+        auto chainType = ChainType::Copolymer;
         if (registry::getNumMonomers() == 1)
             chainType = ChainType::Homopolymer;
         for (auto &polyType : polymerTypes)

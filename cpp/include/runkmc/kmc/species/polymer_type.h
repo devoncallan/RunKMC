@@ -10,7 +10,7 @@
 class PolymerType : public Species
 {
 public:
-    PolymerType(const SpeciesID &ID_, const std::string &name_, const std::vector<SpeciesID> &endGroup_, ChainType chainType_ = ChainType::Sequence)
+    PolymerType(const SpeciesID &ID_, const std::string &name_, const std::vector<SpeciesID> &endGroup_, ChainType chainType_ = ChainType::Copolymer)
         : Species(ID_, name_, SpeciesType::POLYMER), endGroup(endGroup_), chainType(chainType_) {};
 
     ~PolymerType() {};
@@ -54,7 +54,7 @@ public:
 private:
     std::vector<Polymer *> polymers;
     std::vector<SpeciesID> endGroup; // endGroup to identify the terminal units on the chain end.
-    ChainType chainType = ChainType::Sequence;
+    ChainType chainType = ChainType::Copolymer;
 };
 
 // typedef PolymerType *PolymerTypePtr;
@@ -157,8 +157,10 @@ public:
     const std::string toSummaryString() const
     {
         std::string s = name + ": count=" + std::to_string(count);
-        if (report) s += " [report]";
-        if (isSink) s += " [sink]";
+        if (report)
+            s += " [report]";
+        if (isSink)
+            s += " [sink]";
         return s;
     }
 

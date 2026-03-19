@@ -16,7 +16,7 @@ namespace output
         const auto polymers = speciesSet.getPolymers();
         for (const auto &polymer : polymers)
         {
-            if (polymer->isCompressed())
+            if (!polymer->isAlive())
                 continue;
             output << polymer->getSequenceString() << std::endl;
         }

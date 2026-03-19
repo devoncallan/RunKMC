@@ -32,7 +32,7 @@ namespace output
             out << str::join(ChainStatsState::getTitles(), ",") << std::endl;
         }
 
-        void writeState(std::ostream &out) const
+        void writeData(std::ostream &out) const
         {
             out << str::join(kmcState.getDataAsVector(), ",", true);
             out << str::join(speciesState.getDataAsVector(), ",", true);
@@ -54,7 +54,7 @@ namespace output
                               const KMCState &kmcState)
             : posStats(posStats), kmcState(kmcState) {}
 
-        static std::vector<std::string> getColumnNames()
+        static void writeHeader(std::ostream &out)
         {
             std::vector<std::string> cols = {std::string(C::state::BUCKET_KEY)};
             const auto monomerNames = registry::getMonomerNames();
@@ -66,35 +66,21 @@ namespace output
                 cols.push_back(std::string(C::state::WAVGSL_PREFIX) + name);
             for (const auto &name : monomerNames)
                 cols.push_back(std::string(C::state::DISPSL_PREFIX) + name);
-            return cols;
+            out << str::join(cols, ",") << std::endl;
         }
 
-        void writeBlock(std::ostream &out) const
+        void writeData(std::ostream &out) const
         {
-            if (registry::getNumMonomers() <= 1)
-                return;
-
             const auto numMonomers = registry::getNumMonomers();
-            const auto &buckets = posStats.buckets;
-            if (buckets.empty())
-                return;
-
-            writeBlockHeader(out, kmcState, buckets.size());
-            out << str::join(getColumnNames(), ",") << std::endl;
-
-            // One row per bucket
-            for (size_t b = 0; b < buckets.size(); ++b)
+            for (size_t b = 0; b < posStats.buckets.size(); ++b)
             {
-                const auto &cs = buckets[b];
                 std::vector<std::string> row;
+
+                const auto &cs = posStats.buckets[b];
                 row.push_back(std::to_string(b));
 
-                double totalMonSum = 0;
                 for (size_t m = 0; m < numMonomers; ++m)
-                    totalMonSum += cs.sequenceLengths[m].sum;
-
-                for (size_t m = 0; m < numMonomers; ++m)
-                    row.push_back(std::to_string(analysis::safeDivide(cs.sequenceLengths[m].sum, totalMonSum)));
+                    row.push_back(std::to_string(cs.nAvgComp(m)));
                 for (size_t m = 0; m < numMonomers; ++m)
                     row.push_back(std::to_string(cs.sequenceLengths[m].nAvg()));
                 for (size_t m = 0; m < numMonomers; ++m)
@@ -104,6 +90,16 @@ namespace output
 
                 out << str::join(row, ",") << std::endl;
             }
+        }
+
+        void writeBlock(std::ostream &out) const
+        {
+            if (registry::getNumMonomers() <= 1 || posStats.buckets.empty())
+                return;
+
+            writeBlockHeader(out, kmcState, posStats.buckets.size());
+            writeHeader(out);
+            writeData(out);
         }
 
     private:
@@ -117,11 +113,10 @@ namespace output
         ChainRecordWriter(const std::vector<Polymer *> &polymers)
             : polymers(polymers) {}
 
-        static std::vector<std::string> getColumnNames()
+        static void writeHeader(std::ostream &out)
         {
             std::vector<std::string> cols;
-            auto monomerNames = registry::getMonomerNames();
-
+            const auto monomerNames = registry::getMonomerNames();
             if (monomerNames.size() == 1)
             {
                 cols.push_back("ChainLength");
@@ -135,23 +130,12 @@ namespace output
                 for (const auto &name : monomerNames)
                     cols.push_back(std::string(C::state::SEQLEN2_PREFIX) + name);
             }
-            return cols;
+            out << str::join(cols, ",") << std::endl;
         }
 
-        // Write a complete block: header + column names + records
-        void writeBlock(std::ostream &out, const KMCState &kmc) const
-        {
-            writeBlockHeader(out, kmc, polymers.size());
-            out << str::join(getColumnNames(), ",") << std::endl;
-
-            writeRecords(out);
-        }
-
-    private:
-        void writeRecords(std::ostream &out) const
+        void writeData(std::ostream &out) const
         {
             const auto numMonomers = registry::getNumMonomers();
-
             if (numMonomers == 1)
             {
                 for (const auto *polymer : polymers)
@@ -163,27 +147,27 @@ namespace output
             {
                 std::vector<std::string> row;
 
-                const auto &posStats = polymer->getPositionalStats();
-                std::vector<uint64_t> monCounts(numMonomers, 0);
-                for (const auto &stats : posStats)
-                {
-                    for (size_t i = 0; i < numMonomers; ++i)
-                        monCounts[i] += stats.monCounts[i];
-                }
-                for (auto count : monCounts)
-                    row.push_back(std::to_string(count));
-
+                // Aggregate across all positional buckets
                 analysis::SequenceStats aggregated;
-                for (const auto &stats : posStats)
+                for (const auto &stats : polymer->getPositionalStats())
                     aggregated += stats;
 
                 for (size_t i = 0; i < numMonomers; ++i)
-                    row.push_back(std::to_string(aggregated.seqCounts[i]));
+                    row.push_back(std::to_string(aggregated.sequences[i].sum));
                 for (size_t i = 0; i < numMonomers; ++i)
-                    row.push_back(std::to_string(aggregated.seqLengths2[i]));
+                    row.push_back(std::to_string(aggregated.sequences[i].count));
+                for (size_t i = 0; i < numMonomers; ++i)
+                    row.push_back(std::to_string(aggregated.sequences[i].sumSq));
 
                 out << str::join(row, ",") << std::endl;
             }
+        }
+
+        void writeBlock(std::ostream &out, const KMCState &kmc) const
+        {
+            writeBlockHeader(out, kmc, polymers.size());
+            writeHeader(out);
+            writeData(out);
         }
 
         const std::vector<Polymer *> &polymers;
@@ -192,63 +176,43 @@ namespace output
     class SegmentHistogramWriter
     {
     public:
-        SegmentHistogramWriter(const PolymerContainer &container, const KMCState &kmcState)
-            : container(container), kmcState(kmcState) {}
+        SegmentHistogramWriter(const analysis::SegmentHistogram &histogram, const KMCState &kmcState)
+            : histogram(histogram), kmcState(kmcState) {}
 
-        void writeBlock(std::ostream &out) const
+        static void writeHeader(std::ostream &out)
         {
             const auto monomerNames = registry::getMonomerNames();
-            if (monomerNames.empty())
-                return;
-
-            std::map<uint32_t, std::vector<uint64_t>> histogram;
-            const auto numMonomers = monomerNames.size();
-
-            for (const auto *polymer : container.getPolymers())
-            {
-                for (const auto &stats : polymer->getPositionalStats())
-                {
-                    for (size_t idx = 0; idx < numMonomers && idx < stats.segmentHist.size(); ++idx)
-                    {
-                        for (const auto &[length, count] : stats.segmentHist[idx])
-                        {
-                            auto &row = histogram[length];
-                            if (row.size() < numMonomers)
-                                row.resize(numMonomers, 0);
-                            row[idx] += count;
-                        }
-                    }
-                }
-            }
-
-            if (histogram.empty())
-                return;
-
-            writeBlockHeader(out, kmcState, histogram.size());
-
-            // Column header
-            std::vector<std::string> titles;
-            titles.emplace_back(std::string(C::state::SEGMENT_LENGTH_KEY));
+            std::vector<std::string> cols = {std::string(C::state::SEGMENT_LENGTH_KEY)};
             for (const auto &name : monomerNames)
-                titles.emplace_back(std::string(C::state::SEGMENT_COUNT_PREFIX) + name);
-            out << str::join(titles, ",") << std::endl;
+                cols.emplace_back(std::string(C::state::SEGMENT_COUNT_PREFIX) + name);
+            out << str::join(cols, ",") << std::endl;
+        }
 
+        void writeData(std::ostream &out) const
+        {
+            const auto numMonomers = registry::getMonomerNames().size();
             for (const auto &[length, counts] : histogram)
             {
                 std::vector<std::string> row;
                 row.reserve(numMonomers + 1);
                 row.push_back(std::to_string(length));
                 for (size_t idx = 0; idx < numMonomers; ++idx)
-                {
-                    uint64_t value = (idx < counts.size()) ? counts[idx] : 0;
-                    row.push_back(std::to_string(value));
-                }
+                    row.push_back(std::to_string(idx < counts.size() ? counts[idx] : 0));
                 out << str::join(row, ",") << std::endl;
             }
         }
 
+        void writeBlock(std::ostream &out) const
+        {
+            if (histogram.empty())
+                return;
+            writeBlockHeader(out, kmcState, histogram.size());
+            writeHeader(out);
+            writeData(out);
+        }
+
     private:
-        const PolymerContainer &container;
+        const analysis::SegmentHistogram &histogram;
         const KMCState &kmcState;
     };
 
@@ -265,7 +229,7 @@ namespace output
     {
         auto resultsFile = std::ofstream(paths.resultsFile(), std::ios::app);
         ResultsWriter writer(state.kmc, state.species, state.chainStats);
-        writer.writeState(resultsFile);
+        writer.writeData(resultsFile);
     }
 
     void writeChainRecords(const PolymerContainer &container, const KMCState &kmc,
@@ -280,8 +244,12 @@ namespace output
     void writeSegmentHistogram(const PolymerContainer &container, const KMCState &kmc,
                                const SimulationPaths &paths)
     {
+        analysis::SegmentHistogram histogram;
+        for (const auto *polymer : container.getPolymers())
+            histogram += polymer->getSegmentHistogram();
+
         auto segFile = std::ofstream(paths.segmentHistFile(container.name), std::ios::app);
-        SegmentHistogramWriter writer(container, kmc);
+        SegmentHistogramWriter writer(histogram, kmc);
         writer.writeBlock(segFile);
     }
 

@@ -129,7 +129,7 @@ struct ChainStatsState
 
     std::vector<std::string> getDataAsVector() const
     {
-        using analysis::safeDivide;
+        using analysis::utils::safeDivide;
         std::vector<std::string> output;
         output.push_back(std::to_string(stats.numChains));
         output.push_back(std::to_string(stats.chainLength.nAvg()));

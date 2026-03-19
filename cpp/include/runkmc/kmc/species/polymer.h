@@ -1,116 +1,70 @@
 #pragma once
 
-#include <type_traits>
+// #include <type_traits>
 #include <variant>
 
 #include "common.h"
-#include "kmc/species/unit.h"
+#include "kmc/species/types.h"
 #include "kmc/analysis/analysis.h"
-
-enum class ChainType
-{
-    Sequence,
-    Homopolymer
-};
-
-struct SequenceBuffer
-{
-    std::vector<SpeciesID> units;
-    std::vector<analysis::SequenceStats> posStats;
-
-    void reserve(size_t maxDOP)
-    {
-        units.reserve(maxDOP);
-        posStats.reserve(NUM_BUCKETS);
-    }
-
-    void clear()
-    {
-        units.clear();
-        std::vector<SpeciesID>().swap(units);
-    }
-};
-
-struct HomopolymerBuffer
-{
-    SpeciesID monomer = INVALID_SPECIES_ID;
-    uint32_t length = 0;
-
-    void push(SpeciesID unit)
-    {
-        if (monomer == INVALID_SPECIES_ID)
-            monomer = unit;
-        else if (monomer != unit)
-            console::error("Homopolymer buffer received mismatched monomer ID; mixed compositions are unsupported.");
-        ++length;
-    }
-
-    void pop()
-    {
-        if (length == 0)
-            console::error("Trying to remove unit from empty polymer.");
-        --length;
-        if (length == 0)
-            monomer = INVALID_SPECIES_ID;
-    }
-
-    void reset()
-    {
-        monomer = INVALID_SPECIES_ID;
-        length = 0;
-    }
-};
 
 class Polymer
 {
 private:
-    using Chain = std::variant<SequenceBuffer, HomopolymerBuffer>;
+    using Chain = std::variant<HomopolymerBuffer, CopolymerBuffer, CompressedCopolymerBuffer>;
 
     PolymerState state;
     ChainType chainType;
     Chain chain;
     SpeciesID initiator;
 
-    template <typename FuncSequence, typename FuncHomo>
-    decltype(auto) visitChain(FuncSequence &&seqFn, FuncHomo &&homoFn)
+    template <typename FnHomo, typename FnCopoly, typename FnCompressed>
+    decltype(auto) visitChain(FnHomo &&homoFn, FnCopoly &&copolyFn, FnCompressed &&compressedFn)
     {
-        if (auto *seq = std::get_if<SequenceBuffer>(&chain))
-            return std::forward<FuncSequence>(seqFn)(*seq);
-        auto *homo = std::get_if<HomopolymerBuffer>(&chain);
-        if (!homo)
-            console::error("Invalid polymer representation state.");
-        return std::forward<FuncHomo>(homoFn)(*homo);
+        return std::visit([&](auto &c) -> decltype(auto)
+                          {
+            using T = std::decay_t<decltype(c)>;
+            if constexpr (std::is_same_v<T, HomopolymerBuffer>)
+                return std::forward<FnHomo>(homoFn)(c);
+            else if constexpr (std::is_same_v<T, CopolymerBuffer>)
+                return std::forward<FnCopoly>(copolyFn)(c);
+            else
+                return std::forward<FnCompressed>(compressedFn)(c); }, chain);
     }
 
-    template <typename FuncSequence, typename FuncHomo>
-    decltype(auto) visitChain(FuncSequence &&seqFn, FuncHomo &&homoFn) const
+    template <typename FnHomo, typename FnCopoly, typename FnCompressed>
+    decltype(auto) visitChain(FnHomo &&homoFn, FnCopoly &&copolyFn, FnCompressed &&compressedFn) const
     {
-        if (auto *seq = std::get_if<SequenceBuffer>(&chain))
-            return std::forward<FuncSequence>(seqFn)(*seq);
-        auto *homo = std::get_if<HomopolymerBuffer>(&chain);
-        if (!homo)
-            console::error("Invalid polymer representation state.");
-        return std::forward<FuncHomo>(homoFn)(*homo);
+        return std::visit([&](const auto &c) -> decltype(auto)
+                          {
+            using T = std::decay_t<decltype(c)>;
+            if constexpr (std::is_same_v<T, HomopolymerBuffer>)
+                return std::forward<FnHomo>(homoFn)(c);
+            else if constexpr (std::is_same_v<T, CopolymerBuffer>)
+                return std::forward<FnCopoly>(copolyFn)(c);
+            else
+                return std::forward<FnCompressed>(compressedFn)(c); }, chain);
     }
 
 public:
     static ChainType defaultChainType()
     {
-        return registry::getNumMonomers() <= 1 ? ChainType::Homopolymer : ChainType::Sequence;
+        return registry::getNumMonomers() <= 1 ? ChainType::Homopolymer : ChainType::Copolymer;
     }
 
-    Polymer(ChainType type = ChainType::Sequence, uint32_t maxDOP = 1000)
+    Polymer(ChainType type = ChainType::Copolymer, uint32_t maxDOP = 1000)
         : state(ALIVE), chainType(type), chain(), initiator(INVALID_SPECIES_ID)
     {
-        if (chainType == ChainType::Sequence)
-        {
-            chain.emplace<SequenceBuffer>();
-            std::get<SequenceBuffer>(chain).reserve(maxDOP);
-        }
-        else
+        if (chainType == ChainType::Homopolymer)
         {
             chain.emplace<HomopolymerBuffer>();
         }
+        else if (chainType == ChainType::Copolymer)
+        {
+            auto &buf = chain.emplace<CopolymerBuffer>();
+            buf.units.reserve(maxDOP);
+        }
+        else
+            console::error("Invalid polymer chain type.");
     };
 
     ~Polymer() = default;
@@ -124,13 +78,21 @@ public:
     void addUnitToEnd(const SpeciesID unit)
     {
         visitChain(
-            [&](SequenceBuffer &seq)
+            [&](HomopolymerBuffer &_chain)
             {
-                seq.units.push_back(unit);
+                if (_chain.monomer == INVALID_SPECIES_ID)
+                    _chain.monomer = unit;
+                else if (_chain.monomer != unit)
+                    console::error("Homopolymer buffer received mismatched monomer ID; mixed compositions are unsupported.");
+                ++_chain.length;
             },
-            [&](HomopolymerBuffer &homo)
+            [&](CopolymerBuffer &_chain)
             {
-                homo.push(unit);
+                _chain.units.push_back(unit);
+            },
+            [](CompressedCopolymerBuffer &)
+            {
+                console::error("Cannot add unit to compressed polymer.");
             });
     }
 
@@ -143,35 +105,39 @@ public:
     void removeUnitFromEnd()
     {
         visitChain(
-            [&](SequenceBuffer &seq)
+            [](HomopolymerBuffer &_chain)
             {
-                if (seq.units.empty())
+                if (_chain.length == 0)
                     console::error("Trying to remove unit from empty polymer.");
-                if (seq.units.size() <= 1)
-                    console::error("Trying to remove last unit from polymer.");
-                seq.units.pop_back();
+                --_chain.length;
+                if (_chain.length == 0)
+                    _chain.monomer = INVALID_SPECIES_ID;
             },
-            [&](HomopolymerBuffer &homo)
+            [](CopolymerBuffer &_chain)
             {
-                if (homo.length == 0)
+                if (_chain.units.empty())
                     console::error("Trying to remove unit from empty polymer.");
-                if (homo.length <= 1)
+                if (_chain.units.size() <= 1)
                     console::error("Trying to remove last unit from polymer.");
-                homo.pop();
-            });
+                _chain.units.pop_back();
+            },
+            [](CompressedCopolymerBuffer &)
+            { console::error("Cannot remove unit from compressed polymer."); });
     }
 
     void clearSequence()
     {
         visitChain(
-            [&](SequenceBuffer &seq)
+            [](HomopolymerBuffer &_chain)
             {
-                seq.clear();
+                _chain.monomer = INVALID_SPECIES_ID;
+                _chain.length = 0;
             },
-            [&](HomopolymerBuffer &homo)
+            [](CopolymerBuffer &_chain)
             {
-                homo.reset();
-            });
+                _chain.units.clear();
+            },
+            [](CompressedCopolymerBuffer &) {});
     }
 
     /***************** State functions *****************/
@@ -182,10 +148,14 @@ public:
     size_t getDegreeOfPolymerization() const
     {
         return visitChain(
-            [](const SequenceBuffer &seq)
-            { return seq.units.size(); },
-            [](const HomopolymerBuffer &homo)
-            { return static_cast<size_t>(homo.length); });
+            [](const HomopolymerBuffer &_chain)
+            { 
+                return static_cast<size_t>(_chain.length); 
+            },
+            [](const CopolymerBuffer &_chain)
+            { return _chain.units.size(); },
+            [](const CompressedCopolymerBuffer &_chain)
+            { return static_cast<size_t>(_chain.length); });
     }
 
     bool endGroupIs(const std::vector<SpeciesID> &endGroup) const
@@ -194,82 +164,91 @@ public:
             return false;
 
         return visitChain(
-            [&](const SequenceBuffer &seq)
-            {
-                if (endGroup.size() > seq.units.size() + 1)
-                    return false;
-                return equal(seq.units.end() - endGroup.size(), seq.units.end(), endGroup.begin());
-            },
-            [&](const HomopolymerBuffer &)
+            [](const HomopolymerBuffer &)
             {
                 return true;
+            },
+            [&](const CopolymerBuffer &_chain)
+            {
+                if (endGroup.size() > _chain.units.size() + 1)
+                    return false;
+                return equal(_chain.units.end() - endGroup.size(), _chain.units.end(), endGroup.begin());
+            },
+            [](const CompressedCopolymerBuffer &)
+            {
+                return false;
             });
-    }
-
-    bool isCompressed() const
-    {
-        return visitChain(
-            [](const SequenceBuffer &seq)
-            { return seq.units.empty() && !seq.posStats.empty(); },
-            [](const HomopolymerBuffer &)
-            { return true; });
     }
 
     std::string getSequenceString() const
     {
         return visitChain(
-            [](const SequenceBuffer &seq)
+            [](const HomopolymerBuffer &_chain)
             {
-                if (seq.units.empty())
+                if (_chain.length == 0 || _chain.monomer == INVALID_SPECIES_ID)
                     return std::string();
                 std::string out;
-                out.reserve(seq.units.size() * 2);
-                for (const auto id : seq.units)
+                out.reserve(static_cast<size_t>(_chain.length) * 2);
+                for (uint32_t i = 0; i < _chain.length; ++i)
+                {
+                    out += std::to_string(_chain.monomer);
+                    out.push_back(' ');
+                }
+                return out;
+            },
+            [](const CopolymerBuffer &_chain)
+            {
+                if (_chain.units.empty())
+                    return std::string();
+                std::string out;
+                out.reserve(_chain.units.size() * 2);
+                for (const auto id : _chain.units)
                 {
                     out += std::to_string(id);
                     out.push_back(' ');
                 }
                 return out;
             },
-            [](const HomopolymerBuffer &homo)
-            {
-                if (homo.length == 0 || homo.monomer == INVALID_SPECIES_ID)
-                    return std::string();
-                std::string out;
-                out.reserve(static_cast<size_t>(homo.length) * 2);
-                for (uint32_t i = 0; i < homo.length; ++i)
-                {
-                    out += std::to_string(homo.monomer);
-                    out.push_back(' ');
-                }
-                return out;
-            });
+            [](const CompressedCopolymerBuffer &)
+            { return std::string(); });
     }
 
     PolymerState getState() const { return state; }
 
     const std::vector<SpeciesID> &getSequence() const
     {
+        static const std::vector<SpeciesID> empty;
         return visitChain(
-            [](const SequenceBuffer &seq) -> const std::vector<SpeciesID> &
-            { return seq.units; },
-            [](const HomopolymerBuffer &) -> const std::vector<SpeciesID> &
-            {
-                static const std::vector<SpeciesID> empty;
-                return empty;
-            });
+            [&](const HomopolymerBuffer &) -> const std::vector<SpeciesID> &
+            { return empty; },
+            [](const CopolymerBuffer &_chain) -> const std::vector<SpeciesID> &
+            { return _chain.units; },
+            [&](const CompressedCopolymerBuffer &) -> const std::vector<SpeciesID> &
+            { return empty; });
     }
 
     const std::vector<analysis::SequenceStats> &getPositionalStats() const
     {
+        static const std::vector<analysis::SequenceStats> empty;
         return visitChain(
-            [](const SequenceBuffer &seq) -> const std::vector<analysis::SequenceStats> &
-            { return seq.posStats; },
-            [](const HomopolymerBuffer &) -> const std::vector<analysis::SequenceStats> &
-            {
-                static const std::vector<analysis::SequenceStats> empty;
-                return empty;
-            });
+            [&](const HomopolymerBuffer &) -> const std::vector<analysis::SequenceStats> &
+            { return empty; },
+            [&](const CopolymerBuffer &) -> const std::vector<analysis::SequenceStats> &
+            { return empty; },
+            [](const CompressedCopolymerBuffer &_chain) -> const std::vector<analysis::SequenceStats> &
+            { return _chain.posStats; });
+    }
+
+    const analysis::SegmentHistogram &getSegmentHistogram() const
+    {
+        static const analysis::SegmentHistogram empty;
+        return visitChain(
+            [&](const HomopolymerBuffer &) -> const analysis::SegmentHistogram &
+            { return empty; },
+            [&](const CopolymerBuffer &) -> const analysis::SegmentHistogram &
+            { return empty; },
+            [](const CompressedCopolymerBuffer &_chain) -> const analysis::SegmentHistogram &
+            { return _chain.segHist; });
     }
 
     /***************** Reaction functions *****************/
@@ -277,15 +256,12 @@ public:
     void terminate()
     {
         visitChain(
-            [&](SequenceBuffer &seq)
+            [](HomopolymerBuffer &) {},
+            [&](CopolymerBuffer &_chain)
             {
-                seq.posStats = analysis::calculatePositionalSequenceStats(seq.units, NUM_BUCKETS);
-                seq.clear();
+                chain.emplace<CompressedCopolymerBuffer>(analysis::compressCopolymer(_chain));
             },
-            [&](HomopolymerBuffer &)
-            {
-                // Preserve length for homopolymer analysis.
-            });
+            [](CompressedCopolymerBuffer &) {});
     }
 
     void terminateByChainTransfer()
@@ -302,19 +278,19 @@ public:
 
     void terminateByCombination(Polymer *&polymer)
     {
-        if (chainType == ChainType::Sequence)
+        if (chainType == ChainType::Copolymer)
         {
-            if (polymer->chainType != ChainType::Sequence)
-                console::error("Combination between sequence and homopolymer chains is not supported.");
+            if (polymer->chainType != ChainType::Copolymer)
+                console::error("Combination between copolymer and homopolymer chains is not supported.");
 
-            auto &selfSeq = std::get<SequenceBuffer>(chain);
-            const auto &otherSeq = std::get<SequenceBuffer>(polymer->chain);
+            auto &selfSeq = std::get<CopolymerBuffer>(chain);
+            const auto &otherSeq = std::get<CopolymerBuffer>(polymer->chain);
             selfSeq.units.insert(selfSeq.units.end(), otherSeq.units.rbegin(), otherSeq.units.rend());
         }
         else
         {
-            if (polymer->chainType != ChainType::Homopolymer)
-                console::error("Combination between homopolymer and sequence chains is not supported.");
+            if (polymer->chainType != ChainType::Copolymer)
+                console::error("Combination between homopolymer and copolymer chains is not supported.");
 
             auto &selfHomo = std::get<HomopolymerBuffer>(chain);
             const auto &otherHomo = std::get<HomopolymerBuffer>(polymer->chain);

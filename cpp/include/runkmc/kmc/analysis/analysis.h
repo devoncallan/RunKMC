@@ -1,29 +1,42 @@
 #pragma once
 #include "common.h"
+#include "kmc/species/types.h"
 #include "kmc/analysis/types.h"
 
 namespace analysis
 {
-
-    namespace utils
+    inline CompressedCopolymerBuffer compressCopolymer(const CopolymerBuffer &buf)
     {
-        static size_t getBucketIndex(size_t position, size_t chainLength, size_t numBuckets);
-    }
+        const size_t numBuckets = NUM_BUCKETS;
+        const size_t numMonomers = registry::getNumMonomers();
+        const auto &units = buf.units;
 
-    // Calculate sequence statistics for a single polymer sequence, divided into buckets
-    std::vector<SequenceStats> calculatePositionalSequenceStats(const std::vector<SpeciesID> &sequence, const size_t &numBuckets)
-    {
-        std::vector<SequenceStats> stats(numBuckets);
-        if (sequence.empty())
-            return stats;
+        CompressedCopolymerBuffer result;
+        result.length = static_cast<uint32_t>(units.size());
+        result.posStats.resize(numBuckets);
+
+        if (units.empty())
+            return result;
 
         SpeciesID currentMonomerID = 0;
         size_t currentSequenceLength = 0;
 
-        for (size_t i = 0; i < sequence.size(); ++i)
+        auto flushRun = [&](size_t bucket)
         {
-            size_t bucket = utils::getBucketIndex(i, sequence.size(), numBuckets);
-            SpeciesID id = sequence[i];
+            if (currentSequenceLength == 0)
+                return;
+            result.posStats[bucket].addSequence(currentMonomerID, currentSequenceLength);
+            size_t monIdx = registry::getMonomerIndex(currentMonomerID);
+            auto &counts = result.segHist.data[static_cast<uint32_t>(currentSequenceLength)];
+            if (counts.size() <= monIdx)
+                counts.resize(numMonomers, 0);
+            counts[monIdx]++;
+        };
+
+        for (size_t i = 0; i < units.size(); ++i)
+        {
+            size_t bucket = utils::getBucketIndex(i, units.size(), numBuckets);
+            SpeciesID id = units[i];
 
             if (!registry::isMonomer(id))
                 continue;
@@ -34,31 +47,15 @@ namespace analysis
                 continue;
             }
 
-            if (currentSequenceLength > 0)
-                stats[bucket].addSequence(currentMonomerID, currentSequenceLength);
+            flushRun(bucket);
 
             currentMonomerID = id;
             currentSequenceLength = 1;
         }
 
-        size_t bucket = utils::getBucketIndex(sequence.size() - 1, sequence.size(), numBuckets);
-        if (currentSequenceLength > 0)
-            stats[bucket].addSequence(currentMonomerID, currentSequenceLength);
+        size_t lastBucket = utils::getBucketIndex(units.size() - 1, units.size(), numBuckets);
+        flushRun(lastBucket);
 
-        return stats;
-    }
-
-} // namespace analysis
-
-namespace analysis::utils
-{
-    static size_t getBucketIndex(size_t position, size_t chainLength, size_t numBuckets)
-    {
-        if (chainLength <= 1)
-            return 0;
-
-        double normalizedPos = static_cast<double>(position) / (chainLength);
-        size_t bucket = static_cast<size_t>(normalizedPos * numBuckets);
-        return (bucket == numBuckets) ? numBuckets - 1 : bucket;
+        return result;
     }
 }

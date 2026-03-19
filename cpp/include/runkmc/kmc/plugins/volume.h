@@ -9,7 +9,7 @@
 #include "common.h"
 #include "kmc/kmc.h"
 #include "kmc/plugin.h"
-#include "kmc/species/unit.h"
+#include "kmc/species/types.h"
 
 /**
  * @brief Volume management plugin.
