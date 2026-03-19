@@ -74,6 +74,9 @@ namespace io::text
         bool hasSequence = (seqStart != std::string::npos && seqEnd != std::string::npos && seqEnd > seqStart);
         std::vector<std::string> endGroupUnitNames;
 
+        std::vector<std::string> vars = {args.begin() + 2, args.end()};
+        readVar(vars, C::io::REPORT_KEY, polymer.report);
+
         if (!hasSequence)
         {
             polymer.endGroupUnitNames = {};
@@ -97,11 +100,15 @@ namespace io::text
         labels.type = species.type;
 
         std::vector<std::string> vars = {args.begin() + 2, args.end()};
-        if (vars.size() != 1)
+        if (vars.empty())
             console::input_error("Polymer label definition requires polymer names separated by '|', e.g., LABEL MyLabel P[A.A]|P[B.B]");
 
+        // First token is the pipe-separated polymer names; remaining tokens are key=value pairs
         std::vector<std::string> polymerNames = str::splitByDelimeter(vars[0], "|");
         labels.polymerNames = polymerNames;
+
+        std::vector<std::string> kvars = {vars.begin() + 1, vars.end()};
+        readVar(kvars, C::io::REPORT_KEY, labels.report);
 
         return labels;
     }
@@ -112,7 +119,6 @@ namespace io::text
         std::vector<std::string> unitLines;
         std::vector<std::string> polymerLines;
         std::vector<std::string> labelLines;
-        std::vector<std::string> deadPolymerLines;
 
         for (const auto &line : lines)
         {
@@ -128,20 +134,18 @@ namespace io::text
             else if (species.type == SpeciesType::LABEL)
                 labelLines.push_back(line);
             else if (SpeciesType::isDeadPolymerType(species.type))
-                deadPolymerLines.push_back(line);
+                console::input_error("Species type DEAD_P is no longer supported. Use type P with 'report: true' instead.");
             else
                 console::input_error("Unknown species type: " + std::string(species.type));
         }
 
-        // ===== PASS 2: Parse in order: Units, Polymers, Labels, Dead Polymers =====
+        // ===== PASS 2: Parse in order: Units, Polymers, Labels =====
         std::vector<types::UnitRead> units;
         std::vector<types::PolymerTypeRead> polymerTypes;
         std::vector<types::PolymerLabelsRead> labels;
-        std::vector<types::SpeciesRead> deadPolymerSpecs;
         units.reserve(unitLines.size());
         polymerTypes.reserve(polymerLines.size());
         labels.reserve(labelLines.size());
-        deadPolymerSpecs.reserve(deadPolymerLines.size());
 
         for (const auto &line : unitLines)
             units.push_back(parseUnit(str::splitByWhitespace(line)));
@@ -152,14 +156,10 @@ namespace io::text
         for (const auto &line : labelLines)
             labels.push_back(parsePolymerLabels(str::splitByWhitespace(line)));
 
-        for (const auto &line : deadPolymerLines)
-            deadPolymerSpecs.push_back(parseBaseSpecies(str::splitByWhitespace(line)));
-
         types::SpeciesSetRead speciesSet;
         speciesSet.units = std::move(units);
         speciesSet.polymerTypes = std::move(polymerTypes);
         speciesSet.polymerLabels = std::move(labels);
-        speciesSet.deadPolymerSpecs = std::move(deadPolymerSpecs);
 
         return speciesSet;
     }
@@ -271,6 +271,15 @@ namespace io::text
                 console::input_error("Integer value out of range: " + str);
 
             return static_cast<int>(d);
+        }
+        else if constexpr (std::is_same<T, bool>::value)
+        {
+            if (str == "true" || str == "1")
+                return true;
+            else if (str == "false" || str == "0")
+                return false;
+            else
+                console::input_error("Expected bool value ('true'/'false'), got: " + str);
         }
         else if constexpr (std::is_same<T, std::string>::value)
             return str;

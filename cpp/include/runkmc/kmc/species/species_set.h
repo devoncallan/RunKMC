@@ -62,19 +62,9 @@ public:
             for (const auto &index : indices)
                 polymerTypePtrs.push_back(&polymerTypes[index]);
 
-            polymerContainers.push_back(PolymerContainer(containerMap.ID, containerMap.name, polymerTypePtrs));
+            auto &container = polymerContainers.emplace_back(containerMap.ID, containerMap.name, polymerTypePtrs);
+            container.report = containerMap.report;
             polymerContainerPtrs.push_back(&polymerContainers.back());
-        }
-
-        // Find the dead polymer container (if any DEAD_P species defined)
-        const auto &deadIDs = registry::getAllDeadPolymerIDs();
-        for (auto &container : polymerContainers)
-        {
-            if (std::find(deadIDs.begin(), deadIDs.end(), container.ID) != deadIDs.end())
-            {
-                deadPolymerContainerPtr = &container;
-                break;
-            }
         }
 
         printSummary();
@@ -149,15 +139,6 @@ public:
         return polymers;
     }
 
-    void analyze(SystemState &systemState)
-    {
-        const auto FWs = getMonomerFWs();
-        analysis::ChainStats stats;
-        for (const auto *polymer : getPolymers())
-            stats.add(polymer->getDegreeOfPolymerization(), polymer->getPositionalStats(), FWs);
-        systemState.chainStats.stats = std::move(stats);
-    }
-
     void printSummary() const
     {
         species::logger.debug("Units:");
@@ -186,8 +167,15 @@ public:
     std::vector<PolymerContainer> &getPolymerContainers() { return polymerContainers; }
     const std::vector<PolymerContainer> &getPolymerContainers() const { return polymerContainers; }
     const std::vector<PolymerContainer *> &getPolymerContainerPtrs() const { return polymerContainerPtrs; }
-    PolymerContainer &getDeadPolymerContainer() { return *deadPolymerContainerPtr; }
-    const PolymerContainer &getDeadPolymerContainer() const { return *deadPolymerContainerPtr; }
+
+    std::vector<PolymerContainer *> getReportingContainers()
+    {
+        std::vector<PolymerContainer *> result;
+        for (auto &container : polymerContainers)
+            if (container.report)
+                result.push_back(&container);
+        return result;
+    }
 
     double getNAV() const { return NAV; }
 
@@ -195,7 +183,6 @@ private:
     std::vector<PolymerType> polymerTypes;
     std::vector<PolymerContainer> polymerContainers;
     std::vector<PolymerContainer *> polymerContainerPtrs;
-    PolymerContainer *deadPolymerContainerPtr = nullptr;
 
     std::vector<Unit> units;
     size_t numParticles;

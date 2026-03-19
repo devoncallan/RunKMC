@@ -26,11 +26,6 @@ public:
         if (config.reportPolymers && !std::filesystem::exists(polymerFile()))
             std::filesystem::create_directories(polymerFile().parent_path());
 
-        if (config.reportSequences && !std::filesystem::exists(sequencesFile()))
-            std::filesystem::create_directories(sequencesFile().parent_path());
-        if (config.reportSegmentHistogram && !std::filesystem::exists(segmentHistFile()))
-            std::filesystem::create_directories(segmentHistFile().parent_path());
-
         // Copy input file to output directory for record-keeping
         if (!std::filesystem::exists(sourceInputFile()))
             std::filesystem::copy(config.inputFilepath, localInputFile());
@@ -47,7 +42,18 @@ public:
     std::filesystem::path speciesFile() const { return _baseDir / C::paths::SPECIES_FILE; }
     std::filesystem::path resultsFile() const { return _baseDir / C::paths::RESULTS_FILE; }
     std::filesystem::path polymerFile() const { return _baseDir / C::paths::POLYMERS_FILE; }
-    std::filesystem::path sequencesFile() const { return _baseDir / C::paths::SEQUENCES_FILE; }
-    std::filesystem::path chainRecordsFile() const { return _baseDir / C::paths::CHAIN_RECORDS_FILE; }
-    std::filesystem::path segmentHistFile() const { return _baseDir / C::paths::SEGMENT_HIST_FILE; }
+
+    // Per-container output files
+    std::filesystem::path chainsFile(const std::string &name) const
+    {
+        return _baseDir / (std::string(C::paths::CHAINS_PREFIX) + name + ".dat");
+    }
+    std::filesystem::path posChainFile(const std::string &name) const
+    {
+        return _baseDir / (std::string(C::paths::POS_CHAIN_PREFIX) + name + ".dat");
+    }
+    std::filesystem::path segmentHistFile(const std::string &name) const
+    {
+        return _baseDir / (std::string(C::paths::SEGMENT_HIST_PREFIX) + name + ".dat");
+    }
 };

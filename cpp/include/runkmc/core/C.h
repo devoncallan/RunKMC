@@ -48,6 +48,7 @@ namespace C::io
     inline constexpr std::string_view EFFICIENCY_KEY = "f";
     inline constexpr std::string_view END_GROUP_NAMES_KEY = "end_group_units";
     inline constexpr std::string_view POLYMER_NAMES_KEY = "polymer_names";
+    inline constexpr std::string_view REPORT_KEY = "report";
 
     // Reactions
     inline constexpr std::string_view RATE_CONSTANT_KEY = "rate_constant";
@@ -74,6 +75,7 @@ namespace C::state
     inline constexpr std::string_view TERMINATED_CHAIN_COUNT_KEY = "TerminatedChainCount";
 
     // Chain and molecular weight stats
+    inline constexpr std::string_view NCHAINS_KEY = "nChains";
     inline constexpr std::string_view NAVGCL_KEY = "nAvgCL";
     inline constexpr std::string_view WAVGCL_KEY = "wAvgCL";
     inline constexpr std::string_view DISPCL_KEY = "dispCL";
@@ -98,19 +100,19 @@ namespace C::state
     inline constexpr std::string_view TOTALSEQLEN2_PREFIX = "TotalSeqLen2_";
     inline constexpr std::string_view SEGMENT_COUNT_PREFIX = "SegmentCount_";
     inline constexpr std::string_view SEGMENT_LENGTH_KEY = "SegmentLength";
-    inline constexpr std::string_view BINS_KEY = "Bins";
+    inline constexpr std::string_view BINS_KEY = "Count";
 }
 
 namespace C::paths
 {
     inline constexpr std::string_view INPUT_FILE = "input.txt";
     inline constexpr std::string_view RESULTS_FILE = "results.csv";
-    inline constexpr std::string_view SEQUENCES_FILE = "sequences.csv";
     inline constexpr std::string_view POLYMERS_FILE = "polymers.dat";
-    inline constexpr std::string_view CHAIN_RECORDS_FILE = "chain_records.csv";
-    inline constexpr std::string_view SEGMENT_HIST_FILE = "segment_hist.csv";
     inline constexpr std::string_view SPECIES_FILE = "species.yaml";
     inline constexpr std::string_view PARSED_INPUT_FILE = "parsed_input.yaml";
+    inline constexpr std::string_view CHAINS_PREFIX = "chains_";
+    inline constexpr std::string_view POS_CHAIN_PREFIX = "pos_chain_";
+    inline constexpr std::string_view SEGMENT_HIST_PREFIX = "segment_hist_";
 };
 
 namespace C::io::color

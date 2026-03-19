@@ -28,19 +28,6 @@ class StateData:
     monomer_conv: NDArray[np.float64]
     unit_counts: Dict[str, NDArray[np.uint64]]
     polymer_counts: Dict[str, NDArray[np.uint64]]
-    terminated_chain_count: NDArray[np.uint64]
-
-    # Analysis State
-    nAvgCL: NDArray[np.float64]
-    wAvgCL: NDArray[np.float64]
-    dispCL: NDArray[np.float64]
-    nAvgMW: NDArray[np.float64]
-    wAvgMW: NDArray[np.float64]
-    dispMW: NDArray[np.float64]
-
-    nAvgSL: Dict[str, NDArray[np.float64]] | None
-    wAvgSL: Dict[str, NDArray[np.float64]] | None
-    dispSL: Dict[str, NDArray[np.float64]] | None
 
     _raw_data: pd.DataFrame
 
@@ -52,8 +39,6 @@ class StateData:
         unit_names = species.get_unit_names()
         monomer_names = species.get_monomer_names()
         polymer_names = species.get_polymer_names()
-
-        no_sequence = len(monomer_names) <= 1
 
         return StateData(
             iteration=df[C.state.ITERATION_KEY].to_numpy(np.uint64),
@@ -77,140 +62,150 @@ class StateData:
                 name: df[C.state.COUNT_PREFIX + name].to_numpy(np.uint64)
                 for name in polymer_names
             },
-            terminated_chain_count=sum(
-                df[C.state.COUNT_PREFIX + name].to_numpy(np.uint64)
-                for name in species.get_dead_polymer_names()
-            ) if species.get_dead_polymer_names() else np.zeros(len(df), dtype=np.uint64),
-            nAvgCL=df[C.state.NAVGCL_KEY].to_numpy(np.float64),
-            wAvgCL=df[C.state.WAVGCL_KEY].to_numpy(np.float64),
-            dispCL=df[C.state.DISPCL_KEY].to_numpy(np.float64),
-            nAvgMW=df[C.state.NAVGMW_KEY].to_numpy(np.float64),
-            wAvgMW=df[C.state.WAVGMW_KEY].to_numpy(np.float64),
-            dispMW=df[C.state.DISPMW_KEY].to_numpy(np.float64),
-            nAvgSL=(
-                {
-                    name: df[C.state.NAVGSL_PREFIX + name].to_numpy(np.float64)
-                    for name in monomer_names
-                }
-                if not no_sequence
-                else None
-            ),
-            wAvgSL=(
-                {
-                    name: df[C.state.WAVGSL_PREFIX + name].to_numpy(np.float64)
-                    for name in monomer_names
-                }
-                if not no_sequence
-                else None
-            ),
-            dispSL=(
-                {
-                    name: df[C.state.DISP_SL_PREFIX + name].to_numpy(np.float64)
-                    for name in monomer_names
-                }
-                if not no_sequence
-                else None
-            ),
             _raw_data=df,
         )
 
 
+def parse_block_header(line: str) -> Dict[str, Any]:
+    """Parse a #key=val,key=val,... block header line. Returns dict with Iteration, KMC Time, Count."""
+    parts: Dict[str, str] = dict(
+        kv.split("=", 1) for kv in line[1:].split(",") if "=" in kv
+    )
+    try:
+        iteration = int(parts[C.state.ITERATION_KEY])
+        kmc_time = float(parts[C.state.KMC_TIME_KEY])
+        count = int(parts[C.state.COUNT_KEY])
+    except KeyError as exc:
+        raise ValueError(f"Missing block header field: {exc}") from exc
+    return {
+        C.state.ITERATION_KEY: iteration,
+        C.state.KMC_TIME_KEY: kmc_time,
+        C.state.COUNT_KEY: count,
+    }
+
+
+def read_block_file(
+    path: Path | str,
+) -> List[Tuple[Dict[str, Any], pd.DataFrame]]:
+    """
+    Read a .dat block-appended file.
+    Each block: #Iteration=N,KMC Time=T,Count=R / column header / R data rows.
+    Returns list of (header_dict, DataFrame) pairs.
+    """
+    data = []
+    expected_cols: List[str] | None = None
+    with Path(path).open("r", encoding="utf-8") as fh:
+        while True:
+            line = fh.readline()
+            if not line:
+                break
+            if not line.startswith("#"):
+                continue
+
+            header = parse_block_header(line.strip())
+            count = int(header[C.state.COUNT_KEY])
+
+            col_line = fh.readline()
+            if not col_line:
+                raise ValueError(f"Missing column header after block header at {line.strip()!r}.")
+
+            rows = []
+            for _ in range(count):
+                row = fh.readline()
+                if not row:
+                    raise ValueError(
+                        f"EOF while reading block Iteration={header[C.state.ITERATION_KEY]}."
+                    )
+                rows.append(row)
+
+            df = pd.read_csv(io.StringIO(col_line + "".join(rows)))
+
+            if len(df) != count:
+                raise ValueError(
+                    f"Expected {count} rows for Iteration={header[C.state.ITERATION_KEY]}, got {len(df)}."
+                )
+
+            cols = list(df.columns)
+            if expected_cols is None:
+                expected_cols = cols
+            elif cols != expected_cols:
+                raise ValueError(
+                    f"Inconsistent columns. Expected {expected_cols}, got {cols}."
+                )
+
+            data.append((header, df))
+    return data
+
+
 @dataclass
-class SequenceData:
+class PosChainData:
+    """Positional chain statistics from pos_chain_<name>.dat."""
 
     iteration: NDArray[np.uint64]
     kmc_time: NDArray[np.float64]
     bucket: NDArray[np.uint64]
-    monomer_count: Dict[str, NDArray[np.uint64]]
-    sequence_count: Dict[str, NDArray[np.uint64]]
-    sequence_length2: Dict[str, NDArray[np.float64]]
+    monomer_names: List[str]
 
     _raw_data: pd.DataFrame
-    _monomer_names: List[str]
 
     @staticmethod
-    def _from_df(df: pd.DataFrame, monomer_names: Optional[List[str]]) -> SequenceData:
+    def load(filepath: Path | str, species: SpeciesRegistry) -> Optional["PosChainData"]:
+        records = read_block_file(filepath)
+        if not records:
+            return None
 
-        if monomer_names is None or len(monomer_names) == 0:
-            monomer_names = []
-            for col in df.columns:
-                if col.startswith(C.state.MONCOUNT_PREFIX):
-                    monomer_names.append(col.replace(C.state.MONCOUNT_PREFIX, ""))
+        frames = []
+        for header, df in records:
+            df = df.copy()
+            df[C.state.ITERATION_KEY] = header[C.state.ITERATION_KEY]
+            df[C.state.KMC_TIME_KEY] = header[C.state.KMC_TIME_KEY]
+            frames.append(df)
 
-        monomer_names = list(dict.fromkeys(monomer_names))
+        combined = pd.concat(frames, ignore_index=True)
 
-        return SequenceData(
-            iteration=df[C.state.ITERATION_KEY].to_numpy(np.uint64),
-            kmc_time=df[C.state.KMC_TIME_KEY].to_numpy(np.float64),
-            bucket=df[C.state.BUCKET_KEY].to_numpy(np.uint64),
-            monomer_count={
-                name: df[C.state.MONCOUNT_PREFIX + name].to_numpy(np.uint64)
-                for name in monomer_names
-            },
-            sequence_count={
-                name: df[C.state.SEQCOUNT_PREFIX + name].to_numpy(np.uint64)
-                for name in monomer_names
-            },
-            sequence_length2={
-                name: df[C.state.SEQLEN2_PREFIX + name].to_numpy(np.float64)
-                for name in monomer_names
-            },
-            _raw_data=df,
-            _monomer_names=monomer_names,
+        monomer_names = species.get_monomer_names()
+        if not monomer_names:
+            monomer_names = [
+                col.replace(C.state.NAVGSL_PREFIX, "")
+                for col in combined.columns
+                if col.startswith(C.state.NAVGSL_PREFIX)
+            ]
+
+        return PosChainData(
+            iteration=combined[C.state.ITERATION_KEY].to_numpy(np.uint64),
+            kmc_time=combined[C.state.KMC_TIME_KEY].to_numpy(np.float64),
+            bucket=combined[C.state.BUCKET_KEY].to_numpy(np.uint64),
+            monomer_names=monomer_names,
+            _raw_data=combined,
         )
-
-    @staticmethod
-    def from_csv(filepath: Path | str, species: SpeciesRegistry) -> SequenceData:
-
-        try:
-            df = pd.read_csv(filepath)  # type: ignore
-            return SequenceData._from_df(df, species.get_monomer_names())
-        except Exception as e:
-            raise ValueError(f"Error loading sequence data from {filepath}: {e}")
 
     def get_buckets(self) -> List[int]:
         return sorted(self._raw_data[C.state.BUCKET_KEY].unique().tolist())
 
-    def get_by_bucket(self, bucket: int) -> SequenceData:
-
+    def get_by_bucket(self, bucket: int) -> "PosChainData":
         valid_buckets = self.get_buckets()
         if bucket not in valid_buckets:
             raise ValueError(
-                f"Bucket {bucket} not found in sequence data ({min(valid_buckets)}-{max(valid_buckets)})."
+                f"Bucket {bucket} not found in pos chain data ({min(valid_buckets)}-{max(valid_buckets)})."
             )
-
-        df = self._raw_data[self._raw_data[C.state.BUCKET_KEY] == bucket]
-        df = df.reset_index(drop=True)
+        df = self._raw_data[self._raw_data[C.state.BUCKET_KEY] == bucket].reset_index(drop=True)
         df = df.sort_values(C.state.KMC_TIME_KEY)
+        return PosChainData(
+            iteration=df[C.state.ITERATION_KEY].to_numpy(np.uint64),
+            kmc_time=df[C.state.KMC_TIME_KEY].to_numpy(np.float64),
+            bucket=df[C.state.BUCKET_KEY].to_numpy(np.uint64),
+            monomer_names=self.monomer_names,
+            _raw_data=df,
+        )
 
-        return SequenceData._from_df(df, self._monomer_names)
 
-    @property
-    def nAvgSL(self) -> Dict[str, NDArray[np.float64]]:
-        nAvgSL: Dict[str, NDArray[np.float64]] = {}
-        for name in self._monomer_names:
-            nAvgSL[name] = np.divide(
-                self.monomer_count[name],
-                self.sequence_count[name],
-                where=self.sequence_count[name] != 0,
-            )
-        return nAvgSL
-
-    @property
-    def wAvgSL(self) -> Dict[str, NDArray[np.float64]]:
-        wAvgSL: Dict[str, NDArray[np.float64]] = {}
-        for name in self._monomer_names:
-            wAvgSL[name] = np.divide(
-                self.sequence_length2[name],
-                self.sequence_count[name],
-                where=self.sequence_count[name] != 0,
-            )
-        return wAvgSL
+# Keep SequenceData as an alias for backwards compatibility
+SequenceData = PosChainData
 
 
 @dataclass
 class ChainInterval:
-    """Chains terminated during a single output interval."""
+    """Chains reported during a single output interval."""
     iteration: int
     kmc_time: float
     data: pd.DataFrame
@@ -240,18 +235,19 @@ class ChainInterval:
 
 @dataclass
 class ChainRecordData:
-    """Per-chain records from chain_stats.csv, optionally split by output interval."""
+    """Per-chain records from chains_<name>.dat, split by output interval."""
 
     data: pd.DataFrame
     monomer_names: List[str]
     has_sequence_stats: bool
-    intervals: Optional[List[ChainInterval]]
+    intervals: List[ChainInterval]
 
     @property
     def chain_lengths(self) -> NDArray[np.uint64]:
+        if len(self.monomer_names) == 1 and "ChainLength" in self.data.columns:
+            return self.data["ChainLength"].to_numpy(dtype=np.uint64)
         cols = [C.state.MONCOUNT_PREFIX + m for m in self.monomer_names]
         return self.data[cols].sum(axis=1).to_numpy(dtype=np.uint64)
-    
 
     def monomer_counts(self, monomer: str) -> NDArray[np.uint64]:
         col = C.state.MONCOUNT_PREFIX + monomer
@@ -270,8 +266,6 @@ class ChainRecordData:
         return self.data[col].to_numpy(dtype=np.float64) if col in self.data.columns else None
 
     def get_interval(self, index: int) -> ChainInterval:
-        if self.intervals is None:
-            raise ValueError("No interval data available (load with state_data to enable).")
         if index < 0:
             index += len(self.intervals)
         if index < 0 or index >= len(self.intervals):
@@ -280,8 +274,6 @@ class ChainRecordData:
 
     def cumulative_until(self, index: int) -> ChainInterval:
         """Return a ChainInterval aggregating all chains up to and including index."""
-        if self.intervals is None:
-            raise ValueError("No interval data available (load with state_data to enable).")
         if index < 0:
             index += len(self.intervals)
         if index < 0 or index >= len(self.intervals):
@@ -302,47 +294,43 @@ class ChainRecordData:
     def load(
         filepath: Path | str,
         species: SpeciesRegistry,
-        state_data: Optional["StateData"] = None,
     ) -> Optional["ChainRecordData"]:
-        df = pd.read_csv(filepath)  # type: ignore
-        if df.empty:
+        records = read_block_file(filepath)
+        if not records:
             return None
 
+        # Detect monomer names from first block's columns
+        _, first_df = records[0]
         monomer_names = [
             col.replace(C.state.MONCOUNT_PREFIX, "")
-            for col in df.columns
+            for col in first_df.columns
             if col.startswith(C.state.MONCOUNT_PREFIX)
         ]
         if not monomer_names:
             monomer_names = species.get_monomer_names()
 
         has_sequence_stats = len(monomer_names) > 1 and all(
-            C.state.SEQCOUNT_PREFIX + m in df.columns for m in monomer_names
+            C.state.SEQCOUNT_PREFIX + m in first_df.columns for m in monomer_names
         )
 
-        intervals: Optional[List[ChainInterval]] = None
-        if state_data is not None:
-            intervals = []
-            offset = 0
-            counts = state_data.terminated_chain_count
-            iterations = state_data.iteration
-            times = state_data.kmc_time
-            for i, n in enumerate(counts):
-                n = int(n)
-                slice_df = df.iloc[offset : offset + n].reset_index(drop=True)
-                intervals.append(
-                    ChainInterval(
-                        iteration=int(iterations[i]),
-                        kmc_time=float(times[i]),
-                        data=slice_df,
-                        monomer_names=monomer_names,
-                        has_sequence_stats=has_sequence_stats,
-                    )
+        intervals: List[ChainInterval] = []
+        all_frames: List[pd.DataFrame] = []
+        for header, df in records:
+            intervals.append(
+                ChainInterval(
+                    iteration=int(header[C.state.ITERATION_KEY]),
+                    kmc_time=float(header[C.state.KMC_TIME_KEY]),
+                    data=df.reset_index(drop=True),
+                    monomer_names=monomer_names,
+                    has_sequence_stats=has_sequence_stats,
                 )
-                offset += n
+            )
+            all_frames.append(df)
+
+        combined = pd.concat(all_frames, ignore_index=True) if all_frames else pd.DataFrame()
 
         return ChainRecordData(
-            data=df,
+            data=combined,
             monomer_names=monomer_names,
             has_sequence_stats=has_sequence_stats,
             intervals=intervals,
@@ -399,8 +387,6 @@ class SegmentHistogramData:
         if block_idx < 0 or block_idx >= len(self.blocks):
             raise IndexError("Segment histogram block index out of range.")
 
-        # Accumulate counts across all blocks up to block_idx
-        col = C.state.SEGMENT_COUNT_PREFIX + monomer_id
         combined: dict = {}
         for b in self.blocks[: block_idx + 1]:
             lengths, counts = b.histogram(monomer_id)
@@ -418,7 +404,7 @@ class SegmentHistogramData:
     def load(
         filepath: Path | str, species: SpeciesRegistry
     ) -> Optional["SegmentHistogramData"]:
-        records = read_histogram_data(filepath)
+        records = read_block_file(filepath)
         if not records:
             return None
 
@@ -450,71 +436,3 @@ class SegmentHistogramData:
             return None
 
         return SegmentHistogramData(blocks=blocks, monomer_names=monomer_names)
-
-
-def parse_block_header(line: str) -> Dict[str, Any]:
-
-    parts: Dict[str, str] = dict(
-        kv.split("=", 1) for kv in line[1:].split(",") if "=" in kv
-    )
-    try:
-        iteration = int(parts[C.state.ITERATION_KEY])
-        kmc_time = float(parts[C.state.KMC_TIME_KEY])
-        bins = int(parts[C.state.BINS_KEY])
-    except KeyError as exc:
-        raise ValueError(f"Missing histogram header field: {exc}") from exc
-    return {
-        C.state.ITERATION_KEY: iteration,
-        C.state.KMC_TIME_KEY: kmc_time,
-        C.state.BINS_KEY: bins,
-    }
-
-
-def read_histogram_data(
-    path: Path | str,
-) -> List[Tuple[Dict[str, Any], pd.DataFrame]]:
-
-    data = []
-    expected_cols: List[str] | None = None
-    with Path(path).open("r", encoding="utf-8") as fh:
-
-        while True:
-            line = fh.readline()
-            if not line:
-                break
-            if not line.startswith("#"):
-                continue
-
-            header = parse_block_header(line.strip())
-            bins = int(header[C.state.BINS_KEY])
-
-            col_line = fh.readline()
-            if not col_line:
-                raise ValueError("Missing histogram column header line.")
-
-            rows = []
-            for _ in range(bins):
-                row = fh.readline()
-                if not row:
-                    raise ValueError(
-                        f"EOF while reading Iteration={header[C.state.ITERATION_KEY]} histogram data."
-                    )
-                rows.append(row)
-
-            df = pd.read_csv(io.StringIO(col_line + "".join(rows)))
-
-            if len(df) != bins:
-                raise ValueError(
-                    f"Expected {bins} rows for Iteration={header[C.state.ITERATION_KEY]} histogram, got {len(df)}."
-                )
-
-            cols = list(df.columns)
-            if expected_cols is None:
-                expected_cols = cols
-            elif cols != expected_cols:
-                raise ValueError(
-                    f"Inconsistent histogram columns. Expected {expected_cols}, got {cols}."
-                )
-
-            data.append((header, df))
-    return data

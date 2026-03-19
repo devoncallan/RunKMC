@@ -20,7 +20,7 @@ species
     # The polymers separated by | are a subgroup of P[-.A] and P[-.B]
     P P[-.A] P[R.A]|P[A.A]|P[B.A]
     P P[-.B] P[R.B]|P[A.B]|P[B.B]
-    DEAD_P D
+    P D report=True
 end
 
 rateconstants

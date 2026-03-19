@@ -20,7 +20,7 @@ species
     # The polymers separated by | are a subgroup of PA and PB
     LABEL PA PRA|PAA|PBA
     LABEL PB PRB|PAB|PBB
-    DEAD_P D
+    P D report=True
 end
 
 rateconstants

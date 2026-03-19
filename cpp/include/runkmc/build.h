@@ -1,5 +1,7 @@
 #pragma once
 
+#include <unordered_set>
+
 #include "common.h"
 #include "io/text.h"
 #include "io/yaml.h"
@@ -32,6 +34,18 @@ namespace build
         SpeciesSet speciesSet = buildSpeciesSet(data.species, data.config);
 
         ReactionSet reactionSet = buildReactionSet(data.reactions, data.rateConstants, speciesSet);
+
+        // Sink detection: collect all SpeciesIDs that appear as reactants
+        std::unordered_set<SpeciesID> reactantIDs;
+        for (const auto &reactionRead : data.reactions)
+            for (const auto &name : reactionRead.reactantNames)
+                if (registry::isRegistered(name))
+                    reactantIDs.insert(registry::getSpecies(name).ID);
+
+        // Mark polymer containers as sinks if they never appear as reactants
+        for (auto &container : speciesSet.getPolymerContainers())
+            if (reactantIDs.find(container.ID) == reactantIDs.end())
+                container.isSink = true;
 
         KMC kmc(speciesSet, reactionSet, config, data.config);
 
@@ -97,7 +111,7 @@ namespace build
             SpeciesID id = registry::builder.registerNewSpecies(polyType.name, polyType.type);
             PolymerType type(id, polyType.name, endGroupIDs);
             polymerTypes.push_back(type);
-            polymerContainerMap.push_back(PolymerContainerMap(id, polyType.name, {polymerTypes.size() - 1}));
+            polymerContainerMap.push_back(PolymerContainerMap(id, polyType.name, {polymerTypes.size() - 1}, polyType.report));
         }
 
         for (const auto &label : data.polymerLabels)
@@ -119,15 +133,7 @@ namespace build
             }
 
             SpeciesID id = registry::builder.registerNewSpecies(label.name, label.type);
-            polymerContainerMap.push_back(PolymerContainerMap(id, label.name, labelPolyIndices));
-        }
-
-        // Register dead polymer species
-        for (const auto &deadSpec : data.deadPolymerSpecs)
-        {
-            SpeciesID id = registry::builder.registerNewSpecies(deadSpec.name, deadSpec.type);
-            polymerTypes.push_back(PolymerType(id, deadSpec.name, {}));
-            polymerContainerMap.push_back(PolymerContainerMap(id, deadSpec.name, {polymerTypes.size() - 1}));
+            polymerContainerMap.push_back(PolymerContainerMap(id, label.name, labelPolyIndices, label.report));
         }
 
         // Finalize registry
@@ -187,8 +193,6 @@ namespace build
                 species.products.push_back(&speciesSet.getUnits()[registry::getUnitIndex(speciesInfo.ID)]);
             else if (SpeciesType::isPolymerType(speciesInfo.type))
                 species.products.push_back(&speciesSet.getPolymerContainers()[registry::getPolymerIndex(speciesInfo.ID)]);
-            else if (SpeciesType::isDeadPolymerType(speciesInfo.type))
-                species.products.push_back(&speciesSet.getDeadPolymerContainer());
             else
                 console::input_error("Species type " + std::string(speciesInfo.type) + " for species " + speciesInfo.name + " not recognized. Exiting.");
         }

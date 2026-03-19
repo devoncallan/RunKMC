@@ -36,7 +36,6 @@ public:
     static constexpr std::string_view POLYMER = "P";
     static constexpr std::string_view UNDEFINED = "?";
     static constexpr std::string_view LABEL = "LABEL";
-    static constexpr std::string_view DEAD_POLYMER = "DEAD_P";
 
     static bool isUnitType(std::string_view type)
     {
@@ -48,9 +47,10 @@ public:
         return type == POLYMER || type == LABEL;
     }
 
+    // Retained for backward-compatible parse error messaging only
     static bool isDeadPolymerType(std::string_view type)
     {
-        return type == DEAD_POLYMER;
+        return type == "DEAD_P";
     }
 
     static bool isValidType(std::string_view type)
@@ -73,14 +73,14 @@ public:
 
     static void checkValid(std::string_view type)
     {
-        if (!isValidType(type))
+        if (!isValidType(type) && !isDeadPolymerType(type))
             console::input_error(invalidTypeString(type));
     }
 
 private:
     SpeciesType() = delete;
     ~SpeciesType() = delete;
-    static inline const std::vector<std::string_view> _validTypes = {UNIT, MONOMER, INITIATOR, POLYMER, UNDEFINED, LABEL, DEAD_POLYMER};
+    static inline const std::vector<std::string_view> _validTypes = {UNIT, MONOMER, INITIATOR, POLYMER, UNDEFINED, LABEL};
 };
 
 enum PolymerState

@@ -95,71 +95,6 @@ struct SpeciesState
     }
 };
 
-struct SequenceState
-{
-    KMCState kmcState;
-    std::vector<analysis::SequenceStats> stats;
-
-    static std::vector<std::string> getTitles()
-    {
-        // If no monomer or homopolymer, return empty vector
-        if (registry::getNumMonomers() <= 1)
-            return {};
-        auto monomerNames = registry::getMonomerNames();
-
-        // Basic KMC state info and bucket index
-        std::vector<std::string> names = {
-            std::string(C::state::ITERATION_KEY),
-            std::string(C::state::KMC_TIME_KEY),
-            std::string(C::state::BUCKET_KEY)};
-
-        // Monomer counts
-        for (const auto &monomerName : monomerNames)
-            names.push_back(std::string(C::state::MONCOUNT_PREFIX) + monomerName);
-
-        // Sequence counts
-        for (const auto &monomerName : monomerNames)
-            names.push_back(std::string(C::state::SEQCOUNT_PREFIX) + monomerName);
-
-        // Sum of squared sequence lengths
-        for (const auto &monomerName : monomerNames)
-            names.push_back(std::string(C::state::SEQLEN2_PREFIX) + monomerName);
-
-        return names;
-    }
-
-    /*
-    Iteration, KMC Time, Bucket, monCount_A, monCount_B, ...,
-    seqCount_A, seqCount_B, ..., seqLengths2_A, seqLengths2_B, ...
-    */
-    std::vector<std::string> getDataAsVector(size_t bucket) const
-    {
-        // If no monomer or homopolymer, return empty vector
-        auto numMonomers = registry::getNumMonomers();
-        if (numMonomers <= 1)
-            return {};
-
-        // Basic KMC state info and bucket index
-        std::vector<std::string> output;
-        output.push_back(std::to_string(kmcState.iteration));
-        output.push_back(std::to_string(kmcState.kmcTime));
-        output.push_back(std::to_string(bucket));
-
-        // Monomer counts
-        for (size_t i = 0; i < numMonomers; ++i)
-            output.push_back(std::to_string(stats[bucket].monCounts[i]));
-
-        // Sequence counts
-        for (size_t i = 0; i < numMonomers; ++i)
-            output.push_back(std::to_string(stats[bucket].seqCounts[i]));
-
-        // Sum of squared sequence lengths
-        for (size_t i = 0; i < numMonomers; ++i)
-            output.push_back(std::to_string(stats[bucket].seqLengths2[i]));
-
-        return output;
-    }
-};
 
 struct ChainStatsState
 {
@@ -168,6 +103,7 @@ struct ChainStatsState
     static std::vector<std::string> getTitles()
     {
         std::vector<std::string> names = {
+            std::string(C::state::NCHAINS_KEY),
             std::string(C::state::NAVGCL_KEY),
             std::string(C::state::WAVGCL_KEY),
             std::string(C::state::DISPCL_KEY),
@@ -195,6 +131,7 @@ struct ChainStatsState
     {
         using analysis::safeDivide;
         std::vector<std::string> output;
+        output.push_back(std::to_string(stats.numChains));
         output.push_back(std::to_string(stats.chainLength.nAvg()));
         output.push_back(std::to_string(stats.chainLength.wAvg()));
         output.push_back(std::to_string(stats.chainLength.disp()));
@@ -230,5 +167,4 @@ struct SystemState
     KMCState kmc;
     SpeciesState species;
     ChainStatsState chainStats;
-    SequenceState sequence;
 };

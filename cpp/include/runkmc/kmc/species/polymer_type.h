@@ -154,7 +154,18 @@ public:
         return name + ": " + std::to_string(count);
     }
 
+    const std::string toSummaryString() const
+    {
+        std::string s = name + ": count=" + std::to_string(count);
+        if (report) s += " [report]";
+        if (isSink) s += " [sink]";
+        return s;
+    }
+
     const std::vector<PolymerType *> &getPolymerTypes() const { return polymerTypePtrs; }
+
+    bool report = false;
+    bool isSink = false;
 
 private:
     std::vector<PolymerType *> polymerTypePtrs;
@@ -167,6 +178,8 @@ struct PolymerContainerMap
     std::string name;
     std::vector<size_t> polymerTypeIndices;
 
-    PolymerContainerMap(SpeciesID ID_, std::string name_, std::vector<size_t> polymerTypeIndices_)
-        : ID(ID_), name(name_), polymerTypeIndices(polymerTypeIndices_) {};
+    bool report = false;
+
+    PolymerContainerMap(SpeciesID ID_, std::string name_, std::vector<size_t> polymerTypeIndices_, bool report_ = false)
+        : ID(ID_), name(name_), polymerTypeIndices(polymerTypeIndices_), report(report_) {};
 };

@@ -31,8 +31,6 @@ species
     P P[-.A.B] P[R.A.B]|P[A.A.B]|P[B.A.B]
     P P[-.B.A] P[R.B.A]|P[A.B.A]|P[B.B.A]
     P P[-.B.B] P[R.B.B]|P[A.B.B]|P[B.B.B]
-
-    DEAD_P D
 end
 
 rateconstants

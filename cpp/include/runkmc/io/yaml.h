@@ -184,6 +184,7 @@ namespace io::yaml
             data.name = species.name;
             data.type = species.type;
             readVarRequired(node, C::io::END_GROUP_NAMES_KEY, data.endGroupUnitNames);
+            readVar(node, C::io::REPORT_KEY, data.report);
             return data;
         }
 
@@ -191,6 +192,7 @@ namespace io::yaml
         {
             YAML::Node node = Parser<types::SpeciesRead>::write(data);
             node[C::io::END_GROUP_NAMES_KEY] = data.endGroupUnitNames;
+            node[C::io::REPORT_KEY] = data.report;
             return node;
         }
     };
@@ -208,6 +210,7 @@ namespace io::yaml
             data.name = species.name;
             data.type = species.type;
             readVarRequired(node, C::io::POLYMER_NAMES_KEY, data.polymerNames);
+            readVar(node, C::io::REPORT_KEY, data.report);
             return data;
         }
 
@@ -215,6 +218,7 @@ namespace io::yaml
         {
             YAML::Node node = Parser<types::SpeciesRead>::write(data);
             node[C::io::POLYMER_NAMES_KEY] = data.polymerNames;
+            node[C::io::REPORT_KEY] = data.report;
             return node;
         }
     };
@@ -231,7 +235,6 @@ namespace io::yaml
             std::vector<YAML::Node> unitNodes;
             std::vector<YAML::Node> polymerNodes;
             std::vector<YAML::Node> labelNodes;
-            std::vector<YAML::Node> deadPolymerNodes;
 
             for (const auto &specNode : node)
             {
@@ -244,20 +247,18 @@ namespace io::yaml
                 else if (species.type == SpeciesType::LABEL)
                     labelNodes.push_back(specNode);
                 else if (SpeciesType::isDeadPolymerType(species.type))
-                    deadPolymerNodes.push_back(specNode);
+                    console::input_error("Species type DEAD_P is no longer supported. Use type P with 'report: true' instead.");
 
                 SpeciesType::checkValid(species.type);
             }
 
-            // ===== PASS 2: Parse in order: Units, Polymers, Labels, Dead Polymers =====
+            // ===== PASS 2: Parse in order: Units, Polymers, Labels =====
             std::vector<types::UnitRead> units;
             std::vector<types::PolymerTypeRead> polymerTypes;
             std::vector<types::PolymerLabelsRead> labels;
-            std::vector<types::SpeciesRead> deadPolymerSpecs;
             units.reserve(unitNodes.size());
             polymerTypes.reserve(polymerNodes.size());
             labels.reserve(labelNodes.size());
-            deadPolymerSpecs.reserve(deadPolymerNodes.size());
 
             for (const auto &specNode : unitNodes)
                 units.push_back(Parser<types::UnitRead>::read(specNode));
@@ -268,14 +269,10 @@ namespace io::yaml
             for (const auto &specNode : labelNodes)
                 labels.push_back(Parser<types::PolymerLabelsRead>::read(specNode));
 
-            for (const auto &specNode : deadPolymerNodes)
-                deadPolymerSpecs.push_back(Parser<types::SpeciesRead>::read(specNode));
-
             types::SpeciesSetRead speciesSet;
             speciesSet.units = std::move(units);
             speciesSet.polymerTypes = std::move(polymerTypes);
             speciesSet.polymerLabels = std::move(labels);
-            speciesSet.deadPolymerSpecs = std::move(deadPolymerSpecs);
 
             return speciesSet;
         }
@@ -289,8 +286,6 @@ namespace io::yaml
                 node.push_back(Parser<types::PolymerTypeRead>::write(polymer));
             for (const auto &label : data.polymerLabels)
                 node.push_back(Parser<types::PolymerLabelsRead>::write(label));
-            for (const auto &dead : data.deadPolymerSpecs)
-                node.push_back(Parser<types::SpeciesRead>::write(dead));
             return node;
         }
     };

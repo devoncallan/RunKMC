@@ -14,8 +14,8 @@ namespace io::types
         std::string inputFilepath;
         std::string outputDir;
         bool reportPolymers = false;
-        bool reportSequences = false;
         bool reportChains = false;
+        bool reportPositionalStats = false;
         bool reportSegmentHistogram = false;
         bool parseOnly = false;
         bool debug = false;
@@ -62,11 +62,13 @@ namespace io::types
     struct PolymerTypeRead : SpeciesRead
     {
         std::vector<std::string> endGroupUnitNames;
+        bool report = false;
     };
 
     struct PolymerLabelsRead : SpeciesRead
     {
         std::vector<std::string> polymerNames;
+        bool report = false;
     };
 
     struct SpeciesSetRead
@@ -74,7 +76,6 @@ namespace io::types
         std::vector<UnitRead> units;
         std::vector<PolymerTypeRead> polymerTypes;
         std::vector<PolymerLabelsRead> polymerLabels;
-        std::vector<SpeciesRead> deadPolymerSpecs;
     };
 
     struct RateConstantRead

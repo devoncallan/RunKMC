@@ -92,8 +92,8 @@ class state:
     SEQLEN2_PREFIX = "SeqLen2_"
     
     
-    # Chain histogram stats
-    BINS_KEY = "Bins"
+    # Block file key
+    COUNT_KEY = "Count"
     BIN_MONCOUNT_PREFIX = "BinMonCount_"
     CHAINCOUNT_KEY = "ChainCount"
     TOTAL_SEQCOUNT_PREFIX = "TotalSeqCount_"
@@ -106,9 +106,9 @@ class paths:
 
     INPUT_FILE = "input.txt"
     RESULTS_FILE = "results.csv"
-    SEQUENCES_FILE = "sequences.csv"
-    CHAIN_RECORDS_FILE = "chain_records.csv"
-    SEGMENT_HIST_FILE = "segment_hist.csv"
     POLYMERS_FILE = "polymers.dat"
     SPECIES_FILE = "species.yaml"
     PARSED_INPUT_FILE = "parsed_input.yaml"
+    CHAINS_PREFIX = "chains_"
+    POS_CHAIN_PREFIX = "pos_chain_"
+    SEGMENT_HIST_PREFIX = "segment_hist_"

@@ -17,7 +17,6 @@ namespace output
         root[C::io::UNITS_KEY] = registry::getAllUnitNames();
         root[C::io::MONOMERS_KEY] = registry::getMonomerNames();
         root[C::io::POLYMERS_KEY] = registry::getPolymerNames();
-        root[C::io::DEAD_POLYMERS_KEY] = registry::getAllDeadPolymerNames();
 
         io::yaml::writeYamlToFile(filepath, root);
     }

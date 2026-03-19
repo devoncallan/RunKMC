@@ -25,14 +25,11 @@ class SimulationPaths:
     def polymers_filepath(self) -> Path:
         return self.base_dir / C.paths.POLYMERS_FILE
 
-    @property
-    def sequence_filepath(self) -> Path:
-        return self.base_dir / C.paths.SEQUENCES_FILE
-    
-    @property
-    def chain_records_filepath(self) -> Path:
-        return self.base_dir / C.paths.CHAIN_RECORDS_FILE
+    def chains_filepath(self, name: str) -> Path:
+        return self.base_dir / (C.paths.CHAINS_PREFIX + name + ".dat")
 
-    @property
-    def segment_hist_filepath(self) -> Path:
-        return self.base_dir / C.paths.SEGMENT_HIST_FILE
+    def pos_chain_filepath(self, name: str) -> Path:
+        return self.base_dir / (C.paths.POS_CHAIN_PREFIX + name + ".dat")
+
+    def segment_hist_filepath(self, name: str) -> Path:
+        return self.base_dir / (C.paths.SEGMENT_HIST_PREFIX + name + ".dat")

@@ -8,7 +8,7 @@ species
     I I     [C0]={{I_c0}}   FW={{I_FW=1.0}}   f={{I_f=0.50}}
     M M     [C0]={{M_c0}}   FW={{M_FW=100.0}}
     P R
-    DEAD_P D
+    P D report=true
 end
 
 rateconstants

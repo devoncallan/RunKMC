@@ -108,6 +108,7 @@ namespace analysis
 
     struct ChainStats
     {
+        size_t numChains = 0;
         MomentAccumulator chainLength;
         MomentAccumulator chainMW;
         std::vector<MomentAccumulator> sequenceLengths; // one per monomer: run-length moments
@@ -116,6 +117,7 @@ namespace analysis
 
         ChainStats &operator+=(const ChainStats &other)
         {
+            numChains += other.numChains;
             chainLength += other.chainLength;
             chainMW += other.chainMW;
             for (size_t i = 0; i < sequenceLengths.size(); ++i)
@@ -127,6 +129,7 @@ namespace analysis
         {
             const double L = static_cast<double>(length);
             chainLength.add(L);
+            numChains++;
 
             if (!FWs.empty())
             {
@@ -146,6 +149,42 @@ namespace analysis
                         static_cast<double>(stats.seqCounts[i]),
                         static_cast<double>(stats.monCounts[i]),
                         static_cast<double>(stats.seqLengths2[i])};
+        }
+    };
+
+    // Per-interval positional statistics, structured as a vector of ChainStats — one per bucket.
+    // Accumulates sequence statistics broken down by normalized position along the chain.
+    // Reset after each reporting interval.
+    struct PositionalChainStats
+    {
+        std::vector<ChainStats> buckets; // one ChainStats per positional bucket
+
+        PositionalChainStats(size_t numBuckets = NUM_BUCKETS)
+        {
+            buckets.resize(numBuckets);
+        }
+
+        void reset()
+        {
+            for (auto &b : buckets)
+                b = ChainStats{};
+        }
+
+        // Accumulate posStats[b] into buckets[b] for each bucket b.
+        // posStats is indexed by bucket, each element has seqCounts, monCounts, seqLengths2 per monomer.
+        void add(const std::vector<SequenceStats> &posStats)
+        {
+            for (size_t b = 0; b < posStats.size() && b < buckets.size(); ++b)
+            {
+                const auto &s = posStats[b];
+                for (size_t m = 0; m < buckets[b].sequenceLengths.size(); ++m)
+                    buckets[b].sequenceLengths[m] += MomentAccumulator{
+                        static_cast<double>(s.seqCounts[m]),
+                        static_cast<double>(s.monCounts[m]),
+                        static_cast<double>(s.seqLengths2[m])};
+                // chainLength tracks number of chains contributing to this bucket
+                buckets[b].chainLength.add(1.0);
+            }
         }
     };
 }

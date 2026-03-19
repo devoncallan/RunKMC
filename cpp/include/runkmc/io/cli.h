@@ -15,7 +15,7 @@ namespace io::cli
             std::cerr
                 << "Usage: " << argv[0]
                 << " <inputFilePath> <outputDirectory>"
-                << " [--report-polymers] [--report-sequences] [--parse-only] [--debug]\n";
+                << " [--report-polymers] [--report-chains] [--report-positional-stats] [--report-segment-hist] [--parse-only] [--debug]\n";
             exit(EXIT_FAILURE);
         }
 
@@ -32,10 +32,10 @@ namespace io::cli
 
             if (arg == "--report-polymers")
                 config.reportPolymers = true;
-            else if (arg == "--report-sequences")
-                config.reportSequences = true;
             else if (arg == "--report-chains")
                 config.reportChains = true;
+            else if (arg == "--report-positional-stats")
+                config.reportPositionalStats = true;
             else if (arg == "--report-segment-hist")
                 config.reportSegmentHistogram = true;
             else if (arg == "--parse-only")

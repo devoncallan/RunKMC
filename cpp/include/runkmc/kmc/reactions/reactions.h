@@ -91,7 +91,8 @@ private:
             return true;
         if (expected == SpeciesType::POLYMER && SpeciesType::isPolymerType(actual))
             return true;
-        if (expected == SpeciesType::DEAD_POLYMER && SpeciesType::isPolymerType(actual))
+        // DEAD_POLYMER type was removed; all polymer products use POLYMER type
+        if (expected == "DEAD_P" && SpeciesType::isPolymerType(actual))
             return true;
         return false;
     }
@@ -353,7 +354,7 @@ public:
     static inline const ReactionSchema &SCHEMA = {
         ReactionType::TERMINATION_D,
         {SpeciesType::POLYMER, SpeciesType::POLYMER},
-        {SpeciesType::DEAD_POLYMER, SpeciesType::DEAD_POLYMER}};
+        {SpeciesType::POLYMER, SpeciesType::POLYMER}};
 
     TerminationDisproportionation(RateConstant rateConstant, const ReactionSpecies &species)
         : Reaction(rateConstant, SCHEMA, species)
@@ -392,7 +393,7 @@ public:
     static inline const ReactionSchema &SCHEMA = {
         ReactionType::TERMINATION_C,
         {SpeciesType::POLYMER, SpeciesType::POLYMER},
-        {SpeciesType::DEAD_POLYMER}};
+        {SpeciesType::POLYMER}};
 
     TerminationCombination(RateConstant rateConstant, const ReactionSpecies &species)
         : Reaction(rateConstant, SCHEMA, species)
@@ -427,7 +428,7 @@ public:
     static inline const ReactionSchema &SCHEMA = {
         ReactionType::CHAINTRANSFER_M,
         {SpeciesType::POLYMER, SpeciesType::UNIT},
-        {SpeciesType::DEAD_POLYMER, SpeciesType::POLYMER}};
+        {SpeciesType::POLYMER, SpeciesType::POLYMER}};
 
     ChainTransferToMonomer(RateConstant rateConstant, const ReactionSpecies &species)
         : Reaction(rateConstant, SCHEMA, species) {}

@@ -1,4 +1,6 @@
 #pragma once
+#include <map>
+
 #include "common.h"
 #include "kmc/state.h"
 #include "kmc/reactions/reaction_set.h"
@@ -27,6 +29,13 @@ public:
 
         reactionSet.updateReactionProbabilities(state.kmc.NAV);
 
+        // Initialize per-container accumulators for reporting containers
+        for (const auto *container : speciesSet.getReportingContainers())
+        {
+            containerChainStats[container->name] = analysis::ChainStats{};
+            containerPosStats[container->name] = analysis::PositionalChainStats{};
+        }
+
         output::writeStateHeaders(paths, config);
 
         state.species = speciesSet.getStateData();
@@ -43,7 +52,7 @@ public:
         startTime = std::chrono::steady_clock::now();
 
         // Print initial state
-        output::writeState(state, paths, config);
+        output::writeResults(state, paths);
 
         // Main simulation loop
         while (state.kmc.kmcTime < options.terminationTime)
@@ -63,14 +72,20 @@ public:
                 break;
             }
 
-            // Analyze current state
-            output::writeDeadPolymers(speciesSet, deadChainStats, state.kmc, paths, config);
+            // Snapshot species counts before sinks are cleared
+            snapshotSpeciesState();
+
+            // Accumulate chain stats, write per-container files, clear sinks
+            writeReportingContainers();
+
+            // Copy accumulated chain stats into state then write
             updateSystemState();
 
-            output::writeState(state, paths, config);
+            output::writeResults(state, paths);
         }
 
-        output::writeDeadPolymers(speciesSet, deadChainStats, state.kmc, paths, config);
+        // Final flush of reporting containers
+        writeReportingContainers();
 
         if (config.reportPolymers)
             output::writePolymers(paths, speciesSet);
@@ -111,7 +126,19 @@ public:
     const SystemState &getState() const { return state; };
     const SpeciesSet &getSpeciesSet() const { return speciesSet; };
     const ReactionSet &getReactionSet() const { return reactionSet; };
-    const analysis::ChainStats &getDeadChainStats() const { return deadChainStats; };
+
+    // Returns cumulative chain stats for a reporting container by name (or empty stats if not found)
+    const analysis::ChainStats &getContainerChainStats(const std::string &name) const
+    {
+        static analysis::ChainStats empty{};
+        auto it = containerChainStats.find(name);
+        return (it != containerChainStats.end()) ? it->second : empty;
+    }
+
+    const std::map<std::string, analysis::ChainStats> &getAllContainerChainStats() const
+    {
+        return containerChainStats;
+    }
 
 private:
     // ********** Simulation functions **********
@@ -156,19 +183,74 @@ private:
         state.kmc.kmcStep += 1;
     }
 
+    // ********** Output functions **********
+
+    // Process all reporting containers: accumulate stats, write records, clear sinks
+    void writeReportingContainers()
+    {
+        const auto FWs = speciesSet.getMonomerFWs();
+
+        for (auto *container : speciesSet.getReportingContainers())
+        {
+            const auto &name = container->name;
+            const auto &polymers = container->getPolymers();
+
+            if (polymers.empty())
+                continue;
+
+            // Accumulate into persistent chain stats
+            auto &ccs = containerChainStats[name];
+            for (const auto *polymer : polymers)
+                ccs.add(polymer->getDegreeOfPolymerization(), polymer->getPositionalStats(), FWs);
+
+            // Accumulate into per-interval positional stats (copolymer + multi-bucket only)
+            if (config.reportPositionalStats && NUM_BUCKETS > 1)
+            {
+                auto &pcs = containerPosStats[name];
+                for (const auto *polymer : polymers)
+                    pcs.add(polymer->getPositionalStats());
+            }
+
+            // Write per-chain records
+            if (config.reportChains)
+                output::writeChainRecords(*container, state.kmc, paths);
+
+            // Write positional stats block
+            if (config.reportPositionalStats && NUM_BUCKETS > 1)
+            {
+                output::writePosChainStats(containerPosStats[name], name, state.kmc, paths);
+                containerPosStats[name].reset();
+            }
+
+            // Write segment histogram
+            if (config.reportSegmentHistogram)
+                output::writeSegmentHistogram(*container, state.kmc, paths);
+
+            // Clear if this container is a sink
+            if (container->isSink)
+                container->clearPolymers();
+        }
+    }
+
     // ********** State functions **********
 
-    // 
-    void updateSystemState()
+    // Snapshot species counts and timing into state (call before clearing sinks)
+    void snapshotSpeciesState()
     {
         auto currentTime = std::chrono::steady_clock::now();
         state.kmc.simulationTime = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.;
         if (state.kmc.kmcStep > 0)
             state.kmc.simulationTimePer1e6Steps = state.kmc.simulationTime / (state.kmc.kmcStep / 1e6);
-
         state.species = speciesSet.getStateData();
+    }
 
-        state.chainStats.stats = deadChainStats;
+    // Aggregate all reporting container chain stats into state.chainStats (call after writeReportingContainers)
+    void updateSystemState()
+    {
+        analysis::ChainStats aggregate{};
+        for (const auto &[name, ccs] : containerChainStats)
+            aggregate += ccs;
+        state.chainStats.stats = aggregate;
     }
 
     // Simulation inputs
@@ -185,7 +267,9 @@ private:
 
     std::vector<SimulationPluginPtr> plugins;
 
-    analysis::ChainStats deadChainStats;
+    // Per-container accumulators
+    std::map<std::string, analysis::ChainStats> containerChainStats;         // persistent across flushes
+    std::map<std::string, analysis::PositionalChainStats> containerPosStats; // reset each interval
 
     // Simulation start time
     std::chrono::steady_clock::time_point startTime;
