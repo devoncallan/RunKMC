@@ -1,8 +1,5 @@
 #pragma once
-#include <Eigen/Core>
-#include <functional>
 #include <map>
-#include <unordered_map>
 #include <vector>
 
 #include "common.h"
@@ -99,23 +96,6 @@ namespace analysis
             return *this;
         }
 
-        /*
-        MonCounts_A, MonCounts_B, ...,
-        SeqCounts_A, SeqCounts_B, ...,
-        SeqLengths2_A, SeqLengths2_B, ...
-        */
-        Eigen::VectorXd toEigen() const
-        {
-            Eigen::VectorXd result(SIZE());
-            for (size_t i = 0; i < registry::getNumMonomers(); ++i)
-                result(0 * registry::getNumMonomers() + i) = static_cast<double>(monCounts[i]);
-            for (size_t i = 0; i < registry::getNumMonomers(); ++i)
-                result(1 * registry::getNumMonomers() + i) = static_cast<double>(seqCounts[i]);
-            for (size_t i = 0; i < registry::getNumMonomers(); ++i)
-                result(2 * registry::getNumMonomers() + i) = static_cast<double>(seqLengths2[i]);
-            return result;
-        }
-
         void addSequence(SpeciesID id, size_t length)
         {
             size_t monIdx = registry::getMonomerIndex(id);
@@ -126,23 +106,46 @@ namespace analysis
         }
     };
 
-    struct SequenceSummary
+    struct ChainStats
     {
-        Eigen::MatrixXd sequenceStatsMatrix;        // (polymers x (SequenceStats))
-        std::vector<SequenceStats> positionalStats; // (buckets x (monomers*fields))
-    };
+        MomentAccumulator chainLength;
+        MomentAccumulator chainMW;
+        std::vector<MomentAccumulator> sequenceLengths; // one per monomer: run-length moments
 
-    struct RawSequenceData
-    {
-        std::vector<std::vector<SpeciesID>> sequences;
-        std::vector<std::vector<SequenceStats>> precomputedStats;
-        size_t length;
+        ChainStats() { sequenceLengths.resize(registry::getNumMonomers()); }
 
-        RawSequenceData(size_t n)
+        ChainStats &operator+=(const ChainStats &other)
         {
-            sequences.reserve(n);
-            precomputedStats.reserve(n);
-            length = n;
+            chainLength += other.chainLength;
+            chainMW += other.chainMW;
+            for (size_t i = 0; i < sequenceLengths.size(); ++i)
+                sequenceLengths[i] += other.sequenceLengths[i];
+            return *this;
+        }
+
+        void add(size_t length, const std::vector<SequenceStats> &posStats, const std::vector<double> &FWs = {})
+        {
+            const double L = static_cast<double>(length);
+            chainLength.add(L);
+
+            if (!FWs.empty())
+            {
+                double mw = 0;
+                if (posStats.empty())
+                    mw = L * FWs[0]; // homopolymer
+                else
+                    for (const auto &stats : posStats)
+                        for (size_t i = 0; i < FWs.size(); ++i)
+                            mw += static_cast<double>(stats.monCounts[i]) * FWs[i];
+                chainMW.add(mw);
+            }
+
+            for (const auto &stats : posStats)
+                for (size_t i = 0; i < sequenceLengths.size(); ++i)
+                    sequenceLengths[i] += MomentAccumulator{
+                        static_cast<double>(stats.seqCounts[i]),
+                        static_cast<double>(stats.monCounts[i]),
+                        static_cast<double>(stats.seqLengths2[i])};
         }
     };
 }

@@ -64,13 +64,13 @@ public:
             }
 
             // Analyze current state
+            output::writeDeadPolymers(speciesSet, deadChainStats, state.kmc, paths, config);
             updateSystemState();
 
             output::writeState(state, paths, config);
-            output::writeDeadPolymers(speciesSet, state.kmc, paths, config);
         }
 
-        output::writeDeadPolymers(speciesSet, state.kmc, paths, config);
+        output::writeDeadPolymers(speciesSet, deadChainStats, state.kmc, paths, config);
 
         if (config.reportPolymers)
             output::writePolymers(paths, speciesSet);
@@ -111,6 +111,7 @@ public:
     const SystemState &getState() const { return state; };
     const SpeciesSet &getSpeciesSet() const { return speciesSet; };
     const ReactionSet &getReactionSet() const { return reactionSet; };
+    const analysis::ChainStats &getDeadChainStats() const { return deadChainStats; };
 
 private:
     // ********** Simulation functions **********
@@ -167,7 +168,7 @@ private:
 
         state.species = speciesSet.getStateData();
 
-        speciesSet.analyze(state);
+        state.chainStats.stats = deadChainStats;
     }
 
     // Simulation inputs
@@ -183,6 +184,8 @@ private:
     SpeciesSet speciesSet;
 
     std::vector<SimulationPluginPtr> plugins;
+
+    analysis::ChainStats deadChainStats;
 
     // Simulation start time
     std::chrono::steady_clock::time_point startTime;

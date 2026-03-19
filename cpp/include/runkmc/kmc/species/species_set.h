@@ -149,41 +149,13 @@ public:
         return polymers;
     }
 
-    analysis::RawSequenceData getRawSequenceData() const
-    {
-        const auto &polymers = getPolymers();
-        auto sequenceData = analysis::RawSequenceData(polymers.size());
-
-        for (const auto *polymer : polymers)
-        {
-            if (!polymer->isCompressed())
-                sequenceData.sequences.push_back(polymer->getSequence());
-            else
-                sequenceData.precomputedStats.push_back(polymer->getPositionalStats());
-        }
-
-        return sequenceData;
-    };
-
     void analyze(SystemState &systemState)
     {
-        if (registry::getNumMonomers() <= 1)
-        {
-            analyzeHomopolymer(systemState);
-            return;
-        }
-
-        auto sequenceData = getRawSequenceData();
-        auto summary = analysis::calculateSequenceSummary(sequenceData);
-
-        AnalysisState analysisState;
-        analysis::analyzeChainLengthDist(summary.sequenceStatsMatrix, getMonomerFWs(), analysisState);
-        systemState.analysis = analysisState;
-
-        SequenceState sequenceState = SequenceState{systemState.kmc, summary.positionalStats};
-        analysis::analyzeSequenceLengthDist(summary.sequenceStatsMatrix, analysisState);
-        systemState.analysis = analysisState;
-        systemState.sequence = sequenceState;
+        const auto FWs = getMonomerFWs();
+        analysis::ChainStats stats;
+        for (const auto *polymer : getPolymers())
+            stats.add(polymer->getDegreeOfPolymerization(), polymer->getPositionalStats(), FWs);
+        systemState.chainStats.stats = std::move(stats);
     }
 
     void printSummary() const
@@ -220,53 +192,6 @@ public:
     double getNAV() const { return NAV; }
 
 private:
-    void analyzeHomopolymer(SystemState &systemState) const
-    {
-        const auto polymers = getPolymers();
-
-        double sumLengths = 0.0;
-        double sumLengthSquares = 0.0;
-
-        for (const Polymer *polymer : polymers)
-        {
-            const size_t length = polymer->getDegreeOfPolymerization();
-            sumLengths += static_cast<double>(length);
-            sumLengthSquares += static_cast<double>(length) * static_cast<double>(length);
-        }
-
-        AnalysisState analysisState;
-        const double chainCount = static_cast<double>(polymers.size());
-        if (chainCount > 0.0)
-        {
-            analysisState.nAvgCL = sumLengths / chainCount;
-            if (sumLengths > 0.0)
-            {
-                analysisState.wAvgCL = sumLengthSquares / sumLengths;
-                analysisState.dispCL = analysisState.wAvgCL / analysisState.nAvgCL;
-            }
-        }
-
-        const auto monomerFWs = getMonomerFWs();
-        if (!monomerFWs.empty())
-        {
-            const double fw = monomerFWs.front();
-            analysisState.nAvgMW = analysisState.nAvgCL * fw;
-            analysisState.wAvgMW = analysisState.wAvgCL * fw;
-            if (analysisState.nAvgMW != 0.0)
-                analysisState.dispMW = analysisState.wAvgMW / analysisState.nAvgMW;
-            else
-                analysisState.dispMW = 0.0;
-        }
-        else
-        {
-            analysisState.nAvgMW = analysisState.nAvgCL;
-            analysisState.wAvgMW = analysisState.wAvgCL;
-            analysisState.dispMW = analysisState.dispCL;
-        }
-
-        systemState.analysis = analysisState;
-    }
-
     std::vector<PolymerType> polymerTypes;
     std::vector<PolymerContainer> polymerContainers;
     std::vector<PolymerContainer *> polymerContainerPtrs;

@@ -1,6 +1,7 @@
 #pragma once
 #include "common.h"
 #include "kmc/analysis/types.h"
+#include "kmc/analysis/analysis.h"
 
 struct KMCState
 {
@@ -94,112 +95,6 @@ struct SpeciesState
     }
 };
 
-struct AnalysisState
-{
-    double nAvgCL = 0;
-    double wAvgCL = 0;
-    double dispCL = 0;
-
-    double nAvgMW = 0;
-    double wAvgMW = 0;
-    double dispMW = 0;
-
-    // Sequence statistics for each monomer type
-    std::vector<double> nAvgComp;
-    std::vector<double> nAvgSL;
-    std::vector<double> wAvgSL;
-    std::vector<double> dispSL;
-
-    AnalysisState()
-    {
-        auto numMonomers = registry::getNumMonomers();
-        if (numMonomers <= 1)
-            return;
-
-        nAvgComp.resize(numMonomers, 0);
-        nAvgSL.resize(numMonomers, 0);
-        wAvgSL.resize(numMonomers, 0);
-        dispSL.resize(numMonomers, 0);
-    }
-
-    static std::vector<std::string> getTitles()
-    {
-
-        // Chain length statistics and molecular weight statistics
-        std::vector<std::string> names = {
-            std::string(C::state::NAVGCL_KEY),
-            std::string(C::state::WAVGCL_KEY),
-            std::string(C::state::DISPCL_KEY),
-            std::string(C::state::NAVGMW_KEY),
-            std::string(C::state::WAVGMW_KEY),
-            std::string(C::state::DISPMW_KEY)};
-
-        // If no monomer or homopolymer, don't add copolymer stats
-        if (registry::getNumMonomers() <= 1)
-            return names;
-        auto monomerNames = registry::getMonomerNames();
-
-        // Monomer composition
-        for (const auto &monomerName : monomerNames)
-            names.push_back(std::string(C::state::NAVGCOMP_PREFIX) + monomerName);
-
-        // Number-averaged sequence lengths
-        for (const auto &monomerName : monomerNames)
-            names.push_back(std::string(C::state::NAVGSL_PREFIX) + monomerName);
-
-        // Weight-averaged sequence lengths
-        for (const auto &monomerName : monomerNames)
-            names.push_back(std::string(C::state::WAVGSL_PREFIX) + monomerName);
-
-        // Dispersity of sequence lengths
-        for (const auto &monomerName : monomerNames)
-            names.push_back(std::string(C::state::DISPSL_PREFIX) + monomerName);
-
-        return names;
-    }
-
-    /*
-    nAvgCL, wAvgCL, dispCL, nAvgMW, wAvgMW, dispMW,
-    nAvgComp_A, nAvgComp_B, ..., nAvgSL_A, nAvgSL_B, ...,
-    wAvgSL_A, wAvgSL_B, ..., dispSL_A, dispSL_B, ...
-    */
-    std::vector<std::string> getDataAsVector() const
-    {
-        std::vector<std::string> output;
-
-        // Chain length and molecular weight statistics
-        output.push_back(std::to_string(nAvgCL));
-        output.push_back(std::to_string(wAvgCL));
-        output.push_back(std::to_string(dispCL));
-        output.push_back(std::to_string(nAvgMW));
-        output.push_back(std::to_string(wAvgMW));
-        output.push_back(std::to_string(dispMW));
-
-        // If no monomer or homopolymer, don't add copolymer stats
-        auto numMonomers = registry::getNumMonomers();
-        if (numMonomers <= 1)
-            return output;
-
-        // Monomer composition
-        for (size_t i = 0; i < numMonomers; ++i)
-            output.push_back(std::to_string(nAvgComp[i]));
-
-        // Number-averaged sequence lengths
-        for (size_t i = 0; i < numMonomers; ++i)
-            output.push_back(std::to_string(nAvgSL[i]));
-
-        // Weight-averaged sequence lengths
-        for (size_t i = 0; i < numMonomers; ++i)
-            output.push_back(std::to_string(wAvgSL[i]));
-
-        // Dispersity of sequence lengths
-        for (size_t i = 0; i < numMonomers; ++i)
-            output.push_back(std::to_string(dispSL[i]));
-
-        return output;
-    }
-};
-
 struct SequenceState
 {
     KMCState kmcState;
@@ -266,10 +161,74 @@ struct SequenceState
     }
 };
 
+struct ChainStatsState
+{
+    analysis::ChainStats stats;
+
+    static std::vector<std::string> getTitles()
+    {
+        std::vector<std::string> names = {
+            std::string(C::state::NAVGCL_KEY),
+            std::string(C::state::WAVGCL_KEY),
+            std::string(C::state::DISPCL_KEY),
+            std::string(C::state::NAVGMW_KEY),
+            std::string(C::state::WAVGMW_KEY),
+            std::string(C::state::DISPMW_KEY)};
+
+        if (registry::getNumMonomers() <= 1)
+            return names;
+
+        const auto monomerNames = registry::getMonomerNames();
+        for (const auto &name : monomerNames)
+            names.push_back(std::string(C::state::NAVGCOMP_PREFIX) + name);
+        for (const auto &name : monomerNames)
+            names.push_back(std::string(C::state::NAVGSL_PREFIX) + name);
+        for (const auto &name : monomerNames)
+            names.push_back(std::string(C::state::WAVGSL_PREFIX) + name);
+        for (const auto &name : monomerNames)
+            names.push_back(std::string(C::state::DISPSL_PREFIX) + name);
+
+        return names;
+    }
+
+    std::vector<std::string> getDataAsVector() const
+    {
+        using analysis::safeDivide;
+        std::vector<std::string> output;
+        output.push_back(std::to_string(stats.chainLength.nAvg()));
+        output.push_back(std::to_string(stats.chainLength.wAvg()));
+        output.push_back(std::to_string(stats.chainLength.disp()));
+
+        const bool hasMW = stats.chainMW.count > 0;
+        output.push_back(std::to_string(hasMW ? stats.chainMW.nAvg() : stats.chainLength.nAvg()));
+        output.push_back(std::to_string(hasMW ? stats.chainMW.wAvg() : stats.chainLength.wAvg()));
+        output.push_back(std::to_string(hasMW ? stats.chainMW.disp() : stats.chainLength.disp()));
+
+        const auto numMonomers = stats.sequenceLengths.size();
+        if (numMonomers <= 1)
+            return output;
+
+        double totalMonCount = 0;
+        for (const auto &seq : stats.sequenceLengths)
+            totalMonCount += seq.sum;
+
+        for (size_t i = 0; i < numMonomers; ++i)
+            output.push_back(std::to_string(safeDivide(stats.sequenceLengths[i].sum, totalMonCount)));
+        for (size_t i = 0; i < numMonomers; ++i)
+            output.push_back(std::to_string(stats.sequenceLengths[i].nAvg()));
+        for (size_t i = 0; i < numMonomers; ++i)
+            output.push_back(std::to_string(stats.sequenceLengths[i].wAvg()));
+        for (size_t i = 0; i < numMonomers; ++i)
+            output.push_back(std::to_string(stats.sequenceLengths[i].disp()));
+
+        return output;
+    }
+};
+
 struct SystemState
 {
     KMCState kmc;
     SpeciesState species;
-    AnalysisState analysis;
+    ChainStatsState chainStats;
     SequenceState sequence;
 };

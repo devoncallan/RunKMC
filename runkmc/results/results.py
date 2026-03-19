@@ -47,8 +47,8 @@ class SimulationResult:
             sequence_data = SequenceData.from_csv(paths.sequence_filepath, species)
             
         chain_data = None
-        if paths.chain_stats_filepath.exists():
-            chain_data = ChainRecordData.load(paths.chain_stats_filepath, species, results)
+        if paths.chain_records_filepath.exists():
+            chain_data = ChainRecordData.load(paths.chain_records_filepath, species, results)
 
         segment_hist = None
         if paths.segment_hist_filepath.exists():

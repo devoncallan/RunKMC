@@ -11,27 +11,27 @@ namespace output
     class ResultsWriter
     {
     public:
-        ResultsWriter(const KMCState &kmc, const SpeciesState &species, const AnalysisState &analysis)
-            : kmcState(kmc), speciesState(species), analysisState(analysis) {}
+        ResultsWriter(const KMCState &kmc, const SpeciesState &species, const ChainStatsState &chainStats)
+            : kmcState(kmc), speciesState(species), chainStatsState(chainStats) {}
 
         static void writeHeader(std::ostream &out)
         {
             out << str::join(KMCState::getTitles(), ",", true);
             out << str::join(SpeciesState::getTitles(), ",", true);
-            out << str::join(AnalysisState::getTitles(), ",") << std::endl;
+            out << str::join(ChainStatsState::getTitles(), ",") << std::endl;
         }
 
         void writeState(std::ostream &out) const
         {
             out << str::join(kmcState.getDataAsVector(), ",", true);
             out << str::join(speciesState.getDataAsVector(), ",", true);
-            out << str::join(analysisState.getDataAsVector(), ",") << std::endl;
+            out << str::join(chainStatsState.getDataAsVector(), ",") << std::endl;
         }
 
     private:
         const KMCState &kmcState;
         const SpeciesState &speciesState;
-        const AnalysisState &analysisState;
+        const ChainStatsState &chainStatsState;
     };
 
     class SequenceWriter
@@ -208,8 +208,8 @@ namespace output
 
         if (config.reportChains)
         {
-            console::debug("Writing chain stats to " + paths.chainStatsFile().string());
-            auto chainFile = std::ofstream(paths.chainStatsFile());
+            console::debug("Writing chain records to " + paths.chainRecordsFile().string());
+            auto chainFile = std::ofstream(paths.chainRecordsFile());
             ChainRecordWriter::writeHeader(chainFile);
         }
         if (config.reportSegmentHistogram)
@@ -226,12 +226,10 @@ namespace output
         }
     }
 
-    
-
     void writeResults(const SystemState &state, const SimulationPaths &paths, const io::types::CommandLineConfig &config)
     {
         auto resultsFile = std::ofstream(paths.resultsFile(), std::ios::app);
-        ResultsWriter writer(state.kmc, state.species, state.analysis);
+        ResultsWriter writer(state.kmc, state.species, state.chainStats);
         writer.writeState(resultsFile);
     }
 
@@ -242,9 +240,9 @@ namespace output
         seqWriter.writeState(sequenceFile);
     }
 
-    void writeChainStats(const PolymerContainer &container, const SimulationPaths &paths)
+    void writeChainRecords(const PolymerContainer &container, const SimulationPaths &paths)
     {
-        auto file = paths.chainStatsFile();
+        auto file = paths.chainRecordsFile();
         bool fileExists = std::filesystem::exists(file);
         std::ofstream out(file, std::ios::app);
 
@@ -262,14 +260,18 @@ namespace output
         writer.writeState(segFile);
     }
 
-    void writeDeadPolymers(SpeciesSet &speciesSet, const KMCState &kmc, const SimulationPaths &paths, const io::types::CommandLineConfig &config)
+    void writeDeadPolymers(SpeciesSet &speciesSet, analysis::ChainStats &acc, const KMCState &kmc, const SimulationPaths &paths, const io::types::CommandLineConfig &config)
     {
         const auto &container = speciesSet.getDeadPolymerContainer();
         if (container.getPolymers().empty())
             return;
 
+        const auto FWs = speciesSet.getMonomerFWs();
+        for (const auto *polymer : container.getPolymers())
+            acc.add(polymer->getDegreeOfPolymerization(), polymer->getPositionalStats(), FWs);
+
         if (config.reportChains)
-            writeChainStats(container, paths);
+            writeChainRecords(container, paths);
         if (config.reportSegmentHistogram)
             writeSegmentHistogram(container, kmc, paths);
 
