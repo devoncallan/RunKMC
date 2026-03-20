@@ -48,6 +48,6 @@ struct HomopolymerBuffer
 struct CompressedCopolymerBuffer
 {
     uint32_t length = 0;
-    std::vector<analysis::SequenceStats> posStats; // moment accumulators per bucket
-    analysis::SegmentHistogram segHist;            // aggregated segment histogram
+    analysis::PositionalSequenceStats posStats;
+    analysis::SegmentHistogram segHist;
 };

@@ -6,6 +6,7 @@ struct RegisteredSpecies
     SpeciesID ID;
     std::string name;
     std::string type;
+    double FW = 0.0;
 };
 
 class Species : public RegisteredSpecies
@@ -74,6 +75,7 @@ public:
     size_t getNumMonomers() const { return _numMonomers; }
     bool isMonomer(SpeciesID id) const { return _idToSpecies.at(id).type == SpeciesType::MONOMER; }
     size_t getMonomerIndex(SpeciesID id) const { return _monomerIDtoIndices.at(id); }
+    const std::vector<double> &getMonomerFWs() const { return _monomerFWs; }
 
     // Polymer helper functions
     const std::vector<std::string> getPolymerNames() const { return _polymerContainerNames; }
@@ -107,6 +109,7 @@ private:
                 _monomerIDs.push_back(s.ID);
                 _monomerNames.push_back(s.name);
                 _monomerIDtoIndices[s.ID] = _monomerIDs.size() - 1;
+                _monomerFWs.push_back(s.FW);
             }
             if (s.type == SpeciesType::POLYMER)
             {
@@ -143,6 +146,7 @@ private:
     size_t _numMonomers;
     std::vector<SpeciesID> _monomerIDs;
     std::vector<std::string> _monomerNames;
+    std::vector<double> _monomerFWs;
     std::unordered_map<SpeciesID, size_t> _monomerIDtoIndices;
 
     // Polymer data (cached)
@@ -173,7 +177,7 @@ public:
 
     SpeciesID getSpeciesID(const std::string &name) const { return getSpecies(name).ID; }
 
-    SpeciesID registerNewSpecies(const std::string &name, std::string type)
+    SpeciesID registerNewSpecies(const std::string &name, std::string type, double FW = 0.0)
     {
         if (finalized)
             console::error("Cannot register new species after registry has been finalized.");
@@ -185,7 +189,7 @@ public:
 
         // Assign IDs sequentially
         SpeciesID newID = registered_species.size() + 1;
-        registered_species.push_back({newID, name, type});
+        registered_species.push_back({newID, name, type, FW});
         return newID;
     }
 
@@ -225,6 +229,7 @@ namespace registry
     static inline size_t getNumMonomers() { return _instance.getNumMonomers(); }
     static inline size_t getMonomerIndex(const SpeciesID &id) { return _instance.getMonomerIndex(id); }
     static inline bool isMonomer(const SpeciesID &id) { return _instance.isMonomer(id); }
+    static inline const std::vector<double> &getMonomerFWs() { return _instance.getMonomerFWs(); }
 
     // Polymer helpers
     static inline std::vector<std::string> getPolymerNames() { return _instance.getPolymerNames(); }

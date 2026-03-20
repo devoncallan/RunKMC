@@ -95,7 +95,6 @@ struct SpeciesState
     }
 };
 
-
 struct ChainStatsState
 {
     analysis::ChainStats stats;
@@ -131,7 +130,7 @@ struct ChainStatsState
     {
         using analysis::utils::safeDivide;
         std::vector<std::string> output;
-        output.push_back(std::to_string(stats.numChains));
+        output.push_back(std::to_string(stats.numChains()));
         output.push_back(std::to_string(stats.chainLength.nAvg()));
         output.push_back(std::to_string(stats.chainLength.wAvg()));
         output.push_back(std::to_string(stats.chainLength.disp()));
@@ -141,22 +140,18 @@ struct ChainStatsState
         output.push_back(std::to_string(hasMW ? stats.chainMW.wAvg() : stats.chainLength.wAvg()));
         output.push_back(std::to_string(hasMW ? stats.chainMW.disp() : stats.chainLength.disp()));
 
-        const auto numMonomers = stats.sequenceLengths.size();
+        const auto numMonomers = stats.sequenceLengths.stats.size();
         if (numMonomers <= 1)
             return output;
 
-        double totalMonCount = 0;
-        for (const auto &seq : stats.sequenceLengths)
-            totalMonCount += seq.sum;
-
-        for (size_t i = 0; i < numMonomers; ++i)
-            output.push_back(std::to_string(safeDivide(stats.sequenceLengths[i].sum, totalMonCount)));
-        for (size_t i = 0; i < numMonomers; ++i)
-            output.push_back(std::to_string(stats.sequenceLengths[i].nAvg()));
-        for (size_t i = 0; i < numMonomers; ++i)
-            output.push_back(std::to_string(stats.sequenceLengths[i].wAvg()));
-        for (size_t i = 0; i < numMonomers; ++i)
-            output.push_back(std::to_string(stats.sequenceLengths[i].disp()));
+        for (size_t m = 0; m < numMonomers; ++m)
+            output.push_back(std::to_string(stats.sequenceLengths.nAvgComp(m)));
+        for (size_t m = 0; m < numMonomers; ++m)
+            output.push_back(std::to_string(stats.sequenceLengths.stats[m].nAvg()));
+        for (size_t m = 0; m < numMonomers; ++m)
+            output.push_back(std::to_string(stats.sequenceLengths.stats[m].wAvg()));
+        for (size_t m = 0; m < numMonomers; ++m)
+            output.push_back(std::to_string(stats.sequenceLengths.stats[m].disp()));
 
         return output;
     }

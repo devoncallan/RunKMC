@@ -105,17 +105,21 @@ public:
         {
             ++count;
             ++polymerTypeCounts[0];
+            if (isSink)
+                polymer->compress();
             polymerTypePtrs[0]->insertPolymer(polymer);
             return;
         }
 
-        // Classify the polymer based on its end group.
+        // Classify the polymer based on its end group (must happen before compression).
         for (int i = 0; i < polymerTypePtrs.size(); ++i)
         {
             if (polymer->endGroupIs(polymerTypePtrs[i]->getEndGroup()))
             {
                 ++count;
                 ++polymerTypeCounts[i];
+                if (isSink)
+                    polymer->compress();
                 polymerTypePtrs[i]->insertPolymer(polymer);
                 return;
             }

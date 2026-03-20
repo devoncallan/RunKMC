@@ -33,7 +33,7 @@ public:
         for (const auto *container : speciesSet.getReportingContainers())
         {
             containerChainStats[container->name] = analysis::ChainStats{};
-            containerPosStats[container->name] = analysis::PositionalChainStats{};
+            containerPosStats[container->name] = analysis::PositionalSequenceStats{};
         }
 
         output::writeStateHeaders(paths, config);
@@ -188,7 +188,7 @@ private:
     // Process all reporting containers: accumulate stats, write records, clear sinks
     void writeReportingContainers()
     {
-        const auto FWs = speciesSet.getMonomerFWs();
+        const auto &FWs = registry::getMonomerFWs();
 
         for (auto *container : speciesSet.getReportingContainers())
         {
@@ -201,14 +201,14 @@ private:
             // Accumulate into persistent chain stats
             auto &ccs = containerChainStats[name];
             for (const auto *polymer : polymers)
-                ccs.add(polymer->getDegreeOfPolymerization(), polymer->getPositionalStats(), FWs);
+                ccs += polymer->toChainStats(FWs);
 
             // Accumulate into per-interval positional stats (copolymer + multi-bucket only)
             if (config.reportPositionalStats && NUM_BUCKETS > 1)
             {
                 auto &pcs = containerPosStats[name];
                 for (const auto *polymer : polymers)
-                    pcs.add(polymer->getPositionalStats());
+                    pcs += polymer->getPositionalStats();
             }
 
             // Write per-chain records
@@ -219,7 +219,7 @@ private:
             if (config.reportPositionalStats && NUM_BUCKETS > 1)
             {
                 output::writePosChainStats(containerPosStats[name], name, state.kmc, paths);
-                containerPosStats[name].reset();
+                containerPosStats[name] = analysis::PositionalSequenceStats{};
             }
 
             // Write segment histogram
@@ -269,7 +269,7 @@ private:
 
     // Per-container accumulators
     std::map<std::string, analysis::ChainStats> containerChainStats;         // persistent across flushes
-    std::map<std::string, analysis::PositionalChainStats> containerPosStats; // reset each interval
+    std::map<std::string, analysis::PositionalSequenceStats> containerPosStats; // reset each interval
 
     // Simulation start time
     std::chrono::steady_clock::time_point startTime;

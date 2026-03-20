@@ -56,20 +56,52 @@ namespace analysis
 
     struct SequenceStats
     {
-        std::vector<MomentAccumulator> sequences; // one per monomer
+        std::vector<MomentAccumulator> stats; // one per monomer
 
-        SequenceStats() { sequences.resize(registry::getNumMonomers()); }
+        SequenceStats() { stats.resize(registry::getNumMonomers()); }
 
         SequenceStats &operator+=(const SequenceStats &other)
         {
-            for (size_t i = 0; i < sequences.size(); ++i)
-                sequences[i] += other.sequences[i];
+            for (size_t i = 0; i < stats.size(); ++i)
+                stats[i] += other.stats[i];
             return *this;
         }
 
         void addSequence(SpeciesID id, size_t length)
         {
-            sequences[registry::getMonomerIndex(id)].add(static_cast<double>(length));
+            stats[registry::getMonomerIndex(id)].add(static_cast<double>(length));
+        }
+
+        double totalMonomerSum() const
+        {
+            double total = 0;
+            for (const auto &s : stats)
+                total += s.sum;
+            return total;
+        }
+
+        double nAvgComp(size_t monomerIdx) const { return utils::safeDivide(stats[monomerIdx].sum, totalMonomerSum()); }
+    };
+
+    struct PositionalSequenceStats
+    {
+        std::vector<SequenceStats> buckets;
+
+        PositionalSequenceStats() { buckets.resize(NUM_BUCKETS); }
+
+        PositionalSequenceStats &operator+=(const PositionalSequenceStats &other)
+        {
+            for (size_t b = 0; b < buckets.size() && b < other.buckets.size(); ++b)
+                buckets[b] += other.buckets[b];
+            return *this;
+        }
+
+        SequenceStats collapse() const
+        {
+            SequenceStats result;
+            for (const auto &b : buckets)
+                result += b;
+            return result;
         }
     };
 
@@ -99,84 +131,21 @@ namespace analysis
 
     struct ChainStats
     {
-        size_t numChains = 0;
         MomentAccumulator chainLength;
         MomentAccumulator chainMW;
-        std::vector<MomentAccumulator> sequenceLengths; // one per monomer: run-length moments
+        SequenceStats sequenceLengths;
 
-        ChainStats() { sequenceLengths.resize(registry::getNumMonomers()); }
+        ChainStats() {}
 
-        double totalMonomerSum() const {
-            double total = 0;
-            for (const auto &s : sequenceLengths)
-                total += s.sum;
-            return total;
-        }
-        double nAvgComp(size_t monomerIdx) const { return utils::safeDivide(sequenceLengths[monomerIdx].sum, totalMonomerSum()); }
+        size_t numChains() const { return static_cast<size_t>(chainLength.count); }
 
         ChainStats &operator+=(const ChainStats &other)
         {
-            numChains += other.numChains;
             chainLength += other.chainLength;
             chainMW += other.chainMW;
-            for (size_t i = 0; i < sequenceLengths.size(); ++i)
-                sequenceLengths[i] += other.sequenceLengths[i];
+            sequenceLengths += other.sequenceLengths;
             return *this;
         }
-
-        void add(size_t length, const std::vector<SequenceStats> &posStats, const std::vector<double> &FWs = {})
-        {
-            const double L = static_cast<double>(length);
-            chainLength.add(L);
-            numChains++;
-
-            if (!FWs.empty())
-            {
-                double mw = 0;
-                if (posStats.empty())
-                    mw = L * FWs[0]; // homopolymer
-                else
-                    for (const auto &stats : posStats)
-                        for (size_t i = 0; i < FWs.size(); ++i)
-                            mw += stats.sequences[i].sum * FWs[i];
-                chainMW.add(mw);
-            }
-
-            for (const auto &stats : posStats)
-                for (size_t i = 0; i < sequenceLengths.size(); ++i)
-                    sequenceLengths[i] += stats.sequences[i];
-        }
     };
 
-    // Per-interval positional statistics, structured as a vector of ChainStats — one per bucket.
-    // Accumulates sequence statistics broken down by normalized position along the chain.
-    // Reset after each reporting interval.
-    struct PositionalChainStats
-    {
-        std::vector<ChainStats> buckets; // one ChainStats per positional bucket
-
-        PositionalChainStats(size_t numBuckets = NUM_BUCKETS)
-        {
-            buckets.resize(numBuckets);
-        }
-
-        void reset()
-        {
-            for (auto &b : buckets)
-                b = ChainStats{};
-        }
-
-        // Accumulate posStats[b] into buckets[b] for each bucket b.
-        void add(const std::vector<SequenceStats> &posStats)
-        {
-            for (size_t b = 0; b < posStats.size() && b < buckets.size(); ++b)
-            {
-                const auto &s = posStats[b];
-                for (size_t m = 0; m < buckets[b].sequenceLengths.size(); ++m)
-                    buckets[b].sequenceLengths[m] += s.sequences[m];
-                // chainLength tracks number of chains contributing to this bucket
-                buckets[b].chainLength.add(1.0);
-            }
-        }
-    };
 }

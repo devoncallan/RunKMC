@@ -81,7 +81,7 @@ namespace build
 
         for (const auto &unitRead : unitsRead)
         {
-            SpeciesID id = registry::builder.registerNewSpecies(unitRead.name, unitRead.type);
+            SpeciesID id = registry::builder.registerNewSpecies(unitRead.name, unitRead.type, unitRead.FW);
             units.push_back(Unit(id, unitRead.name, unitRead.type, unitRead.C0, unitRead.FW, unitRead.efficiency));
         }
 

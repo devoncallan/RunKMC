@@ -50,7 +50,7 @@ namespace output
     class PositionalStatsWriter
     {
     public:
-        PositionalStatsWriter(const analysis::PositionalChainStats &posStats,
+        PositionalStatsWriter(const analysis::PositionalSequenceStats &posStats,
                               const KMCState &kmcState)
             : posStats(posStats), kmcState(kmcState) {}
 
@@ -82,11 +82,11 @@ namespace output
                 for (size_t m = 0; m < numMonomers; ++m)
                     row.push_back(std::to_string(cs.nAvgComp(m)));
                 for (size_t m = 0; m < numMonomers; ++m)
-                    row.push_back(std::to_string(cs.sequenceLengths[m].nAvg()));
+                    row.push_back(std::to_string(cs.stats[m].nAvg()));
                 for (size_t m = 0; m < numMonomers; ++m)
-                    row.push_back(std::to_string(cs.sequenceLengths[m].wAvg()));
+                    row.push_back(std::to_string(cs.stats[m].wAvg()));
                 for (size_t m = 0; m < numMonomers; ++m)
-                    row.push_back(std::to_string(cs.sequenceLengths[m].disp()));
+                    row.push_back(std::to_string(cs.stats[m].disp()));
 
                 out << str::join(row, ",") << std::endl;
             }
@@ -103,7 +103,7 @@ namespace output
         }
 
     private:
-        const analysis::PositionalChainStats &posStats;
+        const analysis::PositionalSequenceStats &posStats;
         const KMCState &kmcState;
     };
 
@@ -117,14 +117,12 @@ namespace output
         {
             std::vector<std::string> cols;
             const auto monomerNames = registry::getMonomerNames();
-            if (monomerNames.size() == 1)
+
+            for (const auto &name : monomerNames)
+                cols.push_back(std::string(C::state::MONCOUNT_PREFIX) + name);
+
+            if (monomerNames.size() > 1)
             {
-                cols.push_back("ChainLength");
-            }
-            else
-            {
-                for (const auto &name : monomerNames)
-                    cols.push_back(std::string(C::state::MONCOUNT_PREFIX) + name);
                 for (const auto &name : monomerNames)
                     cols.push_back(std::string(C::state::SEQCOUNT_PREFIX) + name);
                 for (const auto &name : monomerNames)
@@ -145,21 +143,15 @@ namespace output
 
             for (const auto *polymer : polymers)
             {
+                const auto record = polymer->getChainRecord();
                 std::vector<std::string> row;
-
-                // Aggregate across all positional buckets
-                analysis::SequenceStats aggregated;
-                for (const auto &stats : polymer->getPositionalStats())
-                    aggregated += stats;
-
                 for (size_t i = 0; i < numMonomers; ++i)
-                    row.push_back(std::to_string(aggregated.sequences[i].sum));
+                    row.push_back(std::to_string(record.stats[i].sum));
                 for (size_t i = 0; i < numMonomers; ++i)
-                    row.push_back(std::to_string(aggregated.sequences[i].count));
+                    row.push_back(std::to_string(record.stats[i].count));
                 for (size_t i = 0; i < numMonomers; ++i)
-                    row.push_back(std::to_string(aggregated.sequences[i].sumSq));
-
-                out << str::join(row, ",") << std::endl;
+                    row.push_back(std::to_string(record.stats[i].sumSq));
+                out << str::join(row, ",") << "\n";
             }
         }
 
@@ -253,7 +245,7 @@ namespace output
         writer.writeBlock(segFile);
     }
 
-    void writePosChainStats(const analysis::PositionalChainStats &posStats,
+    void writePosChainStats(const analysis::PositionalSequenceStats &posStats,
                             const std::string &containerName,
                             const KMCState &kmc,
                             const SimulationPaths &paths)

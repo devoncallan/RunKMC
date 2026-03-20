@@ -150,17 +150,6 @@ public:
             species::logger.debug("\t" + container.toSummaryString());
     }
 
-    std::vector<double> getMonomerFWs() const
-    {
-        std::vector<double> monomerFWs;
-        monomerFWs.reserve(registry::getNumMonomers());
-
-        for (const auto &id : registry::getMonomerIDs())
-            monomerFWs.push_back(units[registry::getMonomerIndex(id)].FW);
-
-        return monomerFWs;
-    }
-
     std::vector<Unit> &getUnits() { return units; }
     const std::vector<Unit> &getUnits() const { return units; }
 

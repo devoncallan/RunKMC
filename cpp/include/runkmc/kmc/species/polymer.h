@@ -149,9 +149,7 @@ public:
     {
         return visitChain(
             [](const HomopolymerBuffer &_chain)
-            { 
-                return static_cast<size_t>(_chain.length); 
-            },
+            { return static_cast<size_t>(_chain.length); },
             [](const CopolymerBuffer &_chain)
             { return _chain.units.size(); },
             [](const CompressedCopolymerBuffer &_chain)
@@ -227,16 +225,26 @@ public:
             { return empty; });
     }
 
-    const std::vector<analysis::SequenceStats> &getPositionalStats() const
+    const analysis::PositionalSequenceStats &getPositionalStats() const
     {
-        static const std::vector<analysis::SequenceStats> empty;
+        static const analysis::PositionalSequenceStats empty;
         return visitChain(
-            [&](const HomopolymerBuffer &) -> const std::vector<analysis::SequenceStats> &
+            [&](const HomopolymerBuffer &) -> const analysis::PositionalSequenceStats &
             { return empty; },
-            [&](const CopolymerBuffer &) -> const std::vector<analysis::SequenceStats> &
+            [&](const CopolymerBuffer &) -> const analysis::PositionalSequenceStats &
             { return empty; },
-            [](const CompressedCopolymerBuffer &_chain) -> const std::vector<analysis::SequenceStats> &
+            [](const CompressedCopolymerBuffer &_chain) -> const analysis::PositionalSequenceStats &
             { return _chain.posStats; });
+    }
+
+    analysis::SequenceStats getChainRecord() const
+    {
+        return visitChain(
+            [](const HomopolymerBuffer &) { return analysis::SequenceStats{}; },
+            [](const CopolymerBuffer &) { return analysis::SequenceStats{}; },
+            [](const CompressedCopolymerBuffer &_chain) {
+                return _chain.posStats.collapse();
+            });
     }
 
     const analysis::SegmentHistogram &getSegmentHistogram() const
@@ -251,9 +259,20 @@ public:
             { return _chain.segHist; });
     }
 
+    analysis::ChainStats toChainStats(const std::vector<double> &FWs) const
+    {
+        return visitChain(
+            [&](const HomopolymerBuffer &_chain)
+            { return analysis::toChainStats(_chain, FWs); },
+            [](const CopolymerBuffer &)
+            { return analysis::ChainStats{}; },
+            [&](const CompressedCopolymerBuffer &_chain)
+            { return analysis::toChainStats(_chain, FWs); });
+    }
+
     /***************** Reaction functions *****************/
 
-    void terminate()
+    void compress()
     {
         visitChain(
             [](HomopolymerBuffer &) {},
@@ -267,13 +286,11 @@ public:
     void terminateByChainTransfer()
     {
         state = PolymerState::TERMINATED_CT;
-        terminate();
     }
 
     void terminateByDisproportionation()
     {
         state = PolymerState::TERMINATED_D;
-        terminate();
     }
 
     void terminateByCombination(Polymer *&polymer)
@@ -289,7 +306,7 @@ public:
         }
         else
         {
-            if (polymer->chainType != ChainType::Copolymer)
+            if (polymer->chainType != ChainType::Homopolymer)
                 console::error("Combination between homopolymer and copolymer chains is not supported.");
 
             auto &selfHomo = std::get<HomopolymerBuffer>(chain);
@@ -305,6 +322,5 @@ public:
         }
 
         state = PolymerState::TERMINATED_C;
-        terminate();
     }
 };

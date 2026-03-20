@@ -5,7 +5,7 @@
 
 namespace analysis
 {
-    inline CompressedCopolymerBuffer compressCopolymer(const CopolymerBuffer &buf)
+    CompressedCopolymerBuffer compressCopolymer(const CopolymerBuffer &buf)
     {
         const size_t numBuckets = NUM_BUCKETS;
         const size_t numMonomers = registry::getNumMonomers();
@@ -13,7 +13,6 @@ namespace analysis
 
         CompressedCopolymerBuffer result;
         result.length = static_cast<uint32_t>(units.size());
-        result.posStats.resize(numBuckets);
 
         if (units.empty())
             return result;
@@ -25,7 +24,7 @@ namespace analysis
         {
             if (currentSequenceLength == 0)
                 return;
-            result.posStats[bucket].addSequence(currentMonomerID, currentSequenceLength);
+            result.posStats.buckets[bucket].addSequence(currentMonomerID, currentSequenceLength);
             size_t monIdx = registry::getMonomerIndex(currentMonomerID);
             auto &counts = result.segHist.data[static_cast<uint32_t>(currentSequenceLength)];
             if (counts.size() <= monIdx)
@@ -57,5 +56,36 @@ namespace analysis
         flushRun(lastBucket);
 
         return result;
+    }
+
+    ChainStats toChainStats(const HomopolymerBuffer &_chain, const std::vector<double> &FWs)
+    {
+        ChainStats cs;
+        const double L = static_cast<double>(_chain.length);
+        cs.chainLength.add(L);
+        if (_chain.monomer != INVALID_SPECIES_ID && _chain.length > 0)
+        {
+            size_t monIdx = registry::getMonomerIndex(_chain.monomer);
+            cs.sequenceLengths.stats[monIdx].add(L);
+            cs.chainMW.add(L * FWs[monIdx]);
+        }
+        return cs;
+    }
+
+    ChainStats toChainStats(const CompressedCopolymerBuffer &_chain, const std::vector<double> &FWs)
+    {
+        ChainStats cs;
+        cs.chainLength.add(static_cast<double>(_chain.length));
+
+        double mw = 0;
+        for (const auto &s : _chain.posStats.buckets)
+        {
+            cs.sequenceLengths += s;
+            for (size_t i = 0; i < FWs.size(); ++i)
+                mw += s.stats[i].sum * FWs[i];
+        }
+        cs.chainMW.add(mw);
+
+        return cs;
     }
 }
