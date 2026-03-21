@@ -151,10 +151,7 @@ namespace io::yaml
     {
         static types::UnitRead read(const YAML::Node &node)
         {
-            types::SpeciesRead species = Parser<types::SpeciesRead>::read(node);
-            types::UnitRead data;
-            data.name = species.name;
-            data.type = species.type;
+            types::UnitRead data = Parser<types::SpeciesRead>::read(node);
             readVar(node, C::io::C0_KEY, data.C0);
             readVar(node, C::io::FW_KEY, data.FW);
             readVar(node, C::io::EFFICIENCY_KEY, data.efficiency);
@@ -172,6 +169,29 @@ namespace io::yaml
     };
 
     // +--------------------------
+    // | Species - Monomer
+    // +--------------------------
+    template <>
+    struct Parser<types::MonomerRead> : public Parser<types::UnitRead>
+    {
+        static types::MonomerRead read(const YAML::Node &node)
+        {
+            types::MonomerRead data = Parser<types::UnitRead>::read(node);
+            readVar(node, C::io::RHO_M_KEY, data.rho_m);
+            readVar(node, C::io::RHO_P_KEY, data.rho_p);
+            return data;
+        }
+
+        static YAML::Node write(const types::MonomerRead &data)
+        {
+            YAML::Node node = Parser<types::UnitRead>::write(data);
+            node[C::io::RHO_M_KEY] = data.rho_m;
+            node[C::io::RHO_P_KEY] = data.rho_p;
+            return node;
+        }
+    };
+
+    // +--------------------------
     // | Species - Polymer Type
     // +--------------------------
     template <>
@@ -179,10 +199,7 @@ namespace io::yaml
     {
         static types::PolymerTypeRead read(const YAML::Node &node)
         {
-            types::SpeciesRead species = Parser<types::SpeciesRead>::read(node);
-            types::PolymerTypeRead data;
-            data.name = species.name;
-            data.type = species.type;
+            types::PolymerTypeRead data = Parser<types::SpeciesRead>::read(node);
             readVarRequired(node, C::io::END_GROUP_NAMES_KEY, data.endGroupUnitNames);
             readVar(node, C::io::REPORT_KEY, data.report);
             return data;
@@ -205,10 +222,7 @@ namespace io::yaml
     {
         static types::PolymerLabelsRead read(const YAML::Node &node)
         {
-            types::SpeciesRead species = Parser<types::SpeciesRead>::read(node);
-            types::PolymerLabelsRead data;
-            data.name = species.name;
-            data.type = species.type;
+            types::PolymerLabelsRead data = Parser<types::SpeciesRead>::read(node);
             readVarRequired(node, C::io::POLYMER_NAMES_KEY, data.polymerNames);
             readVar(node, C::io::REPORT_KEY, data.report);
             return data;
@@ -232,6 +246,7 @@ namespace io::yaml
         static types::SpeciesSetRead read(const YAML::Node &node)
         {
             // ===== PASS 1: Separate nodes by species type =====
+            std::vector<YAML::Node> monomerNodes;
             std::vector<YAML::Node> unitNodes;
             std::vector<YAML::Node> polymerNodes;
             std::vector<YAML::Node> labelNodes;
@@ -240,7 +255,9 @@ namespace io::yaml
             {
                 types::SpeciesRead species = Parser<types::SpeciesRead>::read(specNode);
 
-                if (SpeciesType::isUnitType(species.type))
+                if (species.type == SpeciesType::MONOMER)
+                    monomerNodes.push_back(specNode);
+                else if (SpeciesType::isUnitType(species.type))
                     unitNodes.push_back(specNode);
                 else if (species.type == SpeciesType::POLYMER)
                     polymerNodes.push_back(specNode);
@@ -252,13 +269,18 @@ namespace io::yaml
                 SpeciesType::checkValid(species.type);
             }
 
-            // ===== PASS 2: Parse in order: Units, Polymers, Labels =====
+            // ===== PASS 2: Parse in order: Monomers, Units, Polymers, Labels =====
+            std::vector<types::MonomerRead> monomers;
             std::vector<types::UnitRead> units;
             std::vector<types::PolymerTypeRead> polymerTypes;
             std::vector<types::PolymerLabelsRead> labels;
+            monomers.reserve(monomerNodes.size());
             units.reserve(unitNodes.size());
             polymerTypes.reserve(polymerNodes.size());
             labels.reserve(labelNodes.size());
+
+            for (const auto &specNode : monomerNodes)
+                monomers.push_back(Parser<types::MonomerRead>::read(specNode));
 
             for (const auto &specNode : unitNodes)
                 units.push_back(Parser<types::UnitRead>::read(specNode));
@@ -270,6 +292,7 @@ namespace io::yaml
                 labels.push_back(Parser<types::PolymerLabelsRead>::read(specNode));
 
             types::SpeciesSetRead speciesSet;
+            speciesSet.monomers = std::move(monomers);
             speciesSet.units = std::move(units);
             speciesSet.polymerTypes = std::move(polymerTypes);
             speciesSet.polymerLabels = std::move(labels);
@@ -280,6 +303,8 @@ namespace io::yaml
         static YAML::Node write(const types::SpeciesSetRead &data)
         {
             YAML::Node node;
+            for (const auto &monomer : data.monomers)
+                node.push_back(Parser<types::MonomerRead>::write(monomer));
             for (const auto &unit : data.units)
                 node.push_back(Parser<types::UnitRead>::write(unit));
             for (const auto &polymer : data.polymerTypes)

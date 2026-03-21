@@ -8,7 +8,7 @@ namespace io::types
     // RunKMC program configuration options
     // Set via command line arguments
     // Instruct the program how to run
-    
+
     struct CommandLineConfig
     {
         std::string inputFilepath;
@@ -48,31 +48,40 @@ namespace io::types
 
     struct UnitRead : SpeciesRead
     {
+        UnitRead() = default;
+        UnitRead(const SpeciesRead &s) : SpeciesRead(s) {}
         double C0 = 0.0;
         double FW = 0.0;
         double efficiency = 1.0;
     };
 
-    struct MonomerRead: UnitRead
+    struct MonomerRead : UnitRead
     {
-        double monomerDensity = 0.0; // g/cm^3
-        double polymerDensity = 0.0; // g/cm^3
+        MonomerRead() = default;
+        MonomerRead(const UnitRead &u) : UnitRead(u) {}
+        double rho_m = 0.0; // g/cm^3
+        double rho_p = 0.0; // g/cm^3
     };
 
     struct PolymerTypeRead : SpeciesRead
     {
+        PolymerTypeRead() = default;
+        PolymerTypeRead(const SpeciesRead &s) : SpeciesRead(s) {}
         std::vector<std::string> endGroupUnitNames;
         bool report = false;
     };
 
     struct PolymerLabelsRead : SpeciesRead
     {
+        PolymerLabelsRead() = default;
+        PolymerLabelsRead(const SpeciesRead &s) : SpeciesRead(s) {}
         std::vector<std::string> polymerNames;
         bool report = false;
     };
 
     struct SpeciesSetRead
     {
+        std::vector<MonomerRead> monomers;
         std::vector<UnitRead> units;
         std::vector<PolymerTypeRead> polymerTypes;
         std::vector<PolymerLabelsRead> polymerLabels;

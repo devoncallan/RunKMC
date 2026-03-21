@@ -41,11 +41,7 @@ namespace io::text
 
     static types::UnitRead parseUnit(const std::vector<std::string> &args)
     {
-        types::SpeciesRead species = parseBaseSpecies(args);
-
-        types::UnitRead unit;
-        unit.name = species.name;
-        unit.type = species.type;
+        types::UnitRead unit = parseBaseSpecies(args);
 
         std::vector<std::string> vars = {args.begin() + 2, args.end()};
 
@@ -60,17 +56,25 @@ namespace io::text
         return unit;
     }
 
+    static types::MonomerRead parseMonomer(const std::vector<std::string> &args)
+    {
+        types::MonomerRead monomer = parseUnit(args);
+
+        std::vector<std::string> vars = {args.begin() + 2, args.end()};
+
+        readVar(vars, C::io::RHO_M_KEY, monomer.rho_m);
+        readVar(vars, C::io::RHO_P_KEY, monomer.rho_p);
+
+        return monomer;
+    }
+
     static types::PolymerTypeRead parsePolymerType(const std::vector<std::string> &args)
     {
-        types::SpeciesRead species = parseBaseSpecies(args);
-
-        types::PolymerTypeRead polymer;
-        polymer.name = species.name;
-        polymer.type = species.type;
+        types::PolymerTypeRead polymer = parseBaseSpecies(args);
 
         // Check if the polymer name has brackets (e.g., "P[A.A]")
-        size_t seqStart = species.name.find("[");
-        size_t seqEnd = species.name.find("]");
+        size_t seqStart = polymer.name.find("[");
+        size_t seqEnd = polymer.name.find("]");
         bool hasSequence = (seqStart != std::string::npos && seqEnd != std::string::npos && seqEnd > seqStart);
         std::vector<std::string> endGroupUnitNames;
 
@@ -85,7 +89,7 @@ namespace io::text
 
         // Get string inside the brackets and split by period
         // e.g., "P[A.A]" -> "A.A" -> {"A","A"}
-        std::string sequenceStr = species.name.substr(seqStart + 1, seqEnd - seqStart - 1);
+        std::string sequenceStr = polymer.name.substr(seqStart + 1, seqEnd - seqStart - 1);
         std::vector<std::string> endGroupNames = str::splitByDelimeter(sequenceStr, ".");
         polymer.endGroupUnitNames = endGroupNames;
         return polymer;
@@ -93,11 +97,7 @@ namespace io::text
 
     static types::PolymerLabelsRead parsePolymerLabels(const std::vector<std::string> &args)
     {
-        types::SpeciesRead species = parseBaseSpecies(args);
-
-        types::PolymerLabelsRead labels;
-        labels.name = species.name;
-        labels.type = species.type;
+        types::PolymerLabelsRead labels = parseBaseSpecies(args);
 
         std::vector<std::string> vars = {args.begin() + 2, args.end()};
         if (vars.empty())
@@ -116,6 +116,7 @@ namespace io::text
     static types::SpeciesSetRead parseSpecies(const std::vector<std::string> &lines)
     {
         // ===== PASS 1: Separate lines by species type =====
+        std::vector<std::string> monomerLines;
         std::vector<std::string> unitLines;
         std::vector<std::string> polymerLines;
         std::vector<std::string> labelLines;
@@ -127,7 +128,9 @@ namespace io::text
                 continue;
 
             types::SpeciesRead species = parseBaseSpecies(args);
-            if (SpeciesType::isUnitType(species.type))
+            if (species.type == SpeciesType::MONOMER)
+                monomerLines.push_back(line);
+            else if (SpeciesType::isUnitType(species.type))
                 unitLines.push_back(line);
             else if (species.type == SpeciesType::POLYMER)
                 polymerLines.push_back(line);
@@ -139,13 +142,18 @@ namespace io::text
                 console::input_error("Unknown species type: " + std::string(species.type));
         }
 
-        // ===== PASS 2: Parse in order: Units, Polymers, Labels =====
+        // ===== PASS 2: Parse in order: Monomers, Units, Polymers, Labels =====
+        std::vector<types::MonomerRead> monomers;
         std::vector<types::UnitRead> units;
         std::vector<types::PolymerTypeRead> polymerTypes;
         std::vector<types::PolymerLabelsRead> labels;
+        monomers.reserve(monomerLines.size());
         units.reserve(unitLines.size());
         polymerTypes.reserve(polymerLines.size());
         labels.reserve(labelLines.size());
+
+        for (const auto &line : monomerLines)
+            monomers.push_back(parseMonomer(str::splitByWhitespace(line)));
 
         for (const auto &line : unitLines)
             units.push_back(parseUnit(str::splitByWhitespace(line)));
@@ -157,6 +165,7 @@ namespace io::text
             labels.push_back(parsePolymerLabels(str::splitByWhitespace(line)));
 
         types::SpeciesSetRead speciesSet;
+        speciesSet.monomers = std::move(monomers);
         speciesSet.units = std::move(units);
         speciesSet.polymerTypes = std::move(polymerTypes);
         speciesSet.polymerLabels = std::move(labels);

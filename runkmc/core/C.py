@@ -69,7 +69,6 @@ class state:
     CONV_PREFIX = "Conv_"
     COUNT_PREFIX = "Count_"
     MONOMER = "Monomer"
-    TERMINATED_CHAIN_COUNT_KEY = "TerminatedChainCount"
 
     # Chain and molecular weight stats
     NAVGCL_KEY = "nAvgCL"
@@ -94,10 +93,6 @@ class state:
     
     # Block file key
     COUNT_KEY = "Count"
-    BIN_MONCOUNT_PREFIX = "BinMonCount_"
-    CHAINCOUNT_KEY = "ChainCount"
-    TOTAL_SEQCOUNT_PREFIX = "TotalSeqCount_"
-    TOTAL_SEQLEN2_PREFIX = "TotalSeqLen2_"
     SEGMENT_COUNT_PREFIX = "SegmentCount_"
     SEGMENT_LENGTH_KEY = "SegmentLength"
 

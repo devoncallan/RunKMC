@@ -7,6 +7,7 @@
 #include "io/yaml.h"
 #include "io/cli.h"
 #include "kmc/kmc.h"
+#include "kmc/plugins/volume.h"
 
 namespace build
 {
@@ -49,6 +50,16 @@ namespace build
 
         KMC kmc(speciesSet, reactionSet, config, data.config);
 
+        // Auto-register VolumePlugin if any monomers have density data
+        VolumePlugin::Config volConfig;
+        for (const auto &m : data.species.monomers)
+        {
+            if (m.rho_m > 0.0 && m.rho_p > 0.0)
+                volConfig.species.push_back({m.name, m.rho_m, m.rho_p});
+        }
+        if (!volConfig.species.empty())
+            kmc.registerPlugin(std::make_unique<VolumePlugin>(volConfig));
+
         console::debug("Built KMC object successfully.");
 
         return kmc;
@@ -59,7 +70,13 @@ namespace build
     static SpeciesSet buildSpeciesSet(const io::types::SpeciesSetRead &data, const io::types::SimulationConfig &config)
     {
 
-        std::vector<io::types::UnitRead> unitsRead = data.units;
+        // Combine monomers + units into a single list for sorting and building
+        std::vector<io::types::UnitRead> unitsRead;
+        unitsRead.reserve(data.monomers.size() + data.units.size());
+        for (const auto &m : data.monomers)
+            unitsRead.push_back(m); // MonomerRead is-a UnitRead
+        unitsRead.insert(unitsRead.end(), data.units.begin(), data.units.end());
+
         std::stable_sort(
             unitsRead.begin(),
             unitsRead.end(),
@@ -76,8 +93,7 @@ namespace build
 
         // Register and create unit species
         std::vector<Unit> units;
-        size_t numUnits = data.units.size();
-        units.reserve(numUnits);
+        units.reserve(unitsRead.size());
 
         for (const auto &unitRead : unitsRead)
         {

@@ -10,7 +10,7 @@ struct KMCState
     double kmcTime = 0;
     double simulationTime = 0;
     double simulationTimePer1e6Steps = 0;
-    double NAV = 0;
+    double NAV = 1.0;
 
     static std::vector<std::string> getTitles()
     {

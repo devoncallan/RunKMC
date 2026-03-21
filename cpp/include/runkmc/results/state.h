@@ -146,11 +146,11 @@ namespace output
                 const auto record = polymer->getChainRecord();
                 std::vector<std::string> row;
                 for (size_t i = 0; i < numMonomers; ++i)
-                    row.push_back(std::to_string(record.stats[i].sum));
+                    row.push_back(std::to_string(static_cast<uint64_t>(record.stats[i].sum)));
                 for (size_t i = 0; i < numMonomers; ++i)
-                    row.push_back(std::to_string(record.stats[i].count));
+                    row.push_back(std::to_string(static_cast<uint64_t>(record.stats[i].count)));
                 for (size_t i = 0; i < numMonomers; ++i)
-                    row.push_back(std::to_string(record.stats[i].sumSq));
+                    row.push_back(std::to_string(static_cast<uint64_t>(record.stats[i].sumSq)));
                 out << str::join(row, ",") << "\n";
             }
         }

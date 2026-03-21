@@ -254,7 +254,7 @@ class Initiation : public Reaction
 public:
     static inline const ReactionSchema &SCHEMA = {
         ReactionType::INITIATION,
-        {SpeciesType::UNIT, SpeciesType::UNIT},
+        {SpeciesType::UNIT, SpeciesType::MONOMER},
         {SpeciesType::POLYMER}};
 
     Initiation(RateConstant rateConstant, const ReactionSpecies &species)
@@ -286,7 +286,7 @@ class Propagation : public Reaction
 public:
     static inline const ReactionSchema &SCHEMA = {
         ReactionType::PROPAGATION,
-        {SpeciesType::POLYMER, SpeciesType::UNIT},
+        {SpeciesType::POLYMER, SpeciesType::MONOMER},
         {SpeciesType::POLYMER}};
 
     Propagation(RateConstant rateConstant, const ReactionSpecies &species)
@@ -320,7 +320,7 @@ public:
     static inline const ReactionSchema &SCHEMA = {
         ReactionType::DEPROPAGATION,
         {SpeciesType::POLYMER},
-        {SpeciesType::POLYMER, SpeciesType::UNIT}};
+        {SpeciesType::POLYMER, SpeciesType::MONOMER}};
 
     Depropagation(RateConstant rateConstant, const ReactionSpecies &species)
         : Reaction(rateConstant, SCHEMA, species) {}
@@ -407,7 +407,7 @@ public:
         Polymer *poly2 = species.r_poly<1>()->removeRandomPolymer();
         poly1->terminateByCombination(poly2);
         species.p_poly<0>()->insertPolymer(poly1);
-        delete poly2;  // Free merged polymer - fixes memory leak
+        delete poly2; // Free merged polymer - fixes memory leak
     }
 
     double calculateRate(double NAV) const override
@@ -427,7 +427,7 @@ public:
     // P + M --> D + R
     static inline const ReactionSchema &SCHEMA = {
         ReactionType::CHAINTRANSFER_M,
-        {SpeciesType::POLYMER, SpeciesType::UNIT},
+        {SpeciesType::POLYMER, SpeciesType::MONOMER},
         {SpeciesType::POLYMER, SpeciesType::POLYMER}};
 
     ChainTransferToMonomer(RateConstant rateConstant, const ReactionSpecies &species)
@@ -440,14 +440,14 @@ public:
         // Terminate a polymer
         Polymer *poly = species.r_poly<0>()->removeRandomPolymer();
         poly->terminateByChainTransfer();
-        species.p_poly<0>()->insertPolymer(poly);  // Goes to dead container
+        species.p_poly<0>()->insertPolymer(poly); // Goes to dead container
         --mon->count;
 
         // Create a new monomer radical
         Polymer *newRadical = species.p_poly<1>()->createPolymer();
         newRadical->initiate(mon->ID);
         newRadical->addUnitToEnd(mon->ID);
-        species.p_poly<1>()->insertPolymer(newRadical);  // Goes to alive container
+        species.p_poly<1>()->insertPolymer(newRadical); // Goes to alive container
     }
 
     double calculateRate(double NAV) const override
@@ -462,7 +462,7 @@ public:
     // M + M + M --> P + P
     static inline const ReactionSchema &SCHEMA = {
         ReactionType::THERM_INIT_M,
-        {SpeciesType::UNIT, SpeciesType::UNIT, SpeciesType::UNIT},
+        {SpeciesType::MONOMER, SpeciesType::MONOMER, SpeciesType::MONOMER},
         {SpeciesType::POLYMER, SpeciesType::POLYMER}};
     ThermalInitiationMonomer(RateConstant rateConstant, const ReactionSpecies &species)
         : Reaction(rateConstant, SCHEMA, species) {}

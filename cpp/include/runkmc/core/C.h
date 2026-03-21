@@ -46,6 +46,8 @@ namespace C::io
     inline constexpr std::string_view FW_KEY = "FW";
     inline constexpr std::string_view C0_KEY = "[C0]";
     inline constexpr std::string_view EFFICIENCY_KEY = "f";
+    inline constexpr std::string_view RHO_M_KEY = "rho_m";
+    inline constexpr std::string_view RHO_P_KEY = "rho_p";
     inline constexpr std::string_view END_GROUP_NAMES_KEY = "end_group_units";
     inline constexpr std::string_view POLYMER_NAMES_KEY = "polymer_names";
     inline constexpr std::string_view REPORT_KEY = "report";

@@ -1,10 +1,10 @@
 from __future__ import annotations
 from pathlib import Path
-from typing import List, Optional, TYPE_CHECKING
+from typing import Dict, List, Optional, TYPE_CHECKING
 from dataclasses import dataclass
 
 from .paths import SimulationPaths
-from .state import StateData, SequenceData, ChainRecordData, SegmentHistogramData
+from .state import StateData, PosChainData, ChainRecordData, SegmentHistogramData
 from ..core.species import SpeciesRegistry
 from .polymers import read_polymer_file, PolymerSequence
 
@@ -18,9 +18,9 @@ class SimulationResult:
     paths: SimulationPaths
     species: SpeciesRegistry
     results: StateData
-    chain_data: Optional[ChainRecordData] = None
-    segment_hist: Optional[SegmentHistogramData] = None
-    sequence_data: Optional[SequenceData] = None
+    chain_data: Optional[Dict[str, ChainRecordData]] = None
+    segment_hist: Optional[Dict[str, SegmentHistogramData]] = None
+    sequence_data: Optional[Dict[str, PosChainData]] = None
     polymer_data: Optional[List[PolymerSequence]] = None
 
     @staticmethod
@@ -41,18 +41,29 @@ class SimulationResult:
 
         results = StateData.from_csv(paths.results_filepath, species)
 
-        # Load sequence data if it exists
-        sequence_data = None
-        if paths.sequence_filepath.exists():
-            sequence_data = SequenceData.from_csv(paths.sequence_filepath, species)
-            
-        chain_data = None
-        if paths.chain_records_filepath.exists():
-            chain_data = ChainRecordData.load(paths.chain_records_filepath, species, results)
+        # Load per-container files
+        chain_map: Dict[str, ChainRecordData] = {}
+        segment_hist_map: Dict[str, SegmentHistogramData] = {}
+        sequence_data_map: Dict[str, PosChainData] = {}
 
-        segment_hist = None
-        if paths.segment_hist_filepath.exists():
-            segment_hist = SegmentHistogramData.load(paths.segment_hist_filepath, species)
+        for name in species.get_polymer_names():
+            p = paths.chains_filepath(name)
+            if p.exists():
+                r = ChainRecordData.load(p, species)
+                if r is not None:
+                    chain_map[name] = r
+
+            p = paths.segment_hist_filepath(name)
+            if p.exists():
+                r = SegmentHistogramData.load(p, species)
+                if r is not None:
+                    segment_hist_map[name] = r
+
+            p = paths.pos_chain_filepath(name)
+            if p.exists():
+                r = PosChainData.load(p, species)
+                if r is not None:
+                    sequence_data_map[name] = r
 
         # Load polymer data if it exists
         polymer_data = None
@@ -60,7 +71,11 @@ class SimulationResult:
             polymer_data = read_polymer_file(paths.polymers_filepath)
 
         return SimulationResult(
-            paths, species, results, chain_data, segment_hist, sequence_data, polymer_data
+            paths, species, results,
+            chain_data=chain_map or None,
+            segment_hist=segment_hist_map or None,
+            sequence_data=sequence_data_map or None,
+            polymer_data=polymer_data,
         )
 
     @staticmethod
