@@ -101,11 +101,20 @@ namespace io::types
         std::vector<std::string> productNames;
     };
 
+    struct PluginEntryRead
+    {
+        std::string type;
+        std::string dataFile;
+        uint64_t updateInterval = 1;
+        double temperature = 60.0; // °C
+    };
+
     struct KMCInputRead
     {
         SimulationConfig config;
         SpeciesSetRead species;
         std::vector<RateConstantRead> rateConstants;
         std::vector<ReactionRead> reactions;
+        std::vector<PluginEntryRead> plugins;
     };
 };

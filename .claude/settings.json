@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.venv/bin/python3 -m runkmc.kmc.build)",
+      "Bash(cmake --build cpp/build)"
+    ]
+  }
+}

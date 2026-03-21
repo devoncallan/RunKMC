@@ -367,6 +367,33 @@ namespace io::yaml
         }
     };
 
+    // +--------------------------
+    // | Plugins - Entry
+    // +--------------------------
+    template <>
+    struct Parser<types::PluginEntryRead>
+    {
+        static types::PluginEntryRead read(const YAML::Node &node)
+        {
+            types::PluginEntryRead data;
+            readVarRequired(node, C::io::TYPE_KEY, data.type);
+            readVarRequired(node, C::io::DATA_FILE_KEY, data.dataFile);
+            readVar(node, C::io::UPDATE_INTERVAL_KEY, data.updateInterval);
+            readVar(node, C::io::TEMPERATURE_KEY, data.temperature);
+            return data;
+        }
+
+        static YAML::Node write(const types::PluginEntryRead &data)
+        {
+            YAML::Node node;
+            node[C::io::TYPE_KEY] = data.type;
+            node[C::io::DATA_FILE_KEY] = data.dataFile;
+            node[C::io::UPDATE_INTERVAL_KEY] = data.updateInterval;
+            node[C::io::TEMPERATURE_KEY] = data.temperature;
+            return node;
+        }
+    };
+
     template <>
     struct Parser<types::KMCInputRead>
     {
@@ -383,6 +410,9 @@ namespace io::yaml
             data.rateConstants = Parser<std::vector<types::RateConstantRead>>::read(rateConstants);
             data.reactions = Parser<std::vector<types::ReactionRead>>::read(reactions);
 
+            if (hasKey(node, C::io::PLUGINS_SECTION))
+                data.plugins = Parser<std::vector<types::PluginEntryRead>>::read(node[std::string(C::io::PLUGINS_SECTION)]);
+
             return data;
         }
 
@@ -393,6 +423,8 @@ namespace io::yaml
             node[C::io::SPECIES_SECTION] = Parser<types::SpeciesSetRead>::write(data.species);
             node[C::io::RATE_CONSTANTS_SECTION] = Parser<std::vector<types::RateConstantRead>>::write(data.rateConstants);
             node[C::io::REACTIONS_SECTION] = Parser<std::vector<types::ReactionRead>>::write(data.reactions);
+            if (!data.plugins.empty())
+                node[C::io::PLUGINS_SECTION] = Parser<std::vector<types::PluginEntryRead>>::write(data.plugins);
             return node;
         }
     };

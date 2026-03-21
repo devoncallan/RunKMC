@@ -56,6 +56,12 @@ namespace C::io
     inline constexpr std::string_view RATE_CONSTANT_KEY = "rate_constant";
     inline constexpr std::string_view REACTANTS_KEY = "reactants";
     inline constexpr std::string_view PRODUCTS_KEY = "products";
+
+    // Plugins
+    inline constexpr std::string_view PLUGINS_SECTION = "plugins";
+    inline constexpr std::string_view DATA_FILE_KEY = "data_file";
+    inline constexpr std::string_view UPDATE_INTERVAL_KEY = "update_interval";
+    inline constexpr std::string_view TEMPERATURE_KEY = "temperature";
 };
 
 namespace C::state

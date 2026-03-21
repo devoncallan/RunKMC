@@ -8,6 +8,7 @@
 #include "io/cli.h"
 #include "kmc/kmc.h"
 #include "kmc/plugins/volume.h"
+#include "kmc/plugins/diffusion.h"
 
 namespace build
 {
@@ -59,6 +60,23 @@ namespace build
         }
         if (!volConfig.species.empty())
             kmc.registerPlugin(std::make_unique<VolumePlugin>(volConfig));
+
+        // Register plugins specified in the input file
+        const std::filesystem::path inputDir = std::filesystem::path(config.inputFilepath).parent_path();
+        for (const auto &pluginEntry : data.plugins)
+        {
+            if (pluginEntry.type == "DiffusionPlugin")
+            {
+                const std::filesystem::path dataPath = inputDir / pluginEntry.dataFile;
+                DiffusionPlugin::Config diffConfig = diffusion::loadDataFile(
+                    dataPath.string(), pluginEntry.updateInterval, pluginEntry.temperature);
+                kmc.registerPlugin(std::make_unique<DiffusionPlugin>(std::move(diffConfig)));
+            }
+            else
+            {
+                console::warning("build: unknown plugin type '" + pluginEntry.type + "'. Skipping.");
+            }
+        }
 
         console::debug("Built KMC object successfully.");
 
