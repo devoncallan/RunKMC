@@ -168,7 +168,7 @@ public:
             },
             [&](const CopolymerBuffer &_chain)
             {
-                if (endGroup.size() > _chain.units.size() + 1)
+                if (endGroup.size() > _chain.units.size())
                     return false;
                 return equal(_chain.units.end() - endGroup.size(), _chain.units.end(), endGroup.begin());
             },

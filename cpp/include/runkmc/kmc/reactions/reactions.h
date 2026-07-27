@@ -220,18 +220,21 @@ public:
     InitiatorDecompositionPolymer(RateConstant rateConstant, ReactionSpecies species)
         : Reaction(rateConstant, SCHEMA, species) {}
 
+    void setEfficiencyMultiplier(double multiplier) { efficiencyMultiplier = multiplier; }
+
     void react() override
     {
         auto init = species.r_unit<0>();
         --init->count;
 
-        if (rng::rand() <= init->efficiency)
+        const double eff = init->efficiency * efficiencyMultiplier;
+        if (rng::rand() <= eff)
         {
             Polymer *polymer = species.p_poly<0>()->createPolymer();
             polymer->initiate(init->ID);
             species.p_poly<0>()->insertPolymer(polymer);
         }
-        if (rng::rand() <= init->efficiency)
+        if (rng::rand() <= eff)
         {
             Polymer *polymer = species.p_poly<1>()->createPolymer();
             polymer->initiate(init->ID);
@@ -243,6 +246,9 @@ public:
     {
         return rateConstant.value * species.r_unit<0>()->count;
     }
+
+private:
+    double efficiencyMultiplier = 1.0;
 };
 
 /**
@@ -330,7 +336,8 @@ public:
 
         auto r_poly = species.r_poly<0>();
         auto p_poly = species.p_poly<0>();
-        auto p_unit = species.p_unit<0>();
+        // products[0] = polymer container, products[1] = released monomer
+        auto p_unit = species.p_unit<1>();
 
         Polymer *polymer = r_poly->removeRandomPolymer();
         polymer->removeUnitFromEnd();

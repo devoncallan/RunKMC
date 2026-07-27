@@ -29,6 +29,12 @@ class StateData:
     unit_counts: Dict[str, NDArray[np.uint64]]
     polymer_counts: Dict[str, NDArray[np.uint64]]
 
+    # Chain / MW stats
+    nAvgCL: NDArray[np.float64]
+    wAvgCL: NDArray[np.float64]
+    nAvgMW: NDArray[np.float64]
+    wAvgMW: NDArray[np.float64]
+
     _raw_data: pd.DataFrame
 
     @staticmethod
@@ -62,6 +68,10 @@ class StateData:
                 name: df[C.state.COUNT_PREFIX + name].to_numpy(np.uint64)
                 for name in polymer_names
             },
+            nAvgCL=df[C.state.NAVGCL_KEY].to_numpy(np.float64) if C.state.NAVGCL_KEY in df.columns else np.zeros(len(df), dtype=np.float64),
+            wAvgCL=df[C.state.WAVGCL_KEY].to_numpy(np.float64) if C.state.WAVGCL_KEY in df.columns else np.zeros(len(df), dtype=np.float64),
+            nAvgMW=df[C.state.NAVGMW_KEY].to_numpy(np.float64) if C.state.NAVGMW_KEY in df.columns else np.zeros(len(df), dtype=np.float64),
+            wAvgMW=df[C.state.WAVGMW_KEY].to_numpy(np.float64) if C.state.WAVGMW_KEY in df.columns else np.zeros(len(df), dtype=np.float64),
             _raw_data=df,
         )
 

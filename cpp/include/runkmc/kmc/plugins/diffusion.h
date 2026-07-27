@@ -197,7 +197,11 @@ private:
                                     std::exp(-props.A * (1.0 / Vf - 1.0 / Vf_gel));
             // Reaction-diffusion termination
             const double cM = nM_mol / V; // [mol/L]
-            const double D = props.n_s * (props.l0 * props.l0) * cM / 6.0;
+            // kp_eff = base kp * diffusion factor (matches sparks: D uses effective kp)
+            double kp_eff = 0.0;
+            if (!propagationReactions.empty())
+                kp_eff = reactions.getReaction(propagationReactions[0])->getRateConstant().value * kp_factor;
+            const double D = props.n_s * (props.l0 * props.l0) * kp_eff * cM / 6.0;
             const double delta_rd = std::pow(6.0 * (vol_m_L / (static_cast<double>(monomer.count) + 1.0)) / (M_PI * C::NA), 1.0 / 3.0);
             const double kt_rd = 8.0 * M_PI * C::NA * D * delta_rd / 1000.0;
             kt_factor = kt_trans + kt_rd;
@@ -211,7 +215,10 @@ private:
         for (size_t i : terminationCReactions)
             reactions.setRateMultiplier(i, kt_factor);
         for (size_t i : initiatorDecompReactions)
-            reactions.setRateMultiplier(i, f_factor);
+        {
+            if (auto *idp = dynamic_cast<InitiatorDecompositionPolymer *>(reactions.getReaction(i)))
+                idp->setEfficiencyMultiplier(f_factor);
+        }
     }
 
     static inline constexpr std::string_view pluginName = "DiffusionPlugin";

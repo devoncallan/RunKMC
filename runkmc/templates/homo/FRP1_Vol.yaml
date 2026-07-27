@@ -1,0 +1,64 @@
+parameters:
+  num_units: {{num_units}}
+  termination_time: {{termination_time}}
+  analysis_time: {{analysis_time}}
+
+species:
+  - name: I
+    type: I
+    "[C0]": {{I_c0}}
+    FW: {{I_FW=1.0}}
+    f: {{I_f=0.5}}
+  - name: M
+    type: M
+    "[C0]": {{M_c0}}
+    FW: {{M_FW=100.0}}
+    rho_m: {{rho_m}}
+    rho_p: {{rho_p}}
+  - name: R
+    type: P
+    end_group_units: []
+  - name: D
+    type: P
+    end_group_units: []
+    report: true
+
+rateconstants:
+  - name: kd
+    value: {{kd}}
+  - name: kp
+    value: {{kp=0.0}}
+  - name: kpr
+    value: {{kpr=0.0}}
+  - name: ktc
+    value: {{ktc=0.0}}
+  - name: ktd
+    value: {{ktd=0.0}}
+  - name: kfm
+    value: {{kfm=0.0}}
+
+reactions:
+  - type: IDP
+    rate_constant: kd
+    reactants: [I]
+    products: [R, R]
+  - type: PR
+    rate_constant: kp
+    reactants: [R, M]
+    products: [R]
+  - type: DP
+    rate_constant: kpr
+    reactants: [R]
+    products: [R, M]
+  - type: TC
+    rate_constant: ktc
+    reactants: [R, R]
+    products: [D]
+  - type: TD
+    rate_constant: ktd
+    reactants: [R, R]
+    products: [D, D]
+  - type: CTM
+    rate_constant: kfm
+    reactants: [R, M]
+    products: [D, R]

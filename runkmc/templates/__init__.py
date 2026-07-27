@@ -9,6 +9,9 @@ TEMPLATES_DIR = Path(__file__).parent
 
 REGISTERED_TEMPLATES = {
     "FRP1": TEMPLATES_DIR / "homo/FRP1.template",
+    "FRP1_Vol": TEMPLATES_DIR / "homo/FRP1_Vol.yaml",
+    "FRP1_Diff": TEMPLATES_DIR / "homo/FRP1_Diff.yaml",
+    "FRP1_DiffVol": TEMPLATES_DIR / "homo/FRP1_DiffVol.yaml",
     "BUP2": TEMPLATES_DIR / "binary/BUP2.template",
     "BUP2_Rev": TEMPLATES_DIR / "binary/BUP2_Rev.template",
     "FRP2": TEMPLATES_DIR / "binary/FRP2.template",
@@ -140,7 +143,11 @@ def create_input_file(
             content = content.replace(f"{{{{{key}}}}}", str(value))
 
     if filepath is None:
-        temp_file = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+        # Infer suffix from the template file extension so the C++ parser picks the right reader
+        template_path = REGISTERED_TEMPLATES.get(str(template_name))
+        raw_suffix = Path(template_path).suffix if template_path else ".txt"
+        suffix = ".txt" if raw_suffix == ".template" else raw_suffix
+        temp_file = tempfile.NamedTemporaryFile(mode="w", suffix=suffix, delete=False)
         filepath = temp_file.name
         temp_file.close()
 

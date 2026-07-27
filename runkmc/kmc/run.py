@@ -1,6 +1,7 @@
 from pathlib import Path
 from dataclasses import dataclass
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
+import shutil
 import tempfile
 
 from .execution import execute_simulation, parse_only
@@ -43,22 +44,44 @@ class RunKMC:
         template_params: Dict[str, Any],
         use_existing: bool = True,
         overwrite: bool = False,
+        extra_files: Optional[Dict[str, Path]] = None,
         **kwargs,
     ) -> SimulationResult:
 
         input_path = create_input_file(template_name, template_params)
+        side_files: List[Path] = []
 
         try:
+            # Write any extra files (e.g. diffusion data) alongside the input file
+            if extra_files:
+                for filename, src_path in extra_files.items():
+                    dest = input_path.parent / filename
+                    shutil.copy2(src_path, dest)
+                    side_files.append(dest)
+
+            # Include the full rendered input (which contains plugin config) in the
+            # hash, since parsed_input.yaml strips the plugins section.
+            # Also include any extra files (e.g. diffusion data) whose content
+            # affects simulation behaviour but is not captured in parsed_input.yaml.
+            extra_content = input_path.read_text()
+            for f in side_files:
+                if f.exists():
+                    extra_content += f.read_text()
+
             result = self.run_simulation(
                 input_filepath=input_path,
                 use_existing=use_existing,
                 overwrite=overwrite,
+                input_hash_extra=extra_content,
                 **kwargs,
             )
             return result
         finally:
             if input_path.exists():
                 input_path.unlink()
+            for f in side_files:
+                if f.exists():
+                    f.unlink()
 
     def run_ensemble_from_template(
         self,
@@ -67,13 +90,25 @@ class RunKMC:
         template_params: Dict[str, Any],
         use_existing: bool = True,
         overwrite: bool = False,
+        extra_files: Optional[Dict[str, Path]] = None,
         **kwargs,
     ) -> List[SimulationResult]:
 
         input_path = create_input_file(template_name, template_params)
+        side_files: List[Path] = []
 
         try:
-            input_hash = self._compute_input_hash(input_path)
+            if extra_files:
+                for filename, src_path in extra_files.items():
+                    dest = input_path.parent / filename
+                    shutil.copy2(src_path, dest)
+                    side_files.append(dest)
+
+            extra_content = input_path.read_text()
+            for f in side_files:
+                if f.exists():
+                    extra_content += f.read_text()
+            input_hash = self._compute_input_hash(input_path, extra=extra_content)
 
             # Find existing completed runs
             existing = [r for r in self.registry.find_all(input_hash) if r.completed]
@@ -104,8 +139,11 @@ class RunKMC:
         finally:
             if input_path.exists():
                 input_path.unlink()
+            for f in side_files:
+                if f.exists():
+                    f.unlink()
 
-    def _compute_input_hash(self, input_filepath: Path | str) -> str:
+    def _compute_input_hash(self, input_filepath: Path | str, extra: str = "") -> str:
 
         input_filepath = Path(input_filepath)
         if not input_filepath.exists():
@@ -128,8 +166,9 @@ class RunKMC:
                         "The C++ parser may not have generated the expected output."
                     )
 
-                # Hash the parsed KMC input file
-                return SimulationRegistry.hash_input(parsed_input)
+                # Hash the parsed KMC input file plus any extra content (e.g. plugin
+                # config) that the C++ parser strips from parsed_input.yaml.
+                return SimulationRegistry.hash_input(parsed_input, params=extra or None)
         except Exception as e:
             raise RuntimeError(f"Failed to compute input hash: {e}") from e
 
@@ -139,6 +178,7 @@ class RunKMC:
         use_existing: bool = True,
         overwrite: bool = False,
         input_hash: str | None = None,
+        input_hash_extra: str = "",
         **kwargs,
     ) -> SimulationResult:
         """Run a simulation with automatic caching based on input hash.
@@ -146,6 +186,7 @@ class RunKMC:
         Args:
             input_filepath: Path to the input file
             overwrite: If True, ignore cache and re-run simulation
+            input_hash_extra: Additional content to mix into the hash (e.g. plugin config)
             **kwargs: Additional arguments passed to execute_simulation
                      (report_polymers, report_sequences, etc.)
 
@@ -154,7 +195,7 @@ class RunKMC:
         """
         input_filepath = Path(input_filepath)
         if input_hash is None:
-            input_hash = self._compute_input_hash(input_filepath)
+            input_hash = self._compute_input_hash(input_filepath, extra=input_hash_extra)
         record = self.registry.get_latest(input_hash, completed=True)
 
         if record:
